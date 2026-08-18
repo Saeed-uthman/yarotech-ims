@@ -1,0 +1,895 @@
+import { ProductVariantEntity } from '../../types';
+
+export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
+  // 1. Paracetamol 500mg (prod-001) - 4 manufacturers
+  {
+    id: 'var-001-1',
+    productId: 'prod-001',
+    companyId: 'comp-1', // DANA
+    basePrice: 350.00,
+    sellingPrice: 500.00,
+    currentStock: 450,
+    reorderLevel: 100,
+    status: 'Available',
+    createdAt: '2024-01-16 10:30 AM',
+    updatedAt: '2026-05-06 09:15 AM',
+  },
+  {
+    id: 'var-001-2',
+    productId: 'prod-001',
+    companyId: 'comp-2', // EMZOR
+    basePrice: 420.00,
+    sellingPrice: 600.00,
+    currentStock: 300,
+    reorderLevel: 100,
+    status: 'Available',
+    createdAt: '2024-01-16 10:30 AM',
+    updatedAt: '2026-05-06 09:15 AM',
+  },
+  {
+    id: 'var-001-3',
+    productId: 'prod-001',
+    companyId: 'comp-3', // LOTEMP
+    basePrice: 380.00,
+    sellingPrice: 550.00,
+    currentStock: 250,
+    reorderLevel: 100,
+    status: 'Available',
+    createdAt: '2024-01-16 10:30 AM',
+    updatedAt: '2026-05-06 09:15 AM',
+  },
+  {
+    id: 'var-001-4',
+    productId: 'prod-001',
+    companyId: 'comp-4', // EMBASSY
+    basePrice: 400.00,
+    sellingPrice: 580.00,
+    currentStock: 250,
+    reorderLevel: 100,
+    status: 'Available',
+    createdAt: '2024-01-16 10:30 AM',
+    updatedAt: '2026-05-06 09:15 AM',
+  },
+
+  // 2. Amoxicillin 500mg (prod-002) - 3 manufacturers (including one low stock)
+  {
+    id: 'var-002-1',
+    productId: 'prod-002',
+    companyId: 'comp-2', // EMZOR
+    basePrice: 450.00,
+    sellingPrice: 650.00,
+    currentStock: 350,
+    reorderLevel: 80,
+    status: 'Available',
+    createdAt: '2024-02-10 11:20 AM',
+    updatedAt: '2026-06-12 02:45 PM',
+  },
+  {
+    id: 'var-002-2',
+    productId: 'prod-002',
+    companyId: 'comp-5', // FIDSON
+    basePrice: 520.00,
+    sellingPrice: 750.00,
+    currentStock: 280,
+    reorderLevel: 60,
+    status: 'Available',
+    createdAt: '2024-02-10 11:20 AM',
+    updatedAt: '2026-06-12 02:45 PM',
+  },
+  {
+    id: 'var-002-3',
+    productId: 'prod-002',
+    companyId: 'comp-7', // MAY & BAKER
+    basePrice: 580.00,
+    sellingPrice: 800.00,
+    currentStock: 25, // Low stock demo (< reorderLevel 75)
+    reorderLevel: 75,
+    status: 'Available',
+    createdAt: '2024-02-10 11:20 AM',
+    updatedAt: '2026-06-12 02:45 PM',
+  },
+
+  // 3. Artemether + Lumefantrine 80/480mg (prod-003) - 3 manufacturers
+  {
+    id: 'var-003-1',
+    productId: 'prod-003',
+    companyId: 'comp-6', // SWIPHA (Coartem)
+    basePrice: 1850.00,
+    sellingPrice: 2400.00,
+    currentStock: 180,
+    reorderLevel: 40,
+    status: 'Available',
+    createdAt: '2024-01-05 09:15 AM',
+    updatedAt: '2026-06-20 11:30 AM',
+  },
+  {
+    id: 'var-003-2',
+    productId: 'prod-003',
+    companyId: 'comp-2', // EMZOR (Lokmal)
+    basePrice: 1400.00,
+    sellingPrice: 1900.00,
+    currentStock: 220,
+    reorderLevel: 50,
+    status: 'Available',
+    createdAt: '2024-01-05 09:15 AM',
+    updatedAt: '2026-06-20 11:30 AM',
+  },
+  {
+    id: 'var-003-3',
+    productId: 'prod-003',
+    companyId: 'comp-9', // CHI PHARMA
+    basePrice: 1550.00,
+    sellingPrice: 2100.00,
+    currentStock: 140,
+    reorderLevel: 30,
+    status: 'Available',
+    createdAt: '2024-01-05 09:15 AM',
+    updatedAt: '2026-06-20 11:30 AM',
+  },
+
+  // 4. Vitamin C 1000mg (prod-004) - 3 manufacturers
+  {
+    id: 'var-004-1',
+    productId: 'prod-004',
+    companyId: 'comp-2', // EMZOR
+    basePrice: 1100.00,
+    sellingPrice: 1600.00,
+    currentStock: 340,
+    reorderLevel: 80,
+    status: 'Available',
+    createdAt: '2024-01-20 03:45 PM',
+    updatedAt: '2026-06-18 10:00 AM',
+  },
+  {
+    id: 'var-004-2',
+    productId: 'prod-004',
+    companyId: 'comp-5', // FIDSON
+    basePrice: 1250.00,
+    sellingPrice: 1800.00,
+    currentStock: 190,
+    reorderLevel: 60,
+    status: 'Available',
+    createdAt: '2024-01-20 03:45 PM',
+    updatedAt: '2026-06-18 10:00 AM',
+  },
+  {
+    id: 'var-004-3',
+    productId: 'prod-004',
+    companyId: 'comp-8', // JUHEL
+    basePrice: 980.00,
+    sellingPrice: 1450.00,
+    currentStock: 260,
+    reorderLevel: 50,
+    status: 'Available',
+    createdAt: '2024-01-20 03:45 PM',
+    updatedAt: '2026-06-18 10:00 AM',
+  },
+
+  // 5. Ibuprofen 400mg (prod-005) - 3 manufacturers (including 0 stock out-of-stock demo)
+  {
+    id: 'var-005-1',
+    productId: 'prod-005',
+    companyId: 'comp-1', // DANA
+    basePrice: 280.00,
+    sellingPrice: 450.00,
+    currentStock: 310,
+    reorderLevel: 80,
+    status: 'Available',
+    createdAt: '2024-02-01 08:30 AM',
+    updatedAt: '2026-05-14 04:10 PM',
+  },
+  {
+    id: 'var-005-2',
+    productId: 'prod-005',
+    companyId: 'comp-2', // EMZOR
+    basePrice: 320.00,
+    sellingPrice: 500.00,
+    currentStock: 0, // Out of stock demo
+    reorderLevel: 60,
+    status: 'Available',
+    createdAt: '2024-02-01 08:30 AM',
+    updatedAt: '2026-05-14 04:10 PM',
+  },
+  {
+    id: 'var-005-3',
+    productId: 'prod-005',
+    companyId: 'comp-10', // AFRAB-CHEM
+    basePrice: 300.00,
+    sellingPrice: 480.00,
+    currentStock: 180,
+    reorderLevel: 50,
+    status: 'Available',
+    createdAt: '2024-02-01 08:30 AM',
+    updatedAt: '2026-05-14 04:10 PM',
+  },
+
+  // 6. Ciprofloxacin 500mg (prod-006) - 3 manufacturers
+  {
+    id: 'var-006-1',
+    productId: 'prod-006',
+    companyId: 'comp-5', // FIDSON (Ciprotab)
+    basePrice: 950.00,
+    sellingPrice: 1400.00,
+    currentStock: 210,
+    reorderLevel: 50,
+    status: 'Available',
+    createdAt: '2024-02-15 01:20 PM',
+    updatedAt: '2026-06-25 09:30 AM',
+  },
+  {
+    id: 'var-006-2',
+    productId: 'prod-006',
+    companyId: 'comp-6', // SWIPHA
+    basePrice: 1100.00,
+    sellingPrice: 1650.00,
+    currentStock: 140,
+    reorderLevel: 40,
+    status: 'Available',
+    createdAt: '2024-02-15 01:20 PM',
+    updatedAt: '2026-06-25 09:30 AM',
+  },
+  {
+    id: 'var-006-3',
+    productId: 'prod-006',
+    companyId: 'comp-8', // JUHEL
+    basePrice: 820.00,
+    sellingPrice: 1250.00,
+    currentStock: 195,
+    reorderLevel: 45,
+    status: 'Available',
+    createdAt: '2024-02-15 01:20 PM',
+    updatedAt: '2026-06-25 09:30 AM',
+  },
+
+  // 7. Metformin 500mg (prod-007) - 2 manufacturers
+  {
+    id: 'var-007-1',
+    productId: 'prod-007',
+    companyId: 'comp-7', // MAY & BAKER
+    basePrice: 650.00,
+    sellingPrice: 950.00,
+    currentStock: 340,
+    reorderLevel: 80,
+    status: 'Available',
+    createdAt: '2024-03-01 10:00 AM',
+    updatedAt: '2026-06-10 11:20 AM',
+  },
+  {
+    id: 'var-007-2',
+    productId: 'prod-007',
+    companyId: 'comp-11', // NEIMETH
+    basePrice: 600.00,
+    sellingPrice: 900.00,
+    currentStock: 280,
+    reorderLevel: 60,
+    status: 'Available',
+    createdAt: '2024-03-01 10:00 AM',
+    updatedAt: '2026-06-10 11:20 AM',
+  },
+
+  // 8. Amlodipine 10mg (prod-008) - 2 manufacturers
+  {
+    id: 'var-008-1',
+    productId: 'prod-008',
+    companyId: 'comp-5', // FIDSON
+    basePrice: 850.00,
+    sellingPrice: 1250.00,
+    currentStock: 260,
+    reorderLevel: 50,
+    status: 'Available',
+    createdAt: '2024-03-05 02:15 PM',
+    updatedAt: '2026-06-15 03:40 PM',
+  },
+  {
+    id: 'var-008-2',
+    productId: 'prod-008',
+    companyId: 'comp-6', // SWIPHA
+    basePrice: 950.00,
+    sellingPrice: 1400.00,
+    currentStock: 190,
+    reorderLevel: 45,
+    status: 'Available',
+    createdAt: '2024-03-05 02:15 PM',
+    updatedAt: '2026-06-15 03:40 PM',
+  },
+
+  // 9. Omeprazole 20mg (prod-009) - 3 manufacturers
+  {
+    id: 'var-009-1',
+    productId: 'prod-009',
+    companyId: 'comp-2', // EMZOR
+    basePrice: 700.00,
+    sellingPrice: 1100.00,
+    currentStock: 420,
+    reorderLevel: 80,
+    status: 'Available',
+    createdAt: '2024-01-28 09:40 AM',
+    updatedAt: '2026-06-22 01:15 PM',
+  },
+  {
+    id: 'var-009-2',
+    productId: 'prod-009',
+    companyId: 'comp-4', // EMBASSY
+    basePrice: 650.00,
+    sellingPrice: 1000.00,
+    currentStock: 310,
+    reorderLevel: 70,
+    status: 'Available',
+    createdAt: '2024-01-28 09:40 AM',
+    updatedAt: '2026-06-22 01:15 PM',
+  },
+  {
+    id: 'var-009-3',
+    productId: 'prod-009',
+    companyId: 'comp-9', // CHI PHARMA
+    basePrice: 750.00,
+    sellingPrice: 1200.00,
+    currentStock: 180,
+    reorderLevel: 50,
+    status: 'Available',
+    createdAt: '2024-01-28 09:40 AM',
+    updatedAt: '2026-06-22 01:15 PM',
+  },
+
+  // 10. Azithromycin 500mg (prod-010) - 2 manufacturers
+  {
+    id: 'var-010-1',
+    productId: 'prod-010',
+    companyId: 'comp-5', // FIDSON
+    basePrice: 1800.00,
+    sellingPrice: 2600.00,
+    currentStock: 160,
+    reorderLevel: 40,
+    status: 'Available',
+    createdAt: '2024-02-20 11:10 AM',
+    updatedAt: '2026-06-08 04:00 PM',
+  },
+  {
+    id: 'var-010-2',
+    productId: 'prod-010',
+    companyId: 'comp-6', // SWIPHA
+    basePrice: 2200.00,
+    sellingPrice: 3100.00,
+    currentStock: 95,
+    reorderLevel: 30,
+    status: 'Available',
+    createdAt: '2024-02-20 11:10 AM',
+    updatedAt: '2026-06-08 04:00 PM',
+  },
+
+  // 11. Diclofenac Sodium 50mg (prod-011) - 2 manufacturers
+  {
+    id: 'var-011-1',
+    productId: 'prod-011',
+    companyId: 'comp-1', // DANA
+    basePrice: 380.00,
+    sellingPrice: 600.00,
+    currentStock: 290,
+    reorderLevel: 60,
+    status: 'Available',
+    createdAt: '2024-01-18 10:00 AM',
+    updatedAt: '2026-06-14 10:45 AM',
+  },
+  {
+    id: 'var-011-2',
+    productId: 'prod-011',
+    companyId: 'comp-2', // EMZOR
+    basePrice: 420.00,
+    sellingPrice: 650.00,
+    currentStock: 350,
+    reorderLevel: 75,
+    status: 'Available',
+    createdAt: '2024-01-18 10:00 AM',
+    updatedAt: '2026-06-14 10:45 AM',
+  },
+
+  // 12. Coartem 20/120mg (Dispersible) (prod-012) - 1 manufacturer (GSK/Novartis partner)
+  {
+    id: 'var-012-1',
+    productId: 'prod-012',
+    companyId: 'comp-12', // GSK
+    basePrice: 1900.00,
+    sellingPrice: 2700.00,
+    currentStock: 140,
+    reorderLevel: 35,
+    status: 'Available',
+    createdAt: '2024-02-25 08:45 AM',
+    updatedAt: '2026-06-19 02:20 PM',
+  },
+
+  // 13. Clotrimazole Cream 1% 20g (prod-013) - 2 manufacturers
+  {
+    id: 'var-013-1',
+    productId: 'prod-013',
+    companyId: 'comp-2', // EMZOR
+    basePrice: 450.00,
+    sellingPrice: 750.00,
+    currentStock: 180,
+    reorderLevel: 40,
+    status: 'Available',
+    createdAt: '2024-03-10 11:30 AM',
+    updatedAt: '2026-06-21 09:10 AM',
+  },
+  {
+    id: 'var-013-2',
+    productId: 'prod-013',
+    companyId: 'comp-10', // AFRAB-CHEM
+    basePrice: 480.00,
+    sellingPrice: 800.00,
+    currentStock: 130,
+    reorderLevel: 35,
+    status: 'Available',
+    createdAt: '2024-03-10 11:30 AM',
+    updatedAt: '2026-06-21 09:10 AM',
+  },
+
+  // 14. Lisinopril 10mg (prod-014) - 2 manufacturers
+  {
+    id: 'var-014-1',
+    productId: 'prod-014',
+    companyId: 'comp-5', // FIDSON
+    basePrice: 1100.00,
+    sellingPrice: 1650.00,
+    currentStock: 175,
+    reorderLevel: 40,
+    status: 'Available',
+    createdAt: '2024-02-05 04:00 PM',
+    updatedAt: '2026-05-30 01:25 PM',
+  },
+  {
+    id: 'var-014-2',
+    productId: 'prod-014',
+    companyId: 'comp-7', // MAY & BAKER
+    basePrice: 1250.00,
+    sellingPrice: 1850.00,
+    currentStock: 110,
+    reorderLevel: 30,
+    status: 'Available',
+    createdAt: '2024-02-05 04:00 PM',
+    updatedAt: '2026-05-30 01:25 PM',
+  },
+
+  // 15. Cetirizine 10mg (prod-015) - 2 manufacturers
+  {
+    id: 'var-015-1',
+    productId: 'prod-015',
+    companyId: 'comp-2', // EMZOR
+    basePrice: 300.00,
+    sellingPrice: 500.00,
+    currentStock: 410,
+    reorderLevel: 80,
+    status: 'Available',
+    createdAt: '2024-01-22 09:15 AM',
+    updatedAt: '2026-06-25 11:50 AM',
+  },
+  {
+    id: 'var-015-2',
+    productId: 'prod-015',
+    companyId: 'comp-4', // EMBASSY
+    basePrice: 320.00,
+    sellingPrice: 550.00,
+    currentStock: 290,
+    reorderLevel: 60,
+    status: 'Available',
+    createdAt: '2024-01-22 09:15 AM',
+    updatedAt: '2026-06-25 11:50 AM',
+  },
+
+  // 16. Chlorpheniramine Maleate 4mg (prod-016) - 2 manufacturers (Piriton type)
+  {
+    id: 'var-016-1',
+    productId: 'prod-016',
+    companyId: 'comp-1', // DANA
+    basePrice: 150.00,
+    sellingPrice: 250.00,
+    currentStock: 650,
+    reorderLevel: 100,
+    status: 'Available',
+    createdAt: '2024-02-18 10:40 AM',
+    updatedAt: '2026-06-16 03:30 PM',
+  },
+  {
+    id: 'var-016-2',
+    productId: 'prod-016',
+    companyId: 'comp-2', // EMZOR
+    basePrice: 180.00,
+    sellingPrice: 300.00,
+    currentStock: 520,
+    reorderLevel: 100,
+    status: 'Available',
+    createdAt: '2024-02-18 10:40 AM',
+    updatedAt: '2026-06-16 03:30 PM',
+  },
+
+  // 17. Cough Expectorant Syrup (prod-017) - 2 manufacturers
+  {
+    id: 'var-017-1',
+    productId: 'prod-017',
+    companyId: 'comp-2', // EMZOR (Emzolyn)
+    basePrice: 650.00,
+    sellingPrice: 1000.00,
+    currentStock: 280,
+    reorderLevel: 60,
+    status: 'Available',
+    createdAt: '2024-01-12 01:00 PM',
+    updatedAt: '2026-06-24 10:15 AM',
+  },
+  {
+    id: 'var-017-2',
+    productId: 'prod-017',
+    companyId: 'comp-10', // AFRAB-CHEM (Sedalyn)
+    basePrice: 700.00,
+    sellingPrice: 1100.00,
+    currentStock: 190,
+    reorderLevel: 50,
+    status: 'Available',
+    createdAt: '2024-01-12 01:00 PM',
+    updatedAt: '2026-06-24 10:15 AM',
+  },
+
+  // 18. Salbutamol Inhaler 100mcg (prod-018) - 2 manufacturers
+  {
+    id: 'var-018-1',
+    productId: 'prod-018',
+    companyId: 'comp-12', // GSK (Ventolin)
+    basePrice: 3800.00,
+    sellingPrice: 5200.00,
+    currentStock: 65,
+    reorderLevel: 25,
+    status: 'Available',
+    createdAt: '2024-03-08 09:00 AM',
+    updatedAt: '2026-06-26 08:30 AM',
+  },
+  {
+    id: 'var-018-2',
+    productId: 'prod-018',
+    companyId: 'comp-9', // CHI PHARMA (Asthalin)
+    basePrice: 2800.00,
+    sellingPrice: 3900.00,
+    currentStock: 80,
+    reorderLevel: 20,
+    status: 'Available',
+    createdAt: '2024-03-08 09:00 AM',
+    updatedAt: '2026-06-26 08:30 AM',
+  },
+
+  // 19. Folic Acid 5mg (prod-019) - 2 manufacturers
+  {
+    id: 'var-019-1',
+    productId: 'prod-019',
+    companyId: 'comp-1', // DANA
+    basePrice: 200.00,
+    sellingPrice: 320.00,
+    currentStock: 620,
+    reorderLevel: 120,
+    status: 'Available',
+    createdAt: '2024-01-30 02:00 PM',
+    updatedAt: '2026-06-28 01:15 PM',
+  },
+  {
+    id: 'var-019-2',
+    productId: 'prod-019',
+    companyId: 'comp-8', // JUHEL
+    basePrice: 220.00,
+    sellingPrice: 350.00,
+    currentStock: 480,
+    reorderLevel: 100,
+    status: 'Available',
+    createdAt: '2024-01-30 02:00 PM',
+    updatedAt: '2026-06-28 01:15 PM',
+  },
+
+  // 20. Vitamin B Complex Forte (prod-020) - 3 manufacturers
+  {
+    id: 'var-020-1',
+    productId: 'prod-020',
+    companyId: 'comp-2', // EMZOR
+    basePrice: 220.00,
+    sellingPrice: 350.00,
+    currentStock: 820,
+    reorderLevel: 150,
+    status: 'Available',
+    createdAt: '2024-02-12 10:00 AM',
+    updatedAt: '2026-07-22 09:45 AM',
+  },
+  {
+    id: 'var-020-2',
+    productId: 'prod-020',
+    companyId: 'comp-10', // AFRAB-CHEM
+    basePrice: 250.00,
+    sellingPrice: 380.00,
+    currentStock: 650,
+    reorderLevel: 120,
+    status: 'Available',
+    createdAt: '2024-02-12 10:00 AM',
+    updatedAt: '2026-07-22 09:45 AM',
+  },
+  {
+    id: 'var-020-3',
+    productId: 'prod-020',
+    companyId: 'comp-9', // CHI PHARMA
+    basePrice: 240.00,
+    sellingPrice: 370.00,
+    currentStock: 410,
+    reorderLevel: 100,
+    status: 'Available',
+    createdAt: '2024-02-12 10:00 AM',
+    updatedAt: '2026-07-22 09:45 AM',
+  },
+
+  // 21. Metronidazole 400mg (prod-021) - 2 manufacturers
+  {
+    id: 'var-021-1',
+    productId: 'prod-021',
+    companyId: 'comp-1', // DANA
+    basePrice: 300.00,
+    sellingPrice: 480.00,
+    currentStock: 430,
+    reorderLevel: 90,
+    status: 'Available',
+    createdAt: '2024-02-14 02:30 PM',
+    updatedAt: '2026-07-15 11:20 AM',
+  },
+  {
+    id: 'var-021-2',
+    productId: 'prod-021',
+    companyId: 'comp-8', // JUHEL
+    basePrice: 320.00,
+    sellingPrice: 500.00,
+    currentStock: 350,
+    reorderLevel: 80,
+    status: 'Available',
+    createdAt: '2024-02-14 02:30 PM',
+    updatedAt: '2026-07-15 11:20 AM',
+  },
+
+  // 22. Hydrochlorothiazide 25mg (prod-022) - 1 manufacturer
+  {
+    id: 'var-022-1',
+    productId: 'prod-022',
+    companyId: 'comp-5', // FIDSON
+    basePrice: 400.00,
+    sellingPrice: 650.00,
+    currentStock: 220,
+    reorderLevel: 50,
+    status: 'Available',
+    createdAt: '2024-03-12 11:00 AM',
+    updatedAt: '2026-06-29 02:40 PM',
+  },
+
+  // 23. Glibenclamide 5mg (prod-023) - 2 manufacturers
+  {
+    id: 'var-023-1',
+    productId: 'prod-023',
+    companyId: 'comp-7', // MAY & BAKER
+    basePrice: 450.00,
+    sellingPrice: 700.00,
+    currentStock: 260,
+    reorderLevel: 60,
+    status: 'Available',
+    createdAt: '2024-02-08 09:30 AM',
+    updatedAt: '2026-07-02 01:10 PM',
+  },
+  {
+    id: 'var-023-2',
+    productId: 'prod-023',
+    companyId: 'comp-11', // NEIMETH
+    basePrice: 480.00,
+    sellingPrice: 750.00,
+    currentStock: 190,
+    reorderLevel: 45,
+    status: 'Available',
+    createdAt: '2024-02-08 09:30 AM',
+    updatedAt: '2026-07-02 01:10 PM',
+  },
+
+  // 24. Antacid Suspension 200ml (prod-024) - 2 manufacturers
+  {
+    id: 'var-024-1',
+    productId: 'prod-024',
+    companyId: 'comp-2', // EMZOR (Emtrisil)
+    basePrice: 850.00,
+    sellingPrice: 1300.00,
+    currentStock: 240,
+    reorderLevel: 50,
+    status: 'Available',
+    createdAt: '2024-01-25 03:00 PM',
+    updatedAt: '2026-07-04 10:20 AM',
+  },
+  {
+    id: 'var-024-2',
+    productId: 'prod-024',
+    companyId: 'comp-10', // AFRAB-CHEM (Gastracon)
+    basePrice: 900.00,
+    sellingPrice: 1400.00,
+    currentStock: 180,
+    reorderLevel: 40,
+    status: 'Available',
+    createdAt: '2024-01-25 03:00 PM',
+    updatedAt: '2026-07-04 10:20 AM',
+  },
+
+  // 25. Fluconazole 150mg (prod-025) - 2 manufacturers
+  {
+    id: 'var-025-1',
+    productId: 'prod-025',
+    companyId: 'comp-6', // SWIPHA (Diflucan generic)
+    basePrice: 700.00,
+    sellingPrice: 1100.00,
+    currentStock: 150,
+    reorderLevel: 30,
+    status: 'Available',
+    createdAt: '2024-03-18 10:15 AM',
+    updatedAt: '2026-07-10 03:15 PM',
+  },
+  {
+    id: 'var-025-2',
+    productId: 'prod-025',
+    companyId: 'comp-4', // EMBASSY
+    basePrice: 600.00,
+    sellingPrice: 950.00,
+    currentStock: 210,
+    reorderLevel: 40,
+    status: 'Available',
+    createdAt: '2024-03-18 10:15 AM',
+    updatedAt: '2026-07-10 03:15 PM',
+  },
+
+  // 26. Chloramphenicol Eye Drops 0.5% (prod-026) - 2 manufacturers
+  {
+    id: 'var-026-1',
+    productId: 'prod-026',
+    companyId: 'comp-2', // EMZOR
+    basePrice: 400.00,
+    sellingPrice: 650.00,
+    currentStock: 170,
+    reorderLevel: 40,
+    status: 'Available',
+    createdAt: '2024-02-28 01:45 PM',
+    updatedAt: '2026-06-30 11:30 AM',
+  },
+  {
+    id: 'var-026-2',
+    productId: 'prod-026',
+    companyId: 'comp-8', // JUHEL
+    basePrice: 380.00,
+    sellingPrice: 600.00,
+    currentStock: 140,
+    reorderLevel: 30,
+    status: 'Available',
+    createdAt: '2024-02-28 01:45 PM',
+    updatedAt: '2026-06-30 11:30 AM',
+  },
+
+  // 27. Hydrocortisone Cream 1% (prod-027) - 2 manufacturers
+  {
+    id: 'var-027-1',
+    productId: 'prod-027',
+    companyId: 'comp-2', // EMZOR
+    basePrice: 500.00,
+    sellingPrice: 800.00,
+    currentStock: 190,
+    reorderLevel: 40,
+    status: 'Available',
+    createdAt: '2024-01-19 11:00 AM',
+    updatedAt: '2026-07-06 09:00 AM',
+  },
+  {
+    id: 'var-027-2',
+    productId: 'prod-027',
+    companyId: 'comp-10', // AFRAB-CHEM
+    basePrice: 550.00,
+    sellingPrice: 850.00,
+    currentStock: 120,
+    reorderLevel: 30,
+    status: 'Available',
+    createdAt: '2024-01-19 11:00 AM',
+    updatedAt: '2026-07-06 09:00 AM',
+  },
+
+  // 28. Oral Rehydration Salts (ORS) Sachet (prod-028) - 2 manufacturers
+  {
+    id: 'var-028-1',
+    productId: 'prod-028',
+    companyId: 'comp-1', // DANA
+    basePrice: 120.00,
+    sellingPrice: 200.00,
+    currentStock: 900,
+    reorderLevel: 200,
+    status: 'Available',
+    createdAt: '2024-01-15 08:30 AM',
+    updatedAt: '2026-07-12 04:00 PM',
+  },
+  {
+    id: 'var-028-2',
+    productId: 'prod-028',
+    companyId: 'comp-8', // JUHEL
+    basePrice: 110.00,
+    sellingPrice: 180.00,
+    currentStock: 820,
+    reorderLevel: 180,
+    status: 'Available',
+    createdAt: '2024-01-15 08:30 AM',
+    updatedAt: '2026-07-12 04:00 PM',
+  },
+
+  // 29. Ferrous Sulphate + Folic Acid Tablets (prod-029) - 2 manufacturers
+  {
+    id: 'var-029-1',
+    productId: 'prod-029',
+    companyId: 'comp-2', // EMZOR
+    basePrice: 350.00,
+    sellingPrice: 550.00,
+    currentStock: 480,
+    reorderLevel: 100,
+    status: 'Available',
+    createdAt: '2024-02-04 10:20 AM',
+    updatedAt: '2026-07-08 01:45 PM',
+  },
+  {
+    id: 'var-029-2',
+    productId: 'prod-029',
+    companyId: 'comp-5', // FIDSON
+    basePrice: 400.00,
+    sellingPrice: 650.00,
+    currentStock: 360,
+    reorderLevel: 80,
+    status: 'Available',
+    createdAt: '2024-02-04 10:20 AM',
+    updatedAt: '2026-07-08 01:45 PM',
+  },
+
+  // 30. Tramadol Capsules 50mg (prod-030) - Inactive product / 1 variant
+  {
+    id: 'var-030-1',
+    productId: 'prod-030',
+    companyId: 'comp-4', // EMBASSY
+    basePrice: 600.00,
+    sellingPrice: 1000.00,
+    currentStock: 0,
+    reorderLevel: 0,
+    status: 'Inactive',
+    createdAt: '2023-11-10 09:00 AM',
+    updatedAt: '2026-04-18 10:15 AM',
+  },
+
+  // 31. Erythromycin Stearate 250mg (prod-031) - Inactive product / 1 variant
+  {
+    id: 'var-031-1',
+    productId: 'prod-031',
+    companyId: 'comp-11', // NEIMETH
+    basePrice: 500.00,
+    sellingPrice: 850.00,
+    currentStock: 0,
+    reorderLevel: 0,
+    status: 'Inactive',
+    createdAt: '2023-10-05 08:30 AM',
+    updatedAt: '2026-03-12 02:00 PM',
+  },
+
+  // 32. Losartan Potassium 50mg (prod-032) - 2 manufacturers
+  {
+    id: 'var-032-1',
+    productId: 'prod-032',
+    companyId: 'comp-5', // FIDSON
+    basePrice: 1400.00,
+    sellingPrice: 2000.00,
+    currentStock: 180,
+    reorderLevel: 40,
+    status: 'Available',
+    createdAt: '2024-03-22 09:40 AM',
+    updatedAt: '2026-07-18 11:15 AM',
+  },
+  {
+    id: 'var-032-2',
+    productId: 'prod-032',
+    companyId: 'comp-7', // MAY & BAKER
+    basePrice: 1550.00,
+    sellingPrice: 2200.00,
+    currentStock: 140,
+    reorderLevel: 35,
+    status: 'Available',
+    createdAt: '2024-03-22 09:40 AM',
+    updatedAt: '2026-07-18 11:15 AM',
+  },
+];
