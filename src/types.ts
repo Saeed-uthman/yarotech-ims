@@ -330,40 +330,113 @@ export interface Customer extends CustomerEntity {
   lastPurchaseDate?: string; // e.g. "18 Aug 2026"
 }
 
-export interface CustomerSaleItem {
+// ==========================================
+// 9. Sales Module Types & Models (Part 3)
+// ==========================================
+
+export type SalePaymentStatus = 'PAID' | 'PARTIAL' | 'UNPAID';
+export type SalePaymentMethod = 'CASH' | 'TRANSFER' | 'POS' | 'CREDIT';
+export type SalesDateRange = 'today' | 'this_week' | 'this_month' | 'overall' | 'custom';
+
+export interface SaleItem {
   id: string;
+  productId: string;
   productVariantId: string;
   productName: string;
   genericName: string;
-  dosage: string;
-  form: string;
+  companyId?: string;
   companyName: string;
+  dosage?: string;
+  form?: string;
   quantity: number;
-  unitPrice: number;
-  totalPrice: number;
+  sellingPrice: number; // Snapshot of selling price at time of sale
+  unitPrice?: number; // Alias for backward compatibility
+  basePrice?: number; // Snapshot of wholesale base price at time of sale (Admin only)
+  subtotal: number; // sellingPrice * quantity
+  totalPrice?: number; // Alias for backward compatibility
+  profit?: number; // (sellingPrice - basePrice) * quantity (Admin only)
 }
 
-export interface CustomerSale {
+export interface Sale {
   id: string;
-  invoiceNumber: string; // e.g. "Sale #000123"
+  invoiceNumber: string; // e.g. "Sale #000145"
+  date: string; // e.g. "19 Aug 2026, 10:30 AM"
+  rawDate: string; // ISO string for date filtering and sorting
   customerId: string | null; // null for Walking Customer
-  customerName: string; // "Walking Customer" or Registered Customer Name
+  customerName: string; // "Walking Customer" or Registered Customer full name
   customerPhone?: string;
-  date: string; // e.g. "18 Aug 2026, 02:45 PM"
-  rawDate: string; // ISO date for sorting
+  items: SaleItem[];
   itemCount: number;
-  items: CustomerSaleItem[];
   subtotal: number;
   discount: number;
-  totalAmount: number;
-  paidAmount: number;
-  outstandingAmount: number; // totalAmount - paidAmount
-  paymentType: PaymentStatus;
-  paymentMethod: PaymentMethod;
-  servedBy: string;
+  total: number; // subtotal - discount
+  totalAmount?: number; // Alias for backward compatibility
+  amountPaid: number;
+  paidAmount?: number; // Alias for backward compatibility
+  outstandingAmount: number; // total - amountPaid
+  paymentStatus: SalePaymentStatus;
+  paymentType?: SalePaymentStatus | PaymentStatus; // Alias for backward compatibility
+  paymentMethod: SalePaymentMethod;
+  profit?: number; // SUM(item profits) - Admin only, redacted for Cashier
+  servedBy: string; // Cashier / Pharmacist name
   notes?: string;
   status: 'COMPLETED' | 'CANCELLED';
 }
+
+// Alias CustomerSaleItem and CustomerSale to maintain 100% interoperability
+export type CustomerSaleItem = SaleItem;
+export type CustomerSale = Sale;
+
+export interface SalesFilterParams {
+  search: string; // Sale ID, customer name, customer phone, product name
+  dateRange: SalesDateRange;
+  startDate?: string; // YYYY-MM-DD for custom range
+  endDate?: string; // YYYY-MM-DD for custom range
+  paymentStatus: 'all' | SalePaymentStatus;
+  customerType: 'all' | 'registered' | 'walking';
+  sortBy: 'date' | 'total' | 'profit' | 'customer' | 'invoiceNumber';
+  sortOrder: 'asc' | 'desc';
+  page: number;
+  limit: number;
+}
+
+export interface SalesSummaryKPIs {
+  totalRevenue: number; // SUM(completed sale totals)
+  totalProfit: number; // SUM(sale profits) - Admin only (redacted/0 for cashier)
+  totalTransactions: number; // Count of completed sales
+  totalOutstanding: number; // SUM(unpaid / partial balances)
+  averageSaleValue: number; // totalRevenue / totalTransactions
+  paidCount: number;
+  partialCount: number;
+  unpaidCount: number;
+  timeframe: SalesDateRange;
+}
+
+export interface SalesChartDataPoint {
+  label: string; // e.g. "09:00", "Mon 17", "18 Aug", etc.
+  revenue: number;
+  profit: number; // Admin only
+  transactions: number;
+  rawDate: string;
+}
+
+export interface CreateSaleItemInput {
+  productVariantId: string;
+  quantity: number;
+}
+
+export interface CreateSaleInput {
+  customerId: string | null; // null for Walking Customer
+  customerName?: string;
+  customerPhone?: string;
+  items: CreateSaleItemInput[];
+  discount?: number;
+  amountPaid: number;
+  paymentMethod: SalePaymentMethod;
+  notes?: string;
+  servedBy?: string;
+}
+
 
 export interface CustomerDebtPayment {
   id: string;

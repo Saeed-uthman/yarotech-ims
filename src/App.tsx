@@ -29,6 +29,8 @@ import { NetworkConfigModal } from './components/common/NetworkConfigModal';
 import { ToastContainer, ToastMessage } from './components/common/Toast';
 import { ModulePlaceholder } from './components/common/ModulePlaceholder';
 import { InventoryModule } from './components/inventory/InventoryModule';
+import { CustomerModule } from './components/customers';
+import { SalesModule } from './components/sales';
 import { WifiOff, Activity, RefreshCw } from 'lucide-react';
 import { productService } from './services/productService';
 
@@ -412,6 +414,16 @@ export default function App() {
                     setActiveNav('products');
                     setViewMode('list');
                   }
+                }}
+              />
+            ) : activeNav === 'customers' ? (
+              <CustomerModule currentRole={currentRole} />
+            ) : activeNav === 'sales' ? (
+              <SalesModule
+                role={currentRole}
+                onNavigateToCustomer={(customerId) => {
+                  setActiveNav('customers');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
               />
             ) : activeNav !== 'products' ? (

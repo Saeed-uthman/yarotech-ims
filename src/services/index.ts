@@ -6,3 +6,4 @@ export * from './productVariantService';
 export * from './productService';
 export * from './inventoryService';
 export * from './customerService';
+export * from './salesService';

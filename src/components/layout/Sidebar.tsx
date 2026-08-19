@@ -39,8 +39,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'products', label: 'Products', icon: Package, badge: 'Active' },
     { id: 'inventory', label: 'Inventory', icon: Boxes, badge: 'Live' },
     { id: 'stock-purchase', label: 'Stock Purchase', icon: ShoppingCart },
-    { id: 'customers', label: 'Customers', icon: Users },
-    { id: 'sales', label: 'Sales', icon: ShoppingBag },
+    { id: 'customers', label: 'Customers', icon: Users, badge: 'Live' },
+    { id: 'sales', label: 'Sales', icon: ShoppingBag, badge: 'Live' },
     { id: 'reports', label: 'Reports', icon: FileText },
   ];
 

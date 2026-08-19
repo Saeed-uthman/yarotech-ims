@@ -7,3 +7,4 @@ export * from './useReferenceData';
 export * from './useKPIStats';
 export * from './useInventory';
 export * from './useCustomers';
+export * from './useSales';

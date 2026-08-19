@@ -33,6 +33,15 @@ import {
   CreateCustomerInput,
   UpdateCustomerInput,
   DebtPaymentInput,
+  Sale,
+  SaleItem,
+  SalesFilterParams,
+  SalesSummaryKPIs,
+  SalesChartDataPoint,
+  CreateSaleInput,
+  SalesDateRange,
+  SalePaymentStatus,
+  SalePaymentMethod,
 } from '../types';
 import {
   MOCK_CATEGORIES,
@@ -1769,6 +1778,606 @@ export class MockDatabaseRepository {
       message: 'Customer KPIs calculated successfully.',
     };
   }
+
+  // ==========================================
+  // Sales Module Methods (Part 3)
+  // ==========================================
+
+  /**
+   * Hydrates sale record, calculating or redacting base price & profit based on user role
+   */
+  public hydrateSale(sale: Sale, role: UserRole): Sale {
+    const isCashier = role === 'cashier';
+
+    const items: SaleItem[] = sale.items.map((item) => {
+      const sellingPrice = item.sellingPrice ?? item.unitPrice ?? 0;
+      const quantity = item.quantity;
+      const subtotal = item.subtotal ?? item.totalPrice ?? (sellingPrice * quantity);
+      const basePrice = item.basePrice ?? 0;
+      const itemProfit = item.profit ?? Math.max(0, (sellingPrice - basePrice) * quantity);
+
+      return {
+        ...item,
+        sellingPrice,
+        unitPrice: sellingPrice,
+        subtotal,
+        totalPrice: subtotal,
+        basePrice: isCashier ? undefined : basePrice,
+        profit: isCashier ? undefined : itemProfit,
+      };
+    });
+
+    const subtotal = sale.subtotal ?? items.reduce((sum, it) => sum + it.subtotal, 0);
+    const discount = sale.discount ?? 0;
+    const total = sale.total ?? sale.totalAmount ?? Math.max(0, subtotal - discount);
+    const amountPaid = sale.amountPaid ?? sale.paidAmount ?? 0;
+    const outstandingAmount = Math.max(0, total - amountPaid);
+
+    let paymentStatus: SalePaymentStatus = sale.paymentStatus;
+    if (!paymentStatus) {
+      if (amountPaid >= total && total > 0) {
+        paymentStatus = 'PAID';
+      } else if (amountPaid > 0 && amountPaid < total) {
+        paymentStatus = 'PARTIAL';
+      } else {
+        paymentStatus = 'UNPAID';
+      }
+    }
+
+    const calculatedProfit = items.reduce((sum, it) => sum + (it.profit ?? 0), 0);
+    const overallProfit = sale.profit !== undefined ? sale.profit : calculatedProfit;
+
+    return {
+      ...sale,
+      items,
+      itemCount: items.length,
+      subtotal,
+      discount,
+      total,
+      totalAmount: total,
+      amountPaid,
+      paidAmount: amountPaid,
+      outstandingAmount,
+      paymentStatus,
+      paymentType: paymentStatus,
+      profit: isCashier ? undefined : overallProfit,
+    };
+  }
+
+  /**
+   * Filter sales by date range and search criteria
+   */
+  private filterSalesList(filters: SalesFilterParams): Sale[] {
+    let list = [...this.sales];
+
+    // Reference simulated date: 19 Aug 2026
+    const refDateStr = '2026-08-19';
+
+    // 1. Date Range Filtering
+    if (filters.dateRange === 'today') {
+      list = list.filter((s) => s.rawDate.startsWith(refDateStr));
+    } else if (filters.dateRange === 'this_week') {
+      const weekStart = '2026-08-17T00:00:00Z';
+      const weekEnd = '2026-08-23T23:59:59Z';
+      list = list.filter((s) => s.rawDate >= weekStart && s.rawDate <= weekEnd);
+    } else if (filters.dateRange === 'this_month') {
+      const monthStart = '2026-08-01T00:00:00Z';
+      const monthEnd = '2026-08-31T23:59:59Z';
+      list = list.filter((s) => s.rawDate >= monthStart && s.rawDate <= monthEnd);
+    } else if (filters.dateRange === 'custom') {
+      if (filters.startDate) {
+        const startIso = `${filters.startDate}T00:00:00Z`;
+        list = list.filter((s) => s.rawDate >= startIso);
+      }
+      if (filters.endDate) {
+        const endIso = `${filters.endDate}T23:59:59Z`;
+        list = list.filter((s) => s.rawDate <= endIso);
+      }
+    }
+    // 'overall' includes everything
+
+    // 2. Search query (Sale ID / Invoice, Customer name, Phone, Product name, Generic name, Company)
+    if (filters.search && filters.search.trim()) {
+      const q = filters.search.trim().toLowerCase();
+      list = list.filter((s) => {
+        const matchInvoice = s.invoiceNumber.toLowerCase().includes(q) || s.id.toLowerCase().includes(q);
+        const matchCustomer = s.customerName.toLowerCase().includes(q) || (s.customerPhone && s.customerPhone.includes(q));
+        const matchItems = s.items.some(
+          (it) =>
+            it.productName.toLowerCase().includes(q) ||
+            it.genericName.toLowerCase().includes(q) ||
+            it.companyName.toLowerCase().includes(q)
+        );
+        const matchServedBy = s.servedBy.toLowerCase().includes(q);
+        return matchInvoice || matchCustomer || matchItems || matchServedBy;
+      });
+    }
+
+    // 3. Payment Status filter
+    if (filters.paymentStatus && filters.paymentStatus !== 'all') {
+      list = list.filter((s) => {
+        const status = s.paymentStatus || (s.amountPaid >= (s.total ?? s.totalAmount ?? 0) ? 'PAID' : s.amountPaid > 0 ? 'PARTIAL' : 'UNPAID');
+        return status === filters.paymentStatus;
+      });
+    }
+
+    // 4. Customer Type filter
+    if (filters.customerType && filters.customerType !== 'all') {
+      if (filters.customerType === 'registered') {
+        list = list.filter((s) => s.customerId !== null);
+      } else if (filters.customerType === 'walking') {
+        list = list.filter((s) => s.customerId === null);
+      }
+    }
+
+    return list;
+  }
+
+  /**
+   * Get filtered, sorted, paginated sales history
+   */
+  public async getSales(
+    filters: SalesFilterParams,
+    role: UserRole
+  ): Promise<ApiResponse<Sale[]>> {
+    await this.simulateNetwork();
+
+    const filtered = this.filterSalesList(filters);
+
+    // Sorting
+    const sortField = filters.sortBy || 'date';
+    const sortOrder = filters.sortOrder || 'desc';
+    const mult = sortOrder === 'asc' ? 1 : -1;
+
+    filtered.sort((a, b) => {
+      if (sortField === 'date') {
+        return mult * (new Date(a.rawDate).getTime() - new Date(b.rawDate).getTime());
+      }
+      if (sortField === 'total') {
+        const totA = a.total ?? a.totalAmount ?? 0;
+        const totB = b.total ?? b.totalAmount ?? 0;
+        return mult * (totA - totB);
+      }
+      if (sortField === 'profit') {
+        const profA = a.profit ?? 0;
+        const profB = b.profit ?? 0;
+        return mult * (profA - profB);
+      }
+      if (sortField === 'customer') {
+        return mult * a.customerName.localeCompare(b.customerName);
+      }
+      if (sortField === 'invoiceNumber') {
+        return mult * a.invoiceNumber.localeCompare(b.invoiceNumber);
+      }
+      return 0;
+    });
+
+    const total = filtered.length;
+    const page = Math.max(1, filters.page || 1);
+    const limit = Math.max(1, filters.limit || 10);
+    const startIndex = (page - 1) * limit;
+    const paginated = filtered.slice(startIndex, startIndex + limit);
+    const lastPage = Math.ceil(total / limit) || 1;
+
+    const hydratedList = paginated.map((s) => this.hydrateSale(s, role));
+
+    return {
+      success: true,
+      data: hydratedList,
+      message: 'Sales records retrieved successfully.',
+      meta: {
+        currentPage: page,
+        perPage: limit,
+        total,
+        lastPage,
+      },
+    };
+  }
+
+  /**
+   * Get single sale by ID with full item details
+   */
+  public async getSaleById(id: string, role: UserRole): Promise<ApiResponse<Sale | null>> {
+    await this.simulateNetwork();
+
+    const sale = this.sales.find((s) => s.id === id || s.invoiceNumber === id);
+    if (!sale) {
+      return {
+        success: false,
+        data: null,
+        message: `Sale record "${id}" was not found.`,
+      };
+    }
+
+    return {
+      success: true,
+      data: this.hydrateSale(sale, role),
+      message: 'Sale details retrieved successfully.',
+    };
+  }
+
+  /**
+   * Get KPI summaries for Sales Module (Revenue, Profit, Transactions, Outstanding)
+   */
+  public async getSalesSummaryKPIs(
+    filters: SalesFilterParams,
+    role: UserRole
+  ): Promise<ApiResponse<SalesSummaryKPIs>> {
+    await this.simulateNetwork();
+
+    const filtered = this.filterSalesList(filters);
+
+    let totalRevenue = 0;
+    let totalProfit = 0;
+    let totalOutstanding = 0;
+    let paidCount = 0;
+    let partialCount = 0;
+    let unpaidCount = 0;
+
+    for (const sale of filtered) {
+      if (sale.status === 'CANCELLED') continue;
+
+      const total = sale.total ?? sale.totalAmount ?? 0;
+      const paid = sale.amountPaid ?? sale.paidAmount ?? 0;
+      const outstanding = Math.max(0, total - paid);
+
+      totalRevenue += total;
+      totalOutstanding += outstanding;
+
+      if (role === 'admin') {
+        const p = sale.profit ?? sale.items.reduce((sum, it) => sum + (it.profit ?? 0), 0);
+        totalProfit += p;
+      }
+
+      if (paid >= total && total > 0) {
+        paidCount++;
+      } else if (paid > 0 && paid < total) {
+        partialCount++;
+      } else {
+        unpaidCount++;
+      }
+    }
+
+    const totalTransactions = filtered.filter((s) => s.status !== 'CANCELLED').length;
+    const averageSaleValue = totalTransactions > 0 ? Math.round(totalRevenue / totalTransactions) : 0;
+
+    return {
+      success: true,
+      data: {
+        totalRevenue,
+        totalProfit: role === 'admin' ? totalProfit : 0,
+        totalTransactions,
+        totalOutstanding,
+        averageSaleValue,
+        paidCount,
+        partialCount,
+        unpaidCount,
+        timeframe: filters.dateRange,
+      },
+      message: 'Sales KPI summaries calculated successfully.',
+    };
+  }
+
+  /**
+   * Get chart timeline data for revenue & profit
+   */
+  public async getSalesChartData(
+    dateRange: SalesDateRange,
+    role: UserRole,
+    customStart?: string,
+    customEnd?: string
+  ): Promise<ApiResponse<SalesChartDataPoint[]>> {
+    await this.simulateNetwork();
+
+    const dummyFilters: SalesFilterParams = {
+      search: '',
+      dateRange,
+      startDate: customStart,
+      endDate: customEnd,
+      paymentStatus: 'all',
+      customerType: 'all',
+      sortBy: 'date',
+      sortOrder: 'asc',
+      page: 1,
+      limit: 1000,
+    };
+
+    const sales = this.filterSalesList(dummyFilters);
+    const isCashier = role === 'cashier';
+
+    const pointMap: { [key: string]: { revenue: number; profit: number; count: number; rawDate: string } } = {};
+
+    if (dateRange === 'today') {
+      const hours = ['08:00 AM', '10:00 AM', '12:00 PM', '02:00 PM', '04:00 PM', '06:00 PM'];
+      hours.forEach((h) => {
+        pointMap[h] = { revenue: 0, profit: 0, count: 0, rawDate: `2026-08-19 ${h}` };
+      });
+
+      sales.forEach((s) => {
+        const total = s.total ?? s.totalAmount ?? 0;
+        const prof = isCashier ? 0 : (s.profit ?? 0);
+        // Distribute or bucket by hour
+        const d = new Date(s.rawDate);
+        const hour = d.getHours();
+        let bucket = '12:00 PM';
+        if (hour < 9) bucket = '08:00 AM';
+        else if (hour < 11) bucket = '10:00 AM';
+        else if (hour < 13) bucket = '12:00 PM';
+        else if (hour < 15) bucket = '02:00 PM';
+        else if (hour < 17) bucket = '04:00 PM';
+        else bucket = '06:00 PM';
+
+        if (!pointMap[bucket]) {
+          pointMap[bucket] = { revenue: 0, profit: 0, count: 0, rawDate: s.rawDate };
+        }
+        pointMap[bucket].revenue += total;
+        pointMap[bucket].profit += prof;
+        pointMap[bucket].count += 1;
+      });
+    } else if (dateRange === 'this_week') {
+      const days = ['Mon 17', 'Tue 18', 'Wed 19', 'Thu 20', 'Fri 21', 'Sat 22', 'Sun 23'];
+      days.forEach((d) => {
+        pointMap[d] = { revenue: 0, profit: 0, count: 0, rawDate: d };
+      });
+
+      sales.forEach((s) => {
+        const total = s.total ?? s.totalAmount ?? 0;
+        const prof = isCashier ? 0 : (s.profit ?? 0);
+        const dateStr = s.rawDate.substring(0, 10);
+        let dayKey = 'Wed 19';
+        if (dateStr === '2026-08-17') dayKey = 'Mon 17';
+        else if (dateStr === '2026-08-18') dayKey = 'Tue 18';
+        else if (dateStr === '2026-08-19') dayKey = 'Wed 19';
+        else if (dateStr === '2026-08-20') dayKey = 'Thu 20';
+        else if (dateStr === '2026-08-21') dayKey = 'Fri 21';
+        else if (dateStr === '2026-08-22') dayKey = 'Sat 22';
+        else if (dateStr === '2026-08-23') dayKey = 'Sun 23';
+
+        if (!pointMap[dayKey]) {
+          pointMap[dayKey] = { revenue: 0, profit: 0, count: 0, rawDate: s.rawDate };
+        }
+        pointMap[dayKey].revenue += total;
+        pointMap[dayKey].profit += prof;
+        pointMap[dayKey].count += 1;
+      });
+    } else {
+      // Month / Overall / Custom - bucket by date or week
+      sales.forEach((s) => {
+        const total = s.total ?? s.totalAmount ?? 0;
+        const prof = isCashier ? 0 : (s.profit ?? 0);
+        const key = s.date.split(',')[0] || s.rawDate.substring(0, 10);
+        if (!pointMap[key]) {
+          pointMap[key] = { revenue: 0, profit: 0, count: 0, rawDate: s.rawDate };
+        }
+        pointMap[key].revenue += total;
+        pointMap[key].profit += prof;
+        pointMap[key].count += 1;
+      });
+    }
+
+    const data: SalesChartDataPoint[] = Object.keys(pointMap).map((label) => ({
+      label,
+      revenue: pointMap[label].revenue,
+      profit: isCashier ? 0 : pointMap[label].profit,
+      transactions: pointMap[label].count,
+      rawDate: pointMap[label].rawDate,
+    }));
+
+    return {
+      success: true,
+      data,
+      message: 'Sales chart data generated successfully.',
+    };
+  }
+
+  /**
+   * Create and record a new sale (POS Complete Sale) with stock deduction, debt sync, and movement tracking
+   */
+  public async createSale(
+    input: CreateSaleInput,
+    role: UserRole
+  ): Promise<ApiResponse<Sale>> {
+    await this.simulateNetwork();
+
+    // 1. Validate Items
+    if (!input.items || input.items.length === 0) {
+      throw new Error('Sale must include at least one product item.');
+    }
+
+    // 2. Resolve Variants and Validate Stock
+    const saleItems: SaleItem[] = [];
+    let subtotal = 0;
+    let totalCost = 0;
+
+    for (const itemInput of input.items) {
+      if (itemInput.quantity <= 0) {
+        throw new Error('Item quantity must be greater than zero.');
+      }
+
+      const variant = this.variants.find((v) => v.id === itemInput.productVariantId);
+      if (!variant) {
+        throw new Error(`Product variant "${itemInput.productVariantId}" not found.`);
+      }
+
+      const product = this.products.find((p) => p.id === variant.productId);
+      const company = this.companies.find((c) => c.id === variant.companyId);
+
+      const productName = product ? product.name : 'Unknown Product';
+      const companyName = company ? company.name : 'Unknown Manufacturer';
+
+      // Strict Stock Check
+      if (variant.currentStock < itemInput.quantity) {
+        throw new Error(
+          `Insufficient stock for "${productName} (${companyName})". Available: ${variant.currentStock}, Requested: ${itemInput.quantity}.`
+        );
+      }
+
+      // Snapshot prices
+      const sellingPrice = variant.sellingPrice;
+      const basePrice = variant.basePrice;
+      const itemSubtotal = sellingPrice * itemInput.quantity;
+      const itemProfit = (sellingPrice - basePrice) * itemInput.quantity;
+
+      subtotal += itemSubtotal;
+      totalCost += basePrice * itemInput.quantity;
+
+      saleItems.push({
+        id: `si-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        productId: variant.productId,
+        productVariantId: variant.id,
+        productName,
+        genericName: product ? product.genericName : '',
+        companyId: variant.companyId,
+        companyName,
+        dosage: product ? product.dosage : undefined,
+        form: product ? product.form : undefined,
+        quantity: itemInput.quantity,
+        sellingPrice,
+        unitPrice: sellingPrice,
+        basePrice,
+        subtotal: itemSubtotal,
+        totalPrice: itemSubtotal,
+        profit: itemProfit,
+      });
+    }
+
+    // 3. Discount & Total calculation
+    const discount = Math.max(0, input.discount || 0);
+    if (discount > subtotal) {
+      throw new Error('Discount cannot exceed the subtotal amount.');
+    }
+    const grandTotal = subtotal - discount;
+
+    // 4. Validate Amount Paid & Customer Type
+    const amountPaid = Math.max(0, input.amountPaid ?? grandTotal);
+    if (amountPaid > grandTotal) {
+      throw new Error(`Amount paid (₦${amountPaid.toLocaleString()}) cannot exceed the total amount (₦${grandTotal.toLocaleString()}).`);
+    }
+
+    const outstandingAmount = grandTotal - amountPaid;
+
+    // Walking customer restriction: Must be fully paid
+    if (!input.customerId && outstandingAmount > 0) {
+      throw new Error('Credit or partial payment is only allowed for Registered Customers. Walking Customers must pay in full.');
+    }
+
+    // Verify registered customer if provided
+    let customerName = 'Walking Customer';
+    let customerPhone: string | undefined = undefined;
+    let customerEntity: CustomerEntity | undefined = undefined;
+
+    if (input.customerId) {
+      customerEntity = this.customers.find((c) => c.id === input.customerId);
+      if (!customerEntity) {
+        throw new Error('Selected customer record was not found.');
+      }
+      customerName = customerEntity.name;
+      customerPhone = customerEntity.phone;
+    }
+
+    // Determine payment status
+    let paymentStatus: SalePaymentStatus = 'PAID';
+    if (amountPaid === 0) {
+      paymentStatus = 'UNPAID';
+    } else if (amountPaid < grandTotal) {
+      paymentStatus = 'PARTIAL';
+    }
+
+    const now = new Date();
+    const formattedDate =
+      now.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      }) +
+      ', ' +
+      now.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+    const invoiceNumber = `Sale #${String(this.sales.length + 101).padStart(6, '0')}`;
+    const saleId = `sale-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const overallProfit = Math.max(0, grandTotal - totalCost);
+
+    const cashierName =
+      input.servedBy ||
+      (role === 'admin' ? 'Pharm. Abdullahi (Admin)' : 'Cashier Zainab');
+
+    const newSale: Sale = {
+      id: saleId,
+      invoiceNumber,
+      date: formattedDate,
+      rawDate: now.toISOString(),
+      customerId: input.customerId || null,
+      customerName,
+      customerPhone,
+      itemCount: saleItems.length,
+      items: saleItems,
+      subtotal,
+      discount,
+      total: grandTotal,
+      totalAmount: grandTotal,
+      amountPaid,
+      paidAmount: amountPaid,
+      outstandingAmount,
+      paymentStatus,
+      paymentType: paymentStatus,
+      paymentMethod: input.paymentMethod || 'CASH',
+      profit: overallProfit,
+      servedBy: cashierName,
+      notes: input.notes?.trim() || undefined,
+      status: 'COMPLETED',
+    };
+
+    // 5. Deduct Stock & Generate Inventory Movements
+    for (const item of saleItems) {
+      const vIndex = this.variants.findIndex((v) => v.id === item.productVariantId);
+      if (vIndex !== -1) {
+        const prevStock = this.variants[vIndex].currentStock;
+        const newStock = Math.max(0, prevStock - item.quantity);
+        this.variants[vIndex].currentStock = newStock;
+        this.variants[vIndex].updatedAt = now.toISOString();
+
+        // Create InventoryMovement log
+        const movement: InventoryMovement = {
+          id: `mov-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          productVariantId: item.productVariantId,
+          productId: item.productId,
+          productName: item.productName,
+          genericName: item.genericName,
+          companyName: item.companyName,
+          type: 'STOCK_OUT',
+          quantity: -item.quantity,
+          previousStock: prevStock,
+          newStock,
+          reason: `Dispensed in ${invoiceNumber} to ${customerName}`,
+          referenceType: 'SALE',
+          referenceId: saleId,
+          createdBy: cashierName,
+          createdAt: now.toISOString(),
+        };
+        this.movements.unshift(movement);
+      }
+    }
+
+    // 6. Update Customer activity timestamp
+    if (customerEntity) {
+      customerEntity.updatedAt = now.toISOString();
+    }
+
+    // 7. Persist Sale
+    this.sales.unshift(newSale);
+    this.save();
+
+    const hydrated = this.hydrateSale(newSale, role);
+    return {
+      success: true,
+      data: hydrated,
+      message: `${invoiceNumber} completed successfully. Total: ₦${grandTotal.toLocaleString()}${outstandingAmount > 0 ? ` (₦${outstandingAmount.toLocaleString()} added to customer debt)` : ''}.`,
+    };
+  }
+
 
   // ==========================================
   // Dev Debugging & Configuration Helpers
