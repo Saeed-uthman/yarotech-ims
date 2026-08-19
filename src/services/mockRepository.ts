@@ -42,6 +42,41 @@ import {
   SalesDateRange,
   SalePaymentStatus,
   SalePaymentMethod,
+  StockPurchase,
+  PurchaseItemEntity,
+  PurchaseFilterParams,
+  PurchaseSummaryKPIs,
+  PurchaseChartDataPoint,
+  CreatePurchaseInput,
+  CreatePurchaseItemInput,
+  PurchaseDateRange,
+  StockPurchaseStatus,
+  PurchasePaymentMethod,
+  AccountabilityDirection,
+  AccountabilityType,
+  ExpenseCategory,
+  AccountabilityPaymentMethod,
+  AccountabilityDateRange,
+  AccountabilityTransaction,
+  ManualExpense,
+  CreateExpenseInput,
+  AccountabilityFilterParams,
+  AccountabilitySummary,
+  AccountabilityDateGroup,
+  ReportDateRange,
+  ReportTab,
+  ReportFilterParams,
+  FinancialSummaryReport,
+  DailyReportTrendPoint,
+  SalesReportData,
+  ProfitReportData,
+  StockPurchaseReportData,
+  FinancialMovementReportData,
+  ProductPerformanceItem,
+  ProductPerformanceReportData,
+  InventoryMovementReportItem,
+  InventoryMovementReportData,
+  DebtMovementReportData,
 } from '../types';
 import {
   MOCK_CATEGORIES,
@@ -52,6 +87,8 @@ import {
   MOCK_CUSTOMERS,
   MOCK_CUSTOMER_SALES,
   MOCK_CUSTOMER_DEBT_PAYMENTS,
+  MOCK_STOCK_PURCHASES,
+  MOCK_MANUAL_EXPENSES,
 } from '../data/mock';
 
 const DB_KEYS = {
@@ -63,6 +100,8 @@ const DB_KEYS = {
   CUSTOMERS: 'stitch_pharmacy_db_customers',
   SALES: 'stitch_pharmacy_db_sales',
   DEBT_PAYMENTS: 'stitch_pharmacy_db_debt_payments',
+  PURCHASES: 'stitch_pharmacy_db_stock_purchases',
+  EXPENSES: 'stitch_pharmacy_db_expenses',
   CONFIG: 'stitch_pharmacy_db_config',
 };
 
@@ -130,6 +169,8 @@ export class MockDatabaseRepository {
   private customers: CustomerEntity[] = [];
   private sales: CustomerSale[] = [];
   private debtPayments: CustomerDebtPayment[] = [];
+  private purchases: StockPurchase[] = [];
+  private expenses: ManualExpense[] = [];
   private config: MockDbConfig = DEFAULT_CONFIG;
 
   constructor() {
@@ -145,6 +186,8 @@ export class MockDatabaseRepository {
     this.customers = getStorage(DB_KEYS.CUSTOMERS, MOCK_CUSTOMERS);
     this.sales = getStorage(DB_KEYS.SALES, MOCK_CUSTOMER_SALES);
     this.debtPayments = getStorage(DB_KEYS.DEBT_PAYMENTS, MOCK_CUSTOMER_DEBT_PAYMENTS);
+    this.purchases = getStorage(DB_KEYS.PURCHASES, MOCK_STOCK_PURCHASES);
+    this.expenses = getStorage(DB_KEYS.EXPENSES, MOCK_MANUAL_EXPENSES);
     this.config = getStorage(DB_KEYS.CONFIG, DEFAULT_CONFIG);
   }
 
@@ -157,6 +200,8 @@ export class MockDatabaseRepository {
     setStorage(DB_KEYS.CUSTOMERS, this.customers);
     setStorage(DB_KEYS.SALES, this.sales);
     setStorage(DB_KEYS.DEBT_PAYMENTS, this.debtPayments);
+    setStorage(DB_KEYS.PURCHASES, this.purchases);
+    setStorage(DB_KEYS.EXPENSES, this.expenses);
     setStorage(DB_KEYS.CONFIG, this.config);
   }
 
@@ -2380,6 +2425,2430 @@ export class MockDatabaseRepository {
 
 
   // ==========================================
+  // 10. Stock Purchase Module Methods (Part 7)
+  // ==========================================
+
+  /**
+   * Hydrates purchase record ensuring all items, subtotals, and totals are mathematically consistent
+   */
+  private hydratePurchase(purchase: StockPurchase, role: UserRole): StockPurchase {
+    const items = purchase.items.map((item) => {
+      const quantity = Math.max(1, Math.round(item.quantity));
+      const unitPurchasePrice = Math.max(0, item.unitPurchasePrice);
+      const subtotal = item.subtotal ?? quantity * unitPurchasePrice;
+      return {
+        ...item,
+        quantity,
+        unitPurchasePrice,
+        subtotal,
+      };
+    });
+
+    const totalAmount = purchase.totalAmount ?? items.reduce((sum, it) => sum + it.subtotal, 0);
+    const totalUnits = items.reduce((sum, it) => sum + it.quantity, 0);
+
+    return {
+      ...purchase,
+      items,
+      itemCount: items.length,
+      totalUnits,
+      totalAmount,
+    };
+  }
+
+  /**
+   * Filter stock purchases by date range and search criteria
+   */
+  private filterPurchasesList(filters: PurchaseFilterParams): StockPurchase[] {
+    let list = [...this.purchases];
+
+    // Reference simulated system date: 19 Aug 2026
+    const refDateStr = '2026-08-19';
+
+    // 1. Date Range Filtering
+    if (filters.dateRange === 'today') {
+      list = list.filter((p) => p.rawDate.startsWith(refDateStr));
+    } else if (filters.dateRange === 'this_week') {
+      const weekStart = '2026-08-17T00:00:00Z';
+      const weekEnd = '2026-08-23T23:59:59Z';
+      list = list.filter((p) => p.rawDate >= weekStart && p.rawDate <= weekEnd);
+    } else if (filters.dateRange === 'this_month') {
+      const monthStart = '2026-08-01T00:00:00Z';
+      const monthEnd = '2026-08-31T23:59:59Z';
+      list = list.filter((p) => p.rawDate >= monthStart && p.rawDate <= monthEnd);
+    } else if (filters.dateRange === 'custom') {
+      if (filters.startDate) {
+        const startIso = `${filters.startDate}T00:00:00Z`;
+        list = list.filter((p) => p.rawDate >= startIso);
+      }
+      if (filters.endDate) {
+        const endIso = `${filters.endDate}T23:59:59Z`;
+        list = list.filter((p) => p.rawDate <= endIso);
+      }
+    }
+    // 'overall' retains all records
+
+    // 2. Search query (Purchase ID / Number, Product, Generic name, Company, Recorded By, Note)
+    if (filters.search && filters.search.trim()) {
+      const q = filters.search.trim().toLowerCase();
+      list = list.filter((p) => {
+        const matchId = p.purchaseNumber.toLowerCase().includes(q) || p.id.toLowerCase().includes(q);
+        const matchRecordedBy = p.recordedBy.toLowerCase().includes(q);
+        const matchNote = p.note ? p.note.toLowerCase().includes(q) : false;
+        const matchItems = p.items.some(
+          (it) =>
+            it.productName.toLowerCase().includes(q) ||
+            it.genericName.toLowerCase().includes(q) ||
+            it.companyName.toLowerCase().includes(q)
+        );
+        return matchId || matchRecordedBy || matchNote || matchItems;
+      });
+    }
+
+    // 3. Payment Method filter
+    if (filters.paymentMethod && filters.paymentMethod !== 'all') {
+      list = list.filter((p) => p.paymentMethod === filters.paymentMethod);
+    }
+
+    // 4. Status filter
+    if (filters.status && filters.status !== 'all') {
+      list = list.filter((p) => p.status === filters.status);
+    }
+
+    return list;
+  }
+
+  /**
+   * Get filtered, sorted, paginated stock purchases
+   */
+  public async getPurchases(
+    filters: PurchaseFilterParams,
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<StockPurchase[]>> {
+    await this.simulateNetwork();
+
+    const filtered = this.filterPurchasesList(filters);
+
+    // Sorting
+    const sortBy = filters.sortBy || 'date';
+    const sortOrder = filters.sortOrder || 'desc';
+
+    filtered.sort((a, b) => {
+      let comparison = 0;
+      if (sortBy === 'date') {
+        comparison = new Date(a.rawDate).getTime() - new Date(b.rawDate).getTime();
+      } else if (sortBy === 'total') {
+        comparison = a.totalAmount - b.totalAmount;
+      } else if (sortBy === 'items') {
+        comparison = a.itemCount - b.itemCount;
+      } else if (sortBy === 'purchaseNumber') {
+        comparison = a.purchaseNumber.localeCompare(b.purchaseNumber);
+      }
+
+      return sortOrder === 'desc' ? -comparison : comparison;
+    });
+
+    const page = Math.max(1, filters.page || 1);
+    const limit = Math.max(1, filters.limit || 10);
+    const total = filtered.length;
+    const lastPage = Math.ceil(total / limit) || 1;
+    const startIndex = (page - 1) * limit;
+    const paginated = filtered.slice(startIndex, startIndex + limit);
+
+    const hydratedData = paginated.map((p) => this.hydratePurchase(p, role));
+
+    return {
+      success: true,
+      data: hydratedData,
+      message: `Retrieved ${paginated.length} stock purchases.`,
+      meta: {
+        currentPage: page,
+        perPage: limit,
+        total,
+        lastPage,
+      },
+    };
+  }
+
+  /**
+   * Get single stock purchase by ID with full itemized details
+   */
+  public async getPurchaseById(
+    id: string,
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<StockPurchase>> {
+    await this.simulateNetwork();
+
+    const purchase = this.purchases.find((p) => p.id === id || p.purchaseNumber === id);
+    if (!purchase) {
+      return {
+        success: false,
+        data: null as any,
+        message: `Stock purchase "${id}" not found.`,
+      };
+    }
+
+    return {
+      success: true,
+      data: this.hydratePurchase(purchase, role),
+      message: 'Stock purchase details loaded.',
+    };
+  }
+
+  /**
+   * Calculate summary KPIs for stock purchases
+   */
+  public async getPurchaseSummaryKPIs(
+    filters: Partial<PurchaseFilterParams> = {},
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<PurchaseSummaryKPIs>> {
+    await this.simulateNetwork();
+
+    const timeframe = filters.dateRange || 'today';
+    const matching = this.filterPurchasesList({
+      search: filters.search || '',
+      dateRange: timeframe,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      paymentMethod: filters.paymentMethod || 'all',
+      status: 'all', // Analyze all matching purchases in this timeframe
+      sortBy: 'date',
+      sortOrder: 'desc',
+      page: 1,
+      limit: 1000,
+    });
+
+    const completed = matching.filter((p) => p.status === 'COMPLETED');
+    const cancelled = matching.filter((p) => p.status === 'CANCELLED');
+
+    const totalSpent = completed.reduce((sum, p) => sum + p.totalAmount, 0);
+    const totalUnitsRestocked = completed.reduce((sum, p) => sum + (p.totalUnits || p.items.reduce((s, it) => s + it.quantity, 0)), 0);
+    const averagePurchaseValue = completed.length > 0 ? Math.round(totalSpent / completed.length) : 0;
+
+    return {
+      success: true,
+      data: {
+        totalSpent,
+        totalPurchasesCount: matching.length,
+        completedPurchasesCount: completed.length,
+        cancelledPurchasesCount: cancelled.length,
+        totalUnitsRestocked,
+        averagePurchaseValue,
+        timeframe,
+      },
+      message: 'Purchase summary KPIs calculated.',
+    };
+  }
+
+  /**
+   * Generate timeline chart data points for stock purchases
+   */
+  public async getPurchaseChartData(
+    dateRange: PurchaseDateRange = 'today',
+    role: UserRole = 'admin',
+    startDate?: string,
+    endDate?: string
+  ): Promise<ApiResponse<PurchaseChartDataPoint[]>> {
+    await this.simulateNetwork();
+
+    const matching = this.filterPurchasesList({
+      search: '',
+      dateRange,
+      startDate,
+      endDate,
+      paymentMethod: 'all',
+      status: 'COMPLETED',
+      sortBy: 'date',
+      sortOrder: 'asc',
+      page: 1,
+      limit: 2000,
+    });
+
+    const pointsMap = new Map<string, { label: string; amountSpent: number; units: number; purchasesCount: number; rawDate: string }>();
+
+    if (dateRange === 'today') {
+      // Group by hour blocks (08:00 - 18:00)
+      const hours = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00'];
+      hours.forEach((h) => {
+        pointsMap.set(h, { label: h, amountSpent: 0, units: 0, purchasesCount: 0, rawDate: `2026-08-19T${h.replace(':', '')}:00Z` });
+      });
+
+      matching.forEach((p) => {
+        const timePart = p.purchaseDate.split(', ')[1] || '10:00 AM';
+        const hourNum = parseInt(timePart.split(':')[0], 10);
+        const isPM = timePart.includes('PM') && hourNum !== 12;
+        const normalizedHour = (isPM ? hourNum + 12 : hourNum);
+
+        let bucket = '10:00';
+        if (normalizedHour < 9) bucket = '08:00';
+        else if (normalizedHour < 11) bucket = '10:00';
+        else if (normalizedHour < 13) bucket = '12:00';
+        else if (normalizedHour < 15) bucket = '14:00';
+        else if (normalizedHour < 17) bucket = '16:00';
+        else bucket = '18:00';
+
+        const curr = pointsMap.get(bucket) || { label: bucket, amountSpent: 0, units: 0, purchasesCount: 0, rawDate: p.rawDate };
+        curr.amountSpent += p.totalAmount;
+        curr.units += p.totalUnits || p.items.reduce((s, it) => s + it.quantity, 0);
+        curr.purchasesCount += 1;
+        pointsMap.set(bucket, curr);
+      });
+    } else if (dateRange === 'this_week') {
+      const days = ['Mon 17', 'Tue 18', 'Wed 19', 'Thu 20', 'Fri 21', 'Sat 22', 'Sun 23'];
+      days.forEach((d) => {
+        pointsMap.set(d, { label: d, amountSpent: 0, units: 0, purchasesCount: 0, rawDate: d });
+      });
+
+      matching.forEach((p) => {
+        const dayStr = p.rawDate.substring(8, 10);
+        let key = 'Wed 19';
+        if (dayStr === '17') key = 'Mon 17';
+        else if (dayStr === '18') key = 'Tue 18';
+        else if (dayStr === '19') key = 'Wed 19';
+        else if (dayStr === '20') key = 'Thu 20';
+        else if (dayStr === '21') key = 'Fri 21';
+        else if (dayStr === '22') key = 'Sat 22';
+        else if (dayStr === '23') key = 'Sun 23';
+
+        const curr = pointsMap.get(key) || { label: key, amountSpent: 0, units: 0, purchasesCount: 0, rawDate: p.rawDate };
+        curr.amountSpent += p.totalAmount;
+        curr.units += p.totalUnits || p.items.reduce((s, it) => s + it.quantity, 0);
+        curr.purchasesCount += 1;
+        pointsMap.set(key, curr);
+      });
+    } else if (dateRange === 'this_month') {
+      const weeks = ['Week 1 (1-7)', 'Week 2 (8-14)', 'Week 3 (15-21)', 'Week 4 (22-31)'];
+      weeks.forEach((w) => {
+        pointsMap.set(w, { label: w, amountSpent: 0, units: 0, purchasesCount: 0, rawDate: w });
+      });
+
+      matching.forEach((p) => {
+        const dayNum = parseInt(p.rawDate.substring(8, 10), 10);
+        let key = 'Week 3 (15-21)';
+        if (dayNum <= 7) key = 'Week 1 (1-7)';
+        else if (dayNum <= 14) key = 'Week 2 (8-14)';
+        else if (dayNum <= 21) key = 'Week 3 (15-21)';
+        else key = 'Week 4 (22-31)';
+
+        const curr = pointsMap.get(key) || { label: key, amountSpent: 0, units: 0, purchasesCount: 0, rawDate: p.rawDate };
+        curr.amountSpent += p.totalAmount;
+        curr.units += p.totalUnits || p.items.reduce((s, it) => s + it.quantity, 0);
+        curr.purchasesCount += 1;
+        pointsMap.set(key, curr);
+      });
+    } else {
+      // Overall: monthly aggregation
+      const months = ['May 2026', 'Jun 2026', 'Jul 2026', 'Aug 2026'];
+      months.forEach((m) => {
+        pointsMap.set(m, { label: m, amountSpent: 0, units: 0, purchasesCount: 0, rawDate: m });
+      });
+
+      matching.forEach((p) => {
+        const monthNum = p.rawDate.substring(5, 7);
+        let key = 'Aug 2026';
+        if (monthNum === '05') key = 'May 2026';
+        else if (monthNum === '06') key = 'Jun 2026';
+        else if (monthNum === '07') key = 'Jul 2026';
+        else if (monthNum === '08') key = 'Aug 2026';
+
+        const curr = pointsMap.get(key) || { label: key, amountSpent: 0, units: 0, purchasesCount: 0, rawDate: p.rawDate };
+        curr.amountSpent += p.totalAmount;
+        curr.units += p.totalUnits || p.items.reduce((s, it) => s + it.quantity, 0);
+        curr.purchasesCount += 1;
+        pointsMap.set(key, curr);
+      });
+    }
+
+    return {
+      success: true,
+      data: Array.from(pointsMap.values()),
+      message: 'Purchase chart data generated.',
+    };
+  }
+
+  /**
+   * Create a new stock purchase:
+   * 1. Validates all line items (quantity > 0 integer, unitPurchasePrice > 0)
+   * 2. Calculates line subtotals and grand purchase total
+   * 3. Increases stock in ProductVariantEntity for each item
+   * 4. Updates ProductVariant basePrice to unitPurchasePrice
+   * 5. Logs InventoryMovement STOCK_IN records
+   * 6. Persists purchase and updates store
+   */
+  public async createStockPurchase(
+    input: CreatePurchaseInput,
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<StockPurchase>> {
+    await this.simulateNetwork();
+
+    // 1. Validation
+    if (!input.items || input.items.length === 0) {
+      return {
+        success: false,
+        data: null as any,
+        message: 'A stock purchase must contain at least one medicine item.',
+      };
+    }
+
+    // Verify and prepare purchase items
+    const purchaseItems: PurchaseItemEntity[] = [];
+    let grandTotal = 0;
+    let totalUnits = 0;
+
+    for (let i = 0; i < input.items.length; i++) {
+      const item = input.items[i];
+      const quantity = Math.round(Number(item.quantity));
+      const unitPurchasePrice = Number(item.unitPurchasePrice);
+
+      if (isNaN(quantity) || quantity <= 0) {
+        return {
+          success: false,
+          data: null as any,
+          message: `Invalid quantity for item #${i + 1}. Quantity must be a whole number greater than 0.`,
+        };
+      }
+
+      if (isNaN(unitPurchasePrice) || unitPurchasePrice <= 0) {
+        return {
+          success: false,
+          data: null as any,
+          message: `Invalid purchase price for item #${i + 1}. Purchase price must be greater than ₦0.`,
+        };
+      }
+
+      // Find variant and parent product
+      const variant = this.variants.find((v) => v.id === item.productVariantId);
+      if (!variant) {
+        return {
+          success: false,
+          data: null as any,
+          message: `Selected product variant (ID: ${item.productVariantId}) does not exist.`,
+        };
+      }
+
+      const product = this.products.find((p) => p.id === variant.productId);
+      const company = this.companies.find((c) => c.id === variant.companyId);
+
+      const productName = product ? product.name : 'Unknown Product';
+      const genericName = product ? product.genericName : '';
+      const companyName = company ? company.name : 'Unknown Company';
+      const dosage = product ? product.dosage : '';
+      const form = product ? product.form : '';
+      const subtotal = quantity * unitPurchasePrice;
+
+      grandTotal += subtotal;
+      totalUnits += quantity;
+
+      purchaseItems.push({
+        id: `pi-${Date.now()}-${i + 1}`,
+        productVariantId: variant.id,
+        productId: variant.productId,
+        productName,
+        genericName,
+        companyName,
+        dosage,
+        form,
+        quantity,
+        unitPurchasePrice,
+        subtotal,
+      });
+    }
+
+    // 2. Generate Purchase Number & Dates
+    const purchaseCount = this.purchases.length + 1;
+    const purchaseNumStr = `PUR-${String(purchaseCount).padStart(4, '0')}`;
+    const purchaseId = purchaseNumStr;
+    const now = new Date();
+    const formattedDate = formatCurrentTimestamp();
+    const rawDate = input.purchaseDate ? `${input.purchaseDate}T${now.toTimeString().substring(0, 8)}Z` : now.toISOString();
+    const recordedBy = input.recordedBy || (role === 'admin' ? 'Pharm. Abdullahi (Admin)' : 'Pharmacy Staff');
+
+    // 3. Create the purchase record
+    const newPurchase: StockPurchase = {
+      id: purchaseId,
+      purchaseNumber: purchaseNumStr,
+      purchaseDate: formattedDate,
+      rawDate,
+      recordedBy,
+      totalAmount: grandTotal,
+      paymentMethod: input.paymentMethod || 'TRANSFER',
+      status: 'COMPLETED',
+      note: input.note ? input.note.trim() : undefined,
+      items: purchaseItems,
+      itemCount: purchaseItems.length,
+      totalUnits,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    };
+
+    // Link purchaseId to each purchase item
+    purchaseItems.forEach((it) => {
+      it.purchaseId = purchaseId;
+    });
+
+    // 4. Update Inventory Stock and Base Prices
+    for (const item of purchaseItems) {
+      const variant = this.variants.find((v) => v.id === item.productVariantId);
+      if (variant) {
+        const prevStock = variant.currentStock;
+        const newStock = prevStock + item.quantity;
+
+        // Update stock
+        variant.currentStock = newStock;
+        // Update base cost price to the new purchase price (as per specs)
+        variant.basePrice = item.unitPurchasePrice;
+        variant.updatedAt = now.toISOString();
+
+        // Record Inventory Movement (STOCK_IN)
+        const prod = this.products.find((p) => p.id === variant.productId);
+        const movement: InventoryMovement = {
+          id: `mov-pur-${Date.now()}-${item.productVariantId}`,
+          productVariantId: variant.id,
+          productId: variant.productId,
+          productName: prod?.name || item.productName,
+          genericName: prod?.genericName || item.genericName,
+          companyName: item.companyName,
+          type: 'STOCK_IN',
+          quantity: item.quantity,
+          previousStock: prevStock,
+          newStock,
+          reason: `Stock Purchase (${item.companyName})`,
+          referenceType: 'STOCK_PURCHASE',
+          referenceId: purchaseId,
+          createdBy: recordedBy,
+          createdAt: now.toISOString(),
+        };
+        this.movements.unshift(movement);
+      }
+    }
+
+    // 5. Persist Purchase Record
+    this.purchases.unshift(newPurchase);
+    this.save();
+
+    const hydrated = this.hydratePurchase(newPurchase, role);
+    return {
+      success: true,
+      data: hydrated,
+      message: `Stock purchase ${purchaseNumStr} recorded successfully. Total spent: ₦${grandTotal.toLocaleString()} (${totalUnits} units restocked).`,
+    };
+  }
+
+  /**
+   * Cancel an existing stock purchase
+   */
+  public async cancelStockPurchase(
+    purchaseId: string,
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<StockPurchase>> {
+    await this.simulateNetwork();
+
+    const purchase = this.purchases.find((p) => p.id === purchaseId || p.purchaseNumber === purchaseId);
+    if (!purchase) {
+      return {
+        success: false,
+        data: null as any,
+        message: `Stock purchase "${purchaseId}" not found.`,
+      };
+    }
+
+    if (purchase.status === 'CANCELLED') {
+      return {
+        success: false,
+        data: this.hydratePurchase(purchase, role),
+        message: 'This stock purchase is already cancelled.',
+      };
+    }
+
+    // Reverse the inventory stock if it was completed
+    const now = new Date();
+    for (const item of purchase.items) {
+      const variant = this.variants.find((v) => v.id === item.productVariantId);
+      if (variant) {
+        const prevStock = variant.currentStock;
+        const newStock = Math.max(0, prevStock - item.quantity);
+        variant.currentStock = newStock;
+        variant.updatedAt = now.toISOString();
+
+        // Record stock adjustment / cancellation movement
+        const prod = this.products.find((p) => p.id === variant.productId);
+        const movement: InventoryMovement = {
+          id: `mov-can-${Date.now()}-${item.productVariantId}`,
+          productVariantId: variant.id,
+          productId: variant.productId,
+          productName: prod?.name || item.productName,
+          genericName: prod?.genericName || item.genericName,
+          companyName: item.companyName,
+          type: 'STOCK_OUT',
+          quantity: -item.quantity,
+          previousStock: prevStock,
+          newStock,
+          reason: `Cancelled Stock Purchase ${purchase.purchaseNumber}`,
+          referenceType: 'STOCK_PURCHASE',
+          referenceId: purchase.id,
+          createdBy: role === 'admin' ? 'Pharm. Abdullahi (Admin)' : 'Staff',
+          createdAt: now.toISOString(),
+        };
+        this.movements.unshift(movement);
+      }
+    }
+
+    purchase.status = 'CANCELLED';
+    purchase.updatedAt = now.toISOString();
+    this.save();
+
+    return {
+      success: true,
+      data: this.hydratePurchase(purchase, role),
+      message: `Stock purchase ${purchase.purchaseNumber} has been cancelled and inventory adjusted.`,
+    };
+  }
+
+  // ==========================================
+  // 11. Accountability Module Logic (Part 8)
+  // ==========================================
+
+  /**
+   * Builds the single source of truth for all financial movements:
+   * 1. Completed Sales (Money IN)
+   * 2. Customer Debt Payments (Money IN)
+   * 3. Stock Restock Purchases (Money OUT)
+   * 4. Approved Operating Expenses (Money OUT)
+   */
+  private buildAllAccountabilityTransactions(): AccountabilityTransaction[] {
+    const transactions: AccountabilityTransaction[] = [];
+
+    // 1. Completed Sales -> Money IN
+    for (const sale of this.sales) {
+      // If sale had any money received (paid or partial)
+      const paidAmount = sale.amountPaid ?? sale.paidAmount ?? sale.totalAmount ?? 0;
+      if (paidAmount > 0) {
+        const saleNum = sale.invoiceNumber || `Sale #${sale.id}`;
+        const custName = sale.customerName || 'Walking Customer';
+        const itemCount = sale.itemCount || (sale.items ? sale.items.length : 1);
+        const desc =
+          custName !== 'Walking Customer' && custName
+            ? `Sale Dispense • ${custName} (${itemCount} items)`
+            : `POS Dispense (${itemCount} item${itemCount > 1 ? 's' : ''})`;
+
+        const itemsDetail = sale.items?.map((it) => ({
+          name: it.productName,
+          genericName: it.genericName,
+          company: it.companyName,
+          dosage: it.dosage,
+          form: it.form,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice || it.sellingPrice,
+          subtotal: it.subtotal || it.quantity * (it.unitPrice || it.sellingPrice),
+        })) || [];
+
+        const acc: AccountabilityTransaction = {
+          id: `ACC-SAL-${sale.id.replace('sale-', '')}`,
+          transactionNumber: `ACC-SAL-${sale.id.replace('sale-', '').padStart(4, '0')}`,
+          type: 'SALE',
+          direction: 'IN',
+          amount: paidAmount,
+          description: desc,
+          category: 'Sales Revenue',
+          paymentMethod: (sale.paymentMethod as AccountabilityPaymentMethod) || 'CASH',
+          referenceType: 'SALE',
+          referenceId: sale.id,
+          referenceNumber: saleNum,
+          customerName: custName,
+          customerId: sale.customerId,
+          recordedBy: sale.servedBy || 'Cashier Zainab',
+          date: sale.date || formatCurrentTimestamp(),
+          rawDate: sale.rawDate || new Date().toISOString(),
+          status: 'COMPLETED',
+          createdAt: sale.rawDate || new Date().toISOString(),
+          sourceDetails: {
+            itemCount,
+            totalUnits: sale.items?.reduce((sum, it) => sum + it.quantity, 0) || itemCount,
+            items: itemsDetail,
+            note:
+              sale.paymentStatus === 'PARTIAL'
+                ? `Partial payment of ₦${paidAmount.toLocaleString()} towards total bill ₦${(sale.totalAmount || sale.total || paidAmount).toLocaleString()}`
+                : undefined,
+          },
+        };
+        transactions.push(acc);
+      }
+    }
+
+    // 2. Customer Debt Payments -> Money IN
+    for (const payment of this.debtPayments) {
+      const acc: AccountabilityTransaction = {
+        id: `ACC-PAY-${payment.id.replace('pay-', '')}`,
+        transactionNumber: `ACC-PAY-${payment.id.replace('pay-', '').padStart(4, '0')}`,
+        type: 'DEBT_PAYMENT',
+        direction: 'IN',
+        amount: payment.amount,
+        description: `Debt Recovery • ${payment.customerName}`,
+        category: 'Debt Recovery',
+        paymentMethod: (payment.paymentMethod as AccountabilityPaymentMethod) || 'TRANSFER',
+        referenceType: 'DEBT_PAYMENT',
+        referenceId: payment.id,
+        referenceNumber: payment.receiptNumber || `RCT-${payment.id}`,
+        customerName: payment.customerName,
+        customerId: payment.customerId,
+        recordedBy: payment.recordedBy || 'Pharm. Abdullahi (Admin)',
+        date: payment.paymentDate || formatCurrentTimestamp(),
+        rawDate: payment.rawDate || payment.createdAt || new Date().toISOString(),
+        status: 'COMPLETED',
+        note: payment.referenceNotes,
+        createdAt: payment.createdAt || new Date().toISOString(),
+        sourceDetails: {
+          customerPhone: payment.customerPhone,
+          previousBalance: payment.balanceBefore,
+          newBalance: payment.balanceAfter,
+          note: payment.referenceNotes,
+        },
+      };
+      transactions.push(acc);
+    }
+
+    // 3. Stock Restock Purchases -> Money OUT (Only Completed)
+    for (const purchase of this.purchases) {
+      if (purchase.status === 'COMPLETED') {
+        const itemsDetail = purchase.items?.map((it) => ({
+          name: it.productName,
+          genericName: it.genericName,
+          company: it.companyName,
+          dosage: it.dosage,
+          form: it.form,
+          quantity: it.quantity,
+          unitPrice: it.unitPurchasePrice,
+          subtotal: it.subtotal,
+        })) || [];
+
+        const acc: AccountabilityTransaction = {
+          id: `ACC-PUR-${purchase.id.replace('PUR-', '')}`,
+          transactionNumber: `ACC-PUR-${purchase.id.replace('PUR-', '').padStart(4, '0')}`,
+          type: 'STOCK_PURCHASE',
+          direction: 'OUT',
+          amount: purchase.totalAmount,
+          description: `Stock Purchase • ${purchase.itemCount} items (${purchase.totalUnits} units)`,
+          category: 'Stock Purchase',
+          paymentMethod: (purchase.paymentMethod as AccountabilityPaymentMethod) || 'TRANSFER',
+          referenceType: 'STOCK_PURCHASE',
+          referenceId: purchase.id,
+          referenceNumber: purchase.purchaseNumber || purchase.id,
+          recordedBy: purchase.recordedBy || 'Pharm. Abdullahi (Admin)',
+          date: purchase.purchaseDate || formatCurrentTimestamp(),
+          rawDate: purchase.rawDate || purchase.createdAt || new Date().toISOString(),
+          status: 'COMPLETED',
+          note: purchase.note,
+          createdAt: purchase.createdAt || new Date().toISOString(),
+          sourceDetails: {
+            itemCount: purchase.itemCount,
+            totalUnits: purchase.totalUnits,
+            items: itemsDetail,
+            note: purchase.note,
+          },
+        };
+        transactions.push(acc);
+      }
+    }
+
+    // 4. Approved Operating Expenses -> Money OUT
+    for (const expense of this.expenses) {
+      const acc: AccountabilityTransaction = {
+        id: `ACC-EXP-${expense.id.replace('exp-', '')}`,
+        transactionNumber: `ACC-EXP-${expense.id.replace('exp-', '').padStart(4, '0')}`,
+        type: 'OTHER_EXPENSE',
+        direction: 'OUT',
+        amount: expense.amount,
+        description: expense.description,
+        category: expense.category,
+        paymentMethod: (expense.paymentMethod as AccountabilityPaymentMethod) || 'CASH',
+        referenceType: 'OTHER_EXPENSE',
+        referenceId: expense.id,
+        referenceNumber: expense.expenseNumber || expense.id,
+        recordedBy: expense.recordedBy || 'Pharm. Abdullahi (Admin)',
+        date: expense.date || formatCurrentTimestamp(),
+        rawDate: expense.rawDate || expense.createdAt || new Date().toISOString(),
+        status: 'COMPLETED',
+        note: expense.note,
+        createdAt: expense.createdAt || new Date().toISOString(),
+        sourceDetails: {
+          note: expense.note,
+        },
+      };
+      transactions.push(acc);
+    }
+
+    // Sort descending by rawDate (newest first)
+    transactions.sort(
+      (a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime()
+    );
+
+    return transactions;
+  }
+
+  /**
+   * Filters accountability transactions according to query criteria
+   */
+  private filterAccountabilityList(
+    filters: AccountabilityFilterParams
+  ): AccountabilityTransaction[] {
+    let list = this.buildAllAccountabilityTransactions();
+
+    // 1. Date Range filter
+    const now = new Date();
+    const todayStr = '2026-08-19'; // Fixed demo baseline date for consistency
+
+    if (filters.dateRange === 'today') {
+      list = list.filter((t) => t.rawDate.startsWith(todayStr));
+    } else if (filters.dateRange === 'this_week') {
+      const weekStart = new Date('2026-08-15T00:00:00Z').getTime();
+      const weekEnd = new Date('2026-08-21T23:59:59Z').getTime();
+      list = list.filter((t) => {
+        const time = new Date(t.rawDate).getTime();
+        return time >= weekStart && time <= weekEnd;
+      });
+    } else if (filters.dateRange === 'this_month') {
+      list = list.filter((t) => t.rawDate.startsWith('2026-08'));
+    } else if (filters.dateRange === 'custom' && filters.startDate) {
+      const start = new Date(filters.startDate).getTime();
+      const end = filters.endDate
+        ? new Date(filters.endDate + 'T23:59:59Z').getTime()
+        : new Date().getTime();
+      list = list.filter((t) => {
+        const time = new Date(t.rawDate).getTime();
+        return time >= start && time <= end;
+      });
+    }
+
+    // 2. Direction filter (IN vs OUT)
+    if (filters.direction && filters.direction !== 'all') {
+      list = list.filter((t) => t.direction === filters.direction);
+    }
+
+    // 3. Type filter
+    if (filters.type && filters.type !== 'all') {
+      list = list.filter((t) => t.type === filters.type);
+    }
+
+    // 4. Category filter
+    if (filters.category && filters.category !== 'all') {
+      list = list.filter((t) => t.category === filters.category);
+    }
+
+    // 5. Search query filter
+    if (filters.search && filters.search.trim()) {
+      const q = filters.search.toLowerCase().trim();
+      list = list.filter((t) => {
+        const matchId = t.id.toLowerCase().includes(q);
+        const matchTxNum = t.transactionNumber.toLowerCase().includes(q);
+        const matchRefNum = t.referenceNumber.toLowerCase().includes(q);
+        const matchDesc = t.description.toLowerCase().includes(q);
+        const matchCust = t.customerName?.toLowerCase().includes(q) || false;
+        const matchRecBy = t.recordedBy.toLowerCase().includes(q);
+        const matchCat = t.category.toLowerCase().includes(q);
+        const matchNote = t.note?.toLowerCase().includes(q) || false;
+        const matchItems =
+          t.sourceDetails?.items?.some(
+            (it) =>
+              it.name.toLowerCase().includes(q) ||
+              it.company.toLowerCase().includes(q) ||
+              (it.genericName && it.genericName.toLowerCase().includes(q))
+          ) || false;
+
+        return (
+          matchId ||
+          matchTxNum ||
+          matchRefNum ||
+          matchDesc ||
+          matchCust ||
+          matchRecBy ||
+          matchCat ||
+          matchNote ||
+          matchItems
+        );
+      });
+    }
+
+    // 6. Sorting
+    if (filters.sortBy === 'amount') {
+      list.sort((a, b) =>
+        filters.sortOrder === 'asc' ? a.amount - b.amount : b.amount - a.amount
+      );
+    } else if (filters.sortBy === 'type') {
+      list.sort((a, b) =>
+        filters.sortOrder === 'asc'
+          ? a.type.localeCompare(b.type)
+          : b.type.localeCompare(a.type)
+      );
+    } else {
+      // Default newest first
+      list.sort((a, b) => {
+        const diff = new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime();
+        return filters.sortOrder === 'asc' ? -diff : diff;
+      });
+    }
+
+    return list;
+  }
+
+  /**
+   * Helper to format friendly date grouping labels
+   */
+  private formatDateGroupLabel(rawDate: string): string {
+    const d = new Date(rawDate);
+    const dateStr = rawDate.split('T')[0];
+    if (dateStr === '2026-08-19') {
+      return 'TODAY';
+    } else if (dateStr === '2026-08-18') {
+      return 'YESTERDAY';
+    } else {
+      return d.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    }
+  }
+
+  /**
+   * Get filtered, grouped accountability transactions feed
+   */
+  public async getAccountabilityFeed(
+    filters: AccountabilityFilterParams,
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<AccountabilityDateGroup[]>> {
+    await this.simulateNetwork();
+
+    const filtered = this.filterAccountabilityList(filters);
+
+    // Group transactions by date
+    const groupsMap = new Map<string, AccountabilityTransaction[]>();
+    for (const tx of filtered) {
+      const dateKey = tx.rawDate.split('T')[0];
+      if (!groupsMap.has(dateKey)) {
+        groupsMap.set(dateKey, []);
+      }
+      groupsMap.get(dateKey)!.push(tx);
+    }
+
+    const groups: AccountabilityDateGroup[] = [];
+    for (const [dateKey, txs] of groupsMap.entries()) {
+      const moneyIn = txs
+        .filter((t) => t.direction === 'IN')
+        .reduce((sum, t) => sum + t.amount, 0);
+      const moneyOut = txs
+        .filter((t) => t.direction === 'OUT')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      groups.push({
+        dateLabel: this.formatDateGroupLabel(txs[0].rawDate),
+        rawDate: dateKey,
+        transactions: txs,
+        groupMoneyIn: moneyIn,
+        groupMoneyOut: moneyOut,
+        groupNet: moneyIn - moneyOut,
+      });
+    }
+
+    // Ensure groups are sorted newest first
+    groups.sort(
+      (a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime()
+    );
+
+    return {
+      success: true,
+      data: groups,
+      message: 'Accountability feed loaded successfully.',
+      meta: {
+        total: filtered.length,
+        currentPage: filters.page,
+        lastPage: Math.ceil(filtered.length / filters.limit) || 1,
+        perPage: filters.limit,
+      },
+    };
+  }
+
+  /**
+   * Get raw list of accountability transactions
+   */
+  public async getAccountabilityTransactions(
+    filters: AccountabilityFilterParams,
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<AccountabilityTransaction[]>> {
+    await this.simulateNetwork();
+
+    const filtered = this.filterAccountabilityList(filters);
+    const startIdx = (filters.page - 1) * filters.limit;
+    const paginated = filtered.slice(startIdx, startIdx + filters.limit);
+
+    return {
+      success: true,
+      data: paginated,
+      message: 'Accountability transactions loaded.',
+      meta: {
+        total: filtered.length,
+        currentPage: filters.page,
+        lastPage: Math.ceil(filtered.length / filters.limit) || 1,
+        perPage: filters.limit,
+      },
+    };
+  }
+
+  /**
+   * Get single accountability transaction with full audit trace
+   */
+  public async getAccountabilityTransactionById(
+    id: string,
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<AccountabilityTransaction>> {
+    await this.simulateNetwork();
+
+    const all = this.buildAllAccountabilityTransactions();
+    const tx = all.find(
+      (t) =>
+        t.id === id ||
+        t.transactionNumber === id ||
+        t.referenceId === id ||
+        t.referenceNumber === id
+    );
+
+    if (!tx) {
+      return {
+        success: false,
+        data: null as any,
+        message: `Accountability transaction '${id}' not found.`,
+        errors: { transaction: [`Transaction '${id}' not found.`] },
+      };
+    }
+
+    return {
+      success: true,
+      data: tx,
+      message: 'Transaction found.',
+    };
+  }
+
+  /**
+   * Get financial summary KPI metrics (Money In, Money Out, Net Movement)
+   * Net Movement is strictly NOT labelled as Profit.
+   */
+  public async getAccountabilitySummary(
+    timeframe: AccountabilityDateRange = 'today',
+    startDate?: string,
+    endDate?: string,
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<AccountabilitySummary>> {
+    await this.simulateNetwork();
+
+    const filtered = this.filterAccountabilityList({
+      search: '',
+      dateRange: timeframe,
+      startDate,
+      endDate,
+      direction: 'all',
+      type: 'all',
+      sortBy: 'date',
+      sortOrder: 'desc',
+      page: 1,
+      limit: 10000,
+    });
+
+    let moneyIn = 0;
+    let moneyOut = 0;
+    let salesIncome = 0;
+    let debtPaymentsIncome = 0;
+    let purchasesExpense = 0;
+    let otherExpensesExpense = 0;
+
+    for (const t of filtered) {
+      if (t.direction === 'IN') {
+        moneyIn += t.amount;
+        if (t.type === 'SALE') {
+          salesIncome += t.amount;
+        } else if (t.type === 'DEBT_PAYMENT') {
+          debtPaymentsIncome += t.amount;
+        }
+      } else if (t.direction === 'OUT') {
+        moneyOut += t.amount;
+        if (t.type === 'STOCK_PURCHASE') {
+          purchasesExpense += t.amount;
+        } else if (t.type === 'OTHER_EXPENSE') {
+          otherExpensesExpense += t.amount;
+        }
+      }
+    }
+
+    const summary: AccountabilitySummary = {
+      moneyIn,
+      moneyOut,
+      netMovement: moneyIn - moneyOut,
+      totalTransactionsCount: filtered.length,
+      salesIncome,
+      debtPaymentsIncome,
+      purchasesExpense,
+      otherExpensesExpense,
+      timeframe,
+    };
+
+    return {
+      success: true,
+      data: summary,
+      message: 'Accountability summary computed successfully.',
+    };
+  }
+
+  /**
+   * Create an approved manual operating expense
+   * Automatically creates the associated Accountability OUT transaction
+   */
+  public async createManualExpense(
+    input: CreateExpenseInput,
+    role: UserRole = 'admin'
+  ): Promise<
+    ApiResponse<{
+      expense: ManualExpense;
+      transaction: AccountabilityTransaction;
+    }>
+  > {
+    await this.simulateNetwork();
+
+    // 1. Validation
+    if (!input.description || !input.description.trim()) {
+      return {
+        success: false,
+        data: null as any,
+        message: 'Expense description is required.',
+        errors: { description: ['Expense description is required.'] },
+      };
+    }
+
+    if (!input.amount || input.amount <= 0) {
+      return {
+        success: false,
+        data: null as any,
+        message: 'Expense amount must be greater than ₦0.',
+        errors: { amount: ['Expense amount must be greater than ₦0.'] },
+      };
+    }
+
+    if (!input.category) {
+      return {
+        success: false,
+        data: null as any,
+        message: 'Please select a valid expense category.',
+        errors: { category: ['Please select a valid expense category.'] },
+      };
+    }
+
+    if (!input.paymentMethod) {
+      return {
+        success: false,
+        data: null as any,
+        message: 'Please select a payment method.',
+        errors: { paymentMethod: ['Please select a payment method.'] },
+      };
+    }
+
+    const now = new Date();
+    const nextSeq = this.expenses.length + 1;
+    const expenseNumber = `EXP-2026-${String(nextSeq).padStart(3, '0')}`;
+    const expenseId = `exp-${String(nextSeq).padStart(3, '0')}`;
+    const recordedBy =
+      input.recordedBy || (role === 'admin' ? 'Pharm. Abdullahi (Admin)' : 'Staff');
+
+    const newExpense: ManualExpense = {
+      id: expenseId,
+      expenseNumber,
+      description: input.description.trim(),
+      category: input.category,
+      amount: Math.round(input.amount),
+      paymentMethod: input.paymentMethod,
+      date: formatCurrentTimestamp(),
+      rawDate: now.toISOString(),
+      note: input.note?.trim() || undefined,
+      recordedBy,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    };
+
+    this.expenses.unshift(newExpense);
+    this.save();
+
+    const createdTx: AccountabilityTransaction = {
+      id: `ACC-EXP-${expenseId.replace('exp-', '')}`,
+      transactionNumber: `ACC-EXP-${expenseId.replace('exp-', '').padStart(4, '0')}`,
+      type: 'OTHER_EXPENSE',
+      direction: 'OUT',
+      amount: newExpense.amount,
+      description: newExpense.description,
+      category: newExpense.category,
+      paymentMethod: newExpense.paymentMethod,
+      referenceType: 'OTHER_EXPENSE',
+      referenceId: newExpense.id,
+      referenceNumber: newExpense.expenseNumber,
+      recordedBy: newExpense.recordedBy,
+      date: newExpense.date,
+      rawDate: newExpense.rawDate,
+      status: 'COMPLETED',
+      note: newExpense.note,
+      createdAt: newExpense.createdAt,
+      sourceDetails: {
+        note: newExpense.note,
+      },
+    };
+
+    return {
+      success: true,
+      data: {
+        expense: newExpense,
+        transaction: createdTx,
+      },
+      message: `Expense of ₦${newExpense.amount.toLocaleString()} (${newExpense.category}) recorded successfully.`,
+    };
+  }
+
+  // ==========================================
+  // 12. Financial & Movement Reports (Module 9)
+  // ==========================================
+
+  /**
+   * Helper to determine exact date boundaries for reporting periods
+   * Mock anchor date is 2026-08-19
+   */
+  public getReportDateBoundaries(
+    dateRange: ReportDateRange,
+    startDate?: string,
+    endDate?: string
+  ): { start: Date; end: Date; startStr: string; endStr: string } {
+    let start = new Date('2026-08-19T00:00:00.000Z');
+    let end = new Date('2026-08-19T23:59:59.999Z');
+
+    if (dateRange === 'today') {
+      start = new Date('2026-08-19T00:00:00.000Z');
+      end = new Date('2026-08-19T23:59:59.999Z');
+    } else if (dateRange === 'this_week') {
+      // 7 days ending 19 Aug 2026
+      start = new Date('2026-08-13T00:00:00.000Z');
+      end = new Date('2026-08-19T23:59:59.999Z');
+    } else if (dateRange === 'this_month') {
+      // 1 Aug 2026 to 19 Aug 2026
+      start = new Date('2026-08-01T00:00:00.000Z');
+      end = new Date('2026-08-19T23:59:59.999Z');
+    } else if (dateRange === 'last_month') {
+      // 1 Jul 2026 to 31 Jul 2026
+      start = new Date('2026-07-01T00:00:00.000Z');
+      end = new Date('2026-07-31T23:59:59.999Z');
+    } else if (dateRange === 'this_year') {
+      // 1 Jan 2026 to 19 Aug 2026
+      start = new Date('2026-01-01T00:00:00.000Z');
+      end = new Date('2026-08-19T23:59:59.999Z');
+    } else if (dateRange === 'custom') {
+      if (startDate) {
+        start = new Date(`${startDate}T00:00:00.000Z`);
+      }
+      if (endDate) {
+        end = new Date(`${endDate}T23:59:59.999Z`);
+      }
+    }
+
+    const startStr = start.toISOString().split('T')[0];
+    const endStr = end.toISOString().split('T')[0];
+    return { start, end, startStr, endStr };
+  }
+
+  /**
+   * 1. Financial Summary Report
+   */
+  public async getFinancialSummaryReport(
+    params: ReportFilterParams,
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<FinancialSummaryReport>> {
+    await this.simulateNetwork();
+
+    const { start, end, startStr, endStr } = this.getReportDateBoundaries(
+      params.dateRange,
+      params.startDate,
+      params.endDate
+    );
+
+    const isAdmin = role === 'admin';
+
+    // 1. Filter Sales within period
+    const periodSales = this.sales.filter((sale) => {
+      const saleDate = new Date(sale.rawDate || sale.createdAt || sale.saleDate);
+      if (saleDate < start || saleDate > end) return false;
+
+      if (params.paymentMethod && params.paymentMethod !== 'all') {
+        if (sale.paymentMethod !== params.paymentMethod) return false;
+      }
+
+      if (params.productId || params.companyId || params.categoryId) {
+        const matchesProduct = sale.items.some((it) => {
+          if (params.productId && it.productId !== params.productId) return false;
+          if (params.companyId && it.companyId !== params.companyId) return false;
+          if (params.categoryId) {
+            const prod = this.products.find((p) => p.id === it.productId);
+            if (!prod || prod.categoryId !== params.categoryId) return false;
+          }
+          return true;
+        });
+        if (!matchesProduct) return false;
+      }
+
+      return true;
+    });
+
+    // 2. Filter Stock Purchases within period (Completed only)
+    const periodPurchases = this.purchases.filter((purchase) => {
+      if (purchase.status !== 'COMPLETED') return false;
+      const purDate = new Date(purchase.rawDate || purchase.createdAt || purchase.purchaseDate);
+      if (purDate < start || purDate > end) return false;
+
+      if (params.companyId) {
+        const matchesComp = purchase.items.some((it) => it.companyId === params.companyId);
+        if (!matchesComp) return false;
+      }
+      if (params.productId) {
+        const matchesProd = purchase.items.some((it) => it.productId === params.productId);
+        if (!matchesProd) return false;
+      }
+
+      return true;
+    });
+
+    // 3. Filter Debt Payments within period
+    const periodDebtPayments = this.debtPayments.filter((dp) => {
+      const dpDate = new Date(dp.rawDate || dp.createdAt || dp.paymentDate);
+      return dpDate >= start && dpDate <= end;
+    });
+
+    // 4. Filter Operating Expenses within period
+    const periodExpenses = this.expenses.filter((exp) => {
+      const expDate = new Date(exp.rawDate || exp.createdAt || exp.date);
+      return expDate >= start && expDate <= end;
+    });
+
+    // Calculations
+    const totalSales = periodSales.reduce((sum, s) => sum + s.totalAmount, 0);
+
+    // Profit is calculated from snapshot prices at time of sale: SUM((selling - base) * qty) - discount
+    let totalProfit = 0;
+    if (isAdmin) {
+      totalProfit = periodSales.reduce((sum, s) => {
+        const saleGrossProfit = s.items.reduce(
+          (itemSum, it) => itemSum + ((it.sellingPrice || 0) - (it.basePrice || 0)) * it.quantity,
+          0
+        );
+        return sum + Math.max(0, saleGrossProfit - (s.discount || 0));
+      }, 0);
+    }
+
+    const profitMarginPercentage = totalSales > 0 ? (totalProfit / totalSales) * 100 : 0;
+    const totalStockPurchases = periodPurchases.reduce((sum, p) => sum + p.totalAmount, 0);
+
+    // Money In: completed sale cash/transfer/pos payments + customer debt repayments
+    const salesCashReceived = periodSales.reduce((sum, s) => sum + (s.amountPaid || 0), 0);
+    const debtPaymentsReceived = periodDebtPayments.reduce((sum, dp) => sum + dp.amountPaid, 0);
+    const moneyIn = salesCashReceived + debtPaymentsReceived;
+
+    // Money Out: stock purchase payments + approved operating expenses
+    const operatingExpensesTotal = periodExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const moneyOut = totalStockPurchases + operatingExpensesTotal;
+
+    // Net Money Movement (Strictly NOT called profit)
+    const netMoneyMovement = moneyIn - moneyOut;
+
+    // Outstanding Debt across all active customers
+    const outstandingDebt = this.customers.reduce(
+      (sum, c) => sum + (c.outstandingDebt || 0),
+      0
+    );
+
+    const totalTransactions = periodSales.length;
+    const totalUnitsSold = periodSales.reduce(
+      (sum, s) => sum + s.items.reduce((iSum, it) => iSum + it.quantity, 0),
+      0
+    );
+    const totalUnitsPurchased = periodPurchases.reduce(
+      (sum, p) => sum + (p.totalUnits || p.items.reduce((iSum, it) => iSum + it.quantity, 0)),
+      0
+    );
+    const averageSaleValue = totalTransactions > 0 ? totalSales / totalTransactions : 0;
+
+    return {
+      success: true,
+      data: {
+        totalSales,
+        totalProfit: isAdmin ? totalProfit : 0,
+        profitMarginPercentage: isAdmin ? Math.round(profitMarginPercentage * 10) / 10 : 0,
+        totalStockPurchases,
+        moneyIn,
+        moneyOut,
+        netMoneyMovement,
+        outstandingDebt,
+        totalTransactions,
+        totalUnitsSold,
+        totalUnitsPurchased,
+        averageSaleValue: Math.round(averageSaleValue),
+        timeframe: params.dateRange,
+        startDate: startStr,
+        endDate: endStr,
+      },
+      message: 'Financial summary report generated successfully.',
+    };
+  }
+
+  /**
+   * 2. Sales Report Data
+   */
+  public async getSalesReport(
+    params: ReportFilterParams,
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<SalesReportData>> {
+    await this.simulateNetwork();
+
+    const { start, end } = this.getReportDateBoundaries(
+      params.dateRange,
+      params.startDate,
+      params.endDate
+    );
+    const isAdmin = role === 'admin';
+
+    // Filter Sales
+    const filteredSales = this.sales.filter((sale) => {
+      const saleDate = new Date(sale.rawDate || sale.createdAt || sale.saleDate);
+      if (saleDate < start || saleDate > end) return false;
+
+      if (params.paymentMethod && params.paymentMethod !== 'all') {
+        if (sale.paymentMethod !== params.paymentMethod) return false;
+      }
+
+      if (params.productId || params.companyId || params.categoryId) {
+        const matches = sale.items.some((it) => {
+          if (params.productId && it.productId !== params.productId) return false;
+          if (params.companyId && it.companyId !== params.companyId) return false;
+          if (params.categoryId) {
+            const prod = this.products.find((p) => p.id === it.productId);
+            if (!prod || prod.categoryId !== params.categoryId) return false;
+          }
+          return true;
+        });
+        if (!matches) return false;
+      }
+      return true;
+    });
+
+    const totalSales = filteredSales.reduce((sum, s) => sum + s.totalAmount, 0);
+    let totalProfit = 0;
+    if (isAdmin) {
+      totalProfit = filteredSales.reduce((sum, s) => {
+        const gp = s.items.reduce(
+          (iSum, it) => iSum + ((it.sellingPrice || 0) - (it.basePrice || 0)) * it.quantity,
+          0
+        );
+        return sum + Math.max(0, gp - (s.discount || 0));
+      }, 0);
+    }
+    const transactionsCount = filteredSales.length;
+    const totalItemsSold = filteredSales.reduce(
+      (sum, s) => sum + s.items.reduce((iSum, it) => iSum + it.quantity, 0),
+      0
+    );
+    const averageSaleValue = transactionsCount > 0 ? totalSales / transactionsCount : 0;
+    const profitMarginPercentage = totalSales > 0 ? (totalProfit / totalSales) * 100 : 0;
+
+    // Daily Trend grouping
+    const trendMap = new Map<string, DailyReportTrendPoint>();
+    // Pre-populate date range days (if <= 31 days)
+    const cursor = new Date(start);
+    while (cursor <= end && trendMap.size < 40) {
+      const dStr = cursor.toISOString().split('T')[0];
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const label = `${cursor.getUTCDate()} ${monthNames[cursor.getUTCMonth()]}`;
+      trendMap.set(dStr, {
+        date: dStr,
+        label,
+        sales: 0,
+        profit: 0,
+        purchases: 0,
+        moneyIn: 0,
+        moneyOut: 0,
+        unitsSold: 0,
+        transactionsCount: 0,
+      });
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+
+    filteredSales.forEach((s) => {
+      const sDateStr = (s.rawDate || s.createdAt || s.saleDate).split('T')[0];
+      let point = trendMap.get(sDateStr);
+      if (!point) {
+        point = {
+          date: sDateStr,
+          label: sDateStr,
+          sales: 0,
+          profit: 0,
+          purchases: 0,
+          moneyIn: 0,
+          moneyOut: 0,
+          unitsSold: 0,
+          transactionsCount: 0,
+        };
+        trendMap.set(sDateStr, point);
+      }
+      point.sales += s.totalAmount;
+      if (isAdmin) {
+        const pProfit = s.items.reduce(
+          (acc, it) => acc + ((it.sellingPrice || 0) - (it.basePrice || 0)) * it.quantity,
+          0
+        );
+        point.profit += Math.max(0, pProfit - (s.discount || 0));
+      }
+      point.moneyIn += s.amountPaid || 0;
+      point.unitsSold += s.items.reduce((acc, it) => acc + it.quantity, 0);
+      point.transactionsCount += 1;
+    });
+
+    const trends = Array.from(trendMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+    // Sales by Payment Method
+    const methodMap = new Map<string, { amount: number; count: number }>();
+    filteredSales.forEach((s) => {
+      const m = s.paymentMethod || 'CASH';
+      const cur = methodMap.get(m) || { amount: 0, count: 0 };
+      cur.amount += s.totalAmount;
+      cur.count += 1;
+      methodMap.set(m, cur);
+    });
+
+    const salesByPaymentMethod = Array.from(methodMap.entries()).map(([method, val]) => ({
+      method,
+      amount: val.amount,
+      count: val.count,
+      percentage: totalSales > 0 ? Math.round((val.amount / totalSales) * 1000) / 10 : 0,
+    }));
+
+    // Sales by Category
+    const categoryMap = new Map<string, { name: string; units: number; revenue: number; profit: number }>();
+    this.categories.forEach((cat) => {
+      categoryMap.set(cat.id, { name: cat.name, units: 0, revenue: 0, profit: 0 });
+    });
+
+    filteredSales.forEach((s) => {
+      s.items.forEach((it) => {
+        const prod = this.products.find((p) => p.id === it.productId);
+        const catId = prod ? prod.categoryId : 'uncategorized';
+        const cat = categoryMap.get(catId) || {
+          name: prod ? prod.categoryName || 'Other' : 'Other',
+          units: 0,
+          revenue: 0,
+          profit: 0,
+        };
+        cat.units += it.quantity;
+        cat.revenue += it.subtotal;
+        if (isAdmin) {
+          cat.profit += ((it.sellingPrice || 0) - (it.basePrice || 0)) * it.quantity;
+        }
+        categoryMap.set(catId, cat);
+      });
+    });
+
+    const salesByCategory = Array.from(categoryMap.entries())
+      .filter(([_, val]) => val.units > 0 || val.revenue > 0)
+      .map(([catId, val]) => ({
+        categoryId: catId,
+        categoryName: val.name,
+        unitsSold: val.units,
+        revenue: val.revenue,
+        profit: isAdmin ? val.profit : 0,
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    // Sales by Company
+    const companyMap = new Map<string, { name: string; units: number; revenue: number; profit: number }>();
+    this.companies.forEach((comp) => {
+      companyMap.set(comp.id, { name: comp.name, units: 0, revenue: 0, profit: 0 });
+    });
+
+    filteredSales.forEach((s) => {
+      s.items.forEach((it) => {
+        const compId = it.companyId || 'unknown';
+        const comp = companyMap.get(compId) || {
+          name: it.companyName || 'Unknown Manufacturer',
+          units: 0,
+          revenue: 0,
+          profit: 0,
+        };
+        comp.units += it.quantity;
+        comp.revenue += it.subtotal;
+        if (isAdmin) {
+          comp.profit += ((it.sellingPrice || 0) - (it.basePrice || 0)) * it.quantity;
+        }
+        companyMap.set(compId, comp);
+      });
+    });
+
+    const salesByCompany = Array.from(companyMap.entries())
+      .filter(([_, val]) => val.units > 0 || val.revenue > 0)
+      .map(([compId, val]) => ({
+        companyId: compId,
+        companyName: val.name,
+        unitsSold: val.units,
+        revenue: val.revenue,
+        profit: isAdmin ? val.profit : 0,
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    return {
+      success: true,
+      data: {
+        summary: {
+          totalSales,
+          totalProfit: isAdmin ? totalProfit : 0,
+          profitMarginPercentage: isAdmin ? Math.round(profitMarginPercentage * 10) / 10 : 0,
+          transactionsCount,
+          averageSaleValue: Math.round(averageSaleValue),
+          totalItemsSold,
+        },
+        trends,
+        salesByPaymentMethod,
+        salesByCategory,
+        salesByCompany,
+      },
+      message: 'Sales report loaded.',
+    };
+  }
+
+  /**
+   * 3. Profit Report Data (Admin-Only protected)
+   */
+  public async getProfitReport(
+    params: ReportFilterParams,
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<ProfitReportData>> {
+    await this.simulateNetwork();
+
+    const { start, end } = this.getReportDateBoundaries(
+      params.dateRange,
+      params.startDate,
+      params.endDate
+    );
+    const isAdmin = role === 'admin';
+
+    const filteredSales = this.sales.filter((sale) => {
+      const sDate = new Date(sale.rawDate || sale.createdAt || sale.saleDate);
+      if (sDate < start || sDate > end) return false;
+      if (params.paymentMethod && params.paymentMethod !== 'all' && sale.paymentMethod !== params.paymentMethod) return false;
+      return true;
+    });
+
+    let totalRevenue = 0;
+    let totalCost = 0;
+    let grossProfit = 0;
+    let totalSoldUnits = 0;
+
+    const prodProfitMap = new Map<string, {
+      productId: string;
+      productName: string;
+      genericName: string;
+      companyName: string;
+      unitsSold: number;
+      revenue: number;
+      cost: number;
+      profit: number;
+    }>();
+
+    const catProfitMap = new Map<string, {
+      name: string;
+      revenue: number;
+      cost: number;
+      profit: number;
+    }>();
+
+    const compProfitMap = new Map<string, {
+      name: string;
+      revenue: number;
+      cost: number;
+      profit: number;
+    }>();
+
+    filteredSales.forEach((s) => {
+      totalRevenue += s.totalAmount;
+      s.items.forEach((it) => {
+        const itemQty = it.quantity;
+        const itemRev = it.subtotal;
+        const itemCost = (it.basePrice || 0) * itemQty;
+        const itemProf = isAdmin ? itemRev - itemCost : 0;
+
+        totalSoldUnits += itemQty;
+        totalCost += itemCost;
+        grossProfit += itemProf;
+
+        // Product key by variant to distinguish Paracetamol DANA vs EMZOR
+        const pKey = it.productVariantId || `${it.productId}-${it.companyId}`;
+        const pCur = prodProfitMap.get(pKey) || {
+          productId: it.productId,
+          productName: it.productName,
+          genericName: it.genericName || '',
+          companyName: it.companyName || '',
+          unitsSold: 0,
+          revenue: 0,
+          cost: 0,
+          profit: 0,
+        };
+        pCur.unitsSold += itemQty;
+        pCur.revenue += itemRev;
+        pCur.cost += itemCost;
+        pCur.profit += itemProf;
+        prodProfitMap.set(pKey, pCur);
+
+        // Category
+        const prod = this.products.find((p) => p.id === it.productId);
+        const catId = prod ? prod.categoryId : 'other';
+        const catCur = catProfitMap.get(catId) || {
+          name: prod ? prod.categoryName || 'Other' : 'Other',
+          revenue: 0,
+          cost: 0,
+          profit: 0,
+        };
+        catCur.revenue += itemRev;
+        catCur.cost += itemCost;
+        catCur.profit += itemProf;
+        catProfitMap.set(catId, catCur);
+
+        // Company
+        const compId = it.companyId || 'other';
+        const compCur = compProfitMap.get(compId) || {
+          name: it.companyName || 'Other',
+          revenue: 0,
+          cost: 0,
+          profit: 0,
+        };
+        compCur.revenue += itemRev;
+        compCur.cost += itemCost;
+        compCur.profit += itemProf;
+        compProfitMap.set(compId, compCur);
+      });
+    });
+
+    const profitMarginPercentage = totalRevenue > 0 && isAdmin ? (grossProfit / totalRevenue) * 100 : 0;
+
+    const profitByCategory = Array.from(catProfitMap.entries()).map(([catId, val]) => ({
+      categoryId: catId,
+      categoryName: val.name,
+      revenue: val.revenue,
+      cost: isAdmin ? val.cost : 0,
+      profit: isAdmin ? val.profit : 0,
+      marginPct: val.revenue > 0 && isAdmin ? Math.round((val.profit / val.revenue) * 1000) / 10 : 0,
+    })).sort((a, b) => b.profit - a.profit);
+
+    const profitByCompany = Array.from(compProfitMap.entries()).map(([compId, val]) => ({
+      companyId: compId,
+      companyName: val.name,
+      revenue: val.revenue,
+      cost: isAdmin ? val.cost : 0,
+      profit: isAdmin ? val.profit : 0,
+      marginPct: val.revenue > 0 && isAdmin ? Math.round((val.profit / val.revenue) * 1000) / 10 : 0,
+    })).sort((a, b) => b.profit - a.profit);
+
+    const topProfitableProducts = Array.from(prodProfitMap.values()).map((val) => ({
+      productId: val.productId,
+      productName: val.productName,
+      genericName: val.genericName,
+      companyName: val.companyName,
+      unitsSold: val.unitsSold,
+      revenue: val.revenue,
+      cost: isAdmin ? val.cost : 0,
+      profit: isAdmin ? val.profit : 0,
+      marginPct: val.revenue > 0 && isAdmin ? Math.round((val.profit / val.revenue) * 1000) / 10 : 0,
+    })).sort((a, b) => b.profit - a.profit);
+
+    // Build trend
+    const salesRes = await this.getSalesReport(params, role);
+
+    return {
+      success: true,
+      data: {
+        summary: {
+          totalRevenue,
+          totalCost: isAdmin ? totalCost : 0,
+          grossProfit: isAdmin ? grossProfit : 0,
+          profitMarginPercentage: isAdmin ? Math.round(profitMarginPercentage * 10) / 10 : 0,
+          totalSoldUnits,
+        },
+        trends: salesRes.data.trends,
+        profitByCategory,
+        profitByCompany,
+        topProfitableProducts,
+      },
+      message: 'Profit report loaded successfully.',
+    };
+  }
+
+  /**
+   * 4. Stock Purchase Report Data
+   */
+  public async getStockPurchaseReport(
+    params: ReportFilterParams,
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<StockPurchaseReportData>> {
+    await this.simulateNetwork();
+
+    const { start, end } = this.getReportDateBoundaries(
+      params.dateRange,
+      params.startDate,
+      params.endDate
+    );
+
+    const periodPurchases = this.purchases.filter((p) => {
+      if (p.status !== 'COMPLETED') return false;
+      const pDate = new Date(p.rawDate || p.createdAt || p.purchaseDate);
+      if (pDate < start || pDate > end) return false;
+      if (params.companyId) {
+        const match = p.items.some((it) => it.companyId === params.companyId);
+        if (!match) return false;
+      }
+      return true;
+    });
+
+    const totalSpent = periodPurchases.reduce((sum, p) => sum + p.totalAmount, 0);
+    const totalPurchasesCount = periodPurchases.length;
+    const totalUnitsPurchased = periodPurchases.reduce(
+      (sum, p) => sum + (p.totalUnits || p.items.reduce((iSum, it) => iSum + it.quantity, 0)),
+      0
+    );
+    const averagePurchaseValue = totalPurchasesCount > 0 ? totalSpent / totalPurchasesCount : 0;
+
+    // Company breakdown
+    const companyMap = new Map<string, { name: string; count: number; units: number; total: number }>();
+    this.companies.forEach((comp) => {
+      companyMap.set(comp.id, { name: comp.name, count: 0, units: 0, total: 0 });
+    });
+
+    const itemMap = new Map<string, {
+      productId: string;
+      productName: string;
+      genericName: string;
+      companyName: string;
+      units: number;
+      total: number;
+    }>();
+
+    const trendMap = new Map<string, { date: string; label: string; amount: number; units: number; count: number }>();
+
+    periodPurchases.forEach((p) => {
+      const pDateStr = (p.rawDate || p.createdAt || p.purchaseDate).split('T')[0];
+      const curTrend = trendMap.get(pDateStr) || {
+        date: pDateStr,
+        label: pDateStr,
+        amount: 0,
+        units: 0,
+        count: 0,
+      };
+      curTrend.amount += p.totalAmount;
+      curTrend.units += p.totalUnits || 0;
+      curTrend.count += 1;
+      trendMap.set(pDateStr, curTrend);
+
+      p.items.forEach((it) => {
+        const cId = it.companyId || 'other';
+        const cCur = companyMap.get(cId) || {
+          name: it.companyName || 'Other',
+          count: 0,
+          units: 0,
+          total: 0,
+        };
+        cCur.count += 1;
+        cCur.units += it.quantity;
+        cCur.total += it.subtotal;
+        companyMap.set(cId, cCur);
+
+        const itKey = `${it.productId}-${it.companyId}`;
+        const itCur = itemMap.get(itKey) || {
+          productId: it.productId,
+          productName: it.productName,
+          genericName: it.genericName || '',
+          companyName: it.companyName || '',
+          units: 0,
+          total: 0,
+        };
+        itCur.units += it.quantity;
+        itCur.total += it.subtotal;
+        itemMap.set(itKey, itCur);
+      });
+    });
+
+    const purchasesByCompany = Array.from(companyMap.entries())
+      .filter(([_, val]) => val.total > 0 || val.units > 0)
+      .map(([cId, val]) => ({
+        companyId: cId,
+        companyName: val.name,
+        purchasesCount: val.count,
+        unitsPurchased: val.units,
+        totalAmount: val.total,
+        percentage: totalSpent > 0 ? Math.round((val.total / totalSpent) * 1000) / 10 : 0,
+      }))
+      .sort((a, b) => b.totalAmount - a.totalAmount);
+
+    const topPurchasedProducts = Array.from(itemMap.values())
+      .map((val) => ({
+        productId: val.productId,
+        productName: val.productName,
+        genericName: val.genericName,
+        companyName: val.companyName,
+        unitsPurchased: val.units,
+        totalSpent: val.total,
+        unitCost: val.units > 0 ? Math.round(val.total / val.units) : 0,
+      }))
+      .sort((a, b) => b.totalSpent - a.totalSpent);
+
+    const trends = Array.from(trendMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+    return {
+      success: true,
+      data: {
+        summary: {
+          totalSpent,
+          totalPurchasesCount,
+          totalUnitsPurchased,
+          averagePurchaseValue: Math.round(averagePurchaseValue),
+        },
+        trends,
+        purchasesByCompany,
+        topPurchasedProducts,
+      },
+      message: 'Stock purchase report loaded.',
+    };
+  }
+
+  /**
+   * 5. Financial Movement Report Data (Money In vs Money Out)
+   */
+  public async getFinancialMovementReport(
+    params: ReportFilterParams,
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<FinancialMovementReportData>> {
+    await this.simulateNetwork();
+
+    const { start, end } = this.getReportDateBoundaries(
+      params.dateRange,
+      params.startDate,
+      params.endDate
+    );
+
+    // Money In
+    const periodSales = this.sales.filter((s) => {
+      const sDate = new Date(s.rawDate || s.createdAt || s.saleDate);
+      return sDate >= start && sDate <= end;
+    });
+    const periodDebtPayments = this.debtPayments.filter((dp) => {
+      const dpDate = new Date(dp.rawDate || dp.createdAt || dp.paymentDate);
+      return dpDate >= start && dpDate <= end;
+    });
+
+    const salesIncome = periodSales.reduce((sum, s) => sum + (s.amountPaid || 0), 0);
+    const debtPaymentsIncome = periodDebtPayments.reduce((sum, dp) => sum + dp.amountPaid, 0);
+    const moneyIn = salesIncome + debtPaymentsIncome;
+
+    // Money Out
+    const periodPurchases = this.purchases.filter((p) => {
+      if (p.status !== 'COMPLETED') return false;
+      const pDate = new Date(p.rawDate || p.createdAt || p.purchaseDate);
+      return pDate >= start && pDate <= end;
+    });
+    const periodExpenses = this.expenses.filter((exp) => {
+      const expDate = new Date(exp.rawDate || exp.createdAt || exp.date);
+      return expDate >= start && expDate <= end;
+    });
+
+    const purchasesExpense = periodPurchases.reduce((sum, p) => sum + p.totalAmount, 0);
+    const operatingExpenses = periodExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const moneyOut = purchasesExpense + operatingExpenses;
+
+    const netMovement = moneyIn - moneyOut; // Strictly NOT called profit
+
+    // Breakdown Money In
+    const moneyInBreakdown = [
+      {
+        source: 'POS & Counter Sales Receipts',
+        amount: salesIncome,
+        count: periodSales.length,
+        percentage: moneyIn > 0 ? Math.round((salesIncome / moneyIn) * 1000) / 10 : 0,
+      },
+      {
+        source: 'Customer Debt Repayments',
+        amount: debtPaymentsIncome,
+        count: periodDebtPayments.length,
+        percentage: moneyIn > 0 ? Math.round((debtPaymentsIncome / moneyIn) * 1000) / 10 : 0,
+      },
+    ];
+
+    // Breakdown Money Out
+    const expenseByCategoryMap = new Map<string, { amount: number; count: number }>();
+    expenseByCategoryMap.set('Stock Purchases (Inventory Procurement)', {
+      amount: purchasesExpense,
+      count: periodPurchases.length,
+    });
+
+    periodExpenses.forEach((exp) => {
+      const c = exp.category;
+      const cur = expenseByCategoryMap.get(c) || { amount: 0, count: 0 };
+      cur.amount += exp.amount;
+      cur.count += 1;
+      expenseByCategoryMap.set(c, cur);
+    });
+
+    const moneyOutBreakdown = Array.from(expenseByCategoryMap.entries()).map(([cat, val]) => ({
+      category: cat,
+      amount: val.amount,
+      count: val.count,
+      percentage: moneyOut > 0 ? Math.round((val.amount / moneyOut) * 1000) / 10 : 0,
+    })).sort((a, b) => b.amount - a.amount);
+
+    // Daily Trend
+    const dailyMap = new Map<string, { date: string; label: string; moneyIn: number; moneyOut: number; netMovement: number }>();
+
+    periodSales.forEach((s) => {
+      const d = (s.rawDate || s.createdAt || s.saleDate).split('T')[0];
+      const cur = dailyMap.get(d) || { date: d, label: d, moneyIn: 0, moneyOut: 0, netMovement: 0 };
+      cur.moneyIn += s.amountPaid || 0;
+      cur.netMovement += s.amountPaid || 0;
+      dailyMap.set(d, cur);
+    });
+
+    periodDebtPayments.forEach((dp) => {
+      const d = (dp.rawDate || dp.createdAt || dp.paymentDate).split('T')[0];
+      const cur = dailyMap.get(d) || { date: d, label: d, moneyIn: 0, moneyOut: 0, netMovement: 0 };
+      cur.moneyIn += dp.amountPaid;
+      cur.netMovement += dp.amountPaid;
+      dailyMap.set(d, cur);
+    });
+
+    periodPurchases.forEach((p) => {
+      const d = (p.rawDate || p.createdAt || p.purchaseDate).split('T')[0];
+      const cur = dailyMap.get(d) || { date: d, label: d, moneyIn: 0, moneyOut: 0, netMovement: 0 };
+      cur.moneyOut += p.totalAmount;
+      cur.netMovement -= p.totalAmount;
+      dailyMap.set(d, cur);
+    });
+
+    periodExpenses.forEach((exp) => {
+      const d = (exp.rawDate || exp.createdAt || exp.date).split('T')[0];
+      const cur = dailyMap.get(d) || { date: d, label: d, moneyIn: 0, moneyOut: 0, netMovement: 0 };
+      cur.moneyOut += exp.amount;
+      cur.netMovement -= exp.amount;
+      dailyMap.set(d, cur);
+    });
+
+    const trends = Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+    return {
+      success: true,
+      data: {
+        summary: {
+          moneyIn,
+          moneyOut,
+          netMovement,
+          salesIncome,
+          debtPaymentsIncome,
+          purchasesExpense,
+          operatingExpenses,
+        },
+        trends,
+        moneyInBreakdown,
+        moneyOutBreakdown,
+      },
+      message: 'Financial movement report loaded.',
+    };
+  }
+
+  /**
+   * 6. Product Performance Report Data
+   */
+  public async getProductPerformanceReport(
+    params: ReportFilterParams,
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<ProductPerformanceReportData>> {
+    await this.simulateNetwork();
+
+    const { start, end } = this.getReportDateBoundaries(
+      params.dateRange,
+      params.startDate,
+      params.endDate
+    );
+    const isAdmin = role === 'admin';
+
+    // 1. Gather all active variants from products
+    const variantMap = new Map<string, ProductPerformanceItem>();
+
+    this.products.forEach((p) => {
+      if (params.categoryId && p.categoryId !== params.categoryId) return;
+      if (params.productId && p.id !== params.productId) return;
+
+      const pVariants = this.variants.filter((v) => v.productId === p.id && v.status === 'Available');
+      pVariants.forEach((v) => {
+        if (params.companyId && v.companyId !== params.companyId) return;
+
+        const comp = this.companies.find((c) => c.id === v.companyId);
+        variantMap.set(v.id, {
+          productId: p.id,
+          variantId: v.id,
+          productName: p.name,
+          genericName: p.genericName,
+          dosage: p.dosage,
+          form: p.form,
+          companyId: v.companyId,
+          companyName: comp ? comp.name : 'Unknown',
+          categoryName: p.categoryName || 'General',
+          unitsSold: 0,
+          revenue: 0,
+          cost: 0,
+          profit: 0,
+          marginPct: 0,
+          currentStock: v.currentStock,
+          sellingPrice: v.sellingPrice,
+          basePrice: v.basePrice,
+          velocity: 'zero',
+        });
+      });
+    });
+
+    // 2. Accumulate sales in period
+    const filteredSales = this.sales.filter((s) => {
+      const sDate = new Date(s.rawDate || s.createdAt || s.saleDate);
+      return sDate >= start && sDate <= end;
+    });
+
+    filteredSales.forEach((s) => {
+      s.items.forEach((it) => {
+        let vItem = variantMap.get(it.productVariantId);
+        if (!vItem) {
+          // If variant wasn't initialized (e.g. filtered out or inactive), look up product
+          const prod = this.products.find((p) => p.id === it.productId);
+          if (params.categoryId && prod && prod.categoryId !== params.categoryId) return;
+          if (params.productId && it.productId !== params.productId) return;
+          if (params.companyId && it.companyId !== params.companyId) return;
+
+          vItem = {
+            productId: it.productId,
+            variantId: it.productVariantId,
+            productName: it.productName,
+            genericName: it.genericName || '',
+            dosage: it.dosage,
+            form: it.form,
+            companyId: it.companyId,
+            companyName: it.companyName,
+            categoryName: prod ? prod.categoryName || 'General' : 'General',
+            unitsSold: 0,
+            revenue: 0,
+            cost: 0,
+            profit: 0,
+            marginPct: 0,
+            currentStock: 0,
+            sellingPrice: it.sellingPrice,
+            basePrice: it.basePrice,
+            velocity: 'zero',
+          };
+          variantMap.set(it.productVariantId, vItem);
+        }
+
+        vItem.unitsSold += it.quantity;
+        vItem.revenue += it.subtotal;
+        const itemCost = (it.basePrice || 0) * it.quantity;
+        vItem.cost += itemCost;
+        if (isAdmin) {
+          vItem.profit += it.subtotal - itemCost;
+        }
+      });
+    });
+
+    // 3. Compute velocity & margin
+    let fastMovingCount = 0;
+    let slowMovingCount = 0;
+    let zeroMovementCount = 0;
+    let totalUnitsSold = 0;
+    let totalRevenue = 0;
+    let totalProfit = 0;
+
+    const items = Array.from(variantMap.values()).map((it) => {
+      it.marginPct = it.revenue > 0 && isAdmin ? Math.round((it.profit / it.revenue) * 1000) / 10 : 0;
+      if (!isAdmin) {
+        it.cost = 0;
+        it.profit = 0;
+        it.basePrice = 0;
+      }
+
+      if (it.unitsSold >= 50) {
+        it.velocity = 'fast';
+        fastMovingCount++;
+      } else if (it.unitsSold >= 10) {
+        it.velocity = 'moderate';
+      } else if (it.unitsSold > 0) {
+        it.velocity = 'slow';
+        slowMovingCount++;
+      } else {
+        it.velocity = 'zero';
+        zeroMovementCount++;
+      }
+
+      totalUnitsSold += it.unitsSold;
+      totalRevenue += it.revenue;
+      totalProfit += it.profit;
+
+      return it;
+    }).sort((a, b) => b.unitsSold - a.unitsSold || b.revenue - a.revenue);
+
+    return {
+      success: true,
+      data: {
+        items,
+        fastMovingCount,
+        slowMovingCount,
+        zeroMovementCount,
+        totalUnitsSold,
+        totalRevenue,
+        totalProfit: isAdmin ? totalProfit : 0,
+      },
+      message: 'Product performance report loaded.',
+    };
+  }
+
+  /**
+   * 7. Inventory Movement Report Data (Opening Stock + In - Out = Current Stock)
+   */
+  public async getInventoryMovementReport(
+    params: ReportFilterParams,
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<InventoryMovementReportData>> {
+    await this.simulateNetwork();
+
+    const { start, end } = this.getReportDateBoundaries(
+      params.dateRange,
+      params.startDate,
+      params.endDate
+    );
+
+    // Filter sales and purchases in period
+    const periodSales = this.sales.filter((s) => {
+      const d = new Date(s.rawDate || s.createdAt || s.saleDate);
+      return d >= start && d <= end;
+    });
+
+    const periodPurchases = this.purchases.filter((p) => {
+      if (p.status !== 'COMPLETED') return false;
+      const d = new Date(p.rawDate || p.createdAt || p.purchaseDate);
+      return d >= start && d <= end;
+    });
+
+    const periodAdjustments = this.movements.filter((m) => {
+      const d = new Date(m.createdAt || m.date);
+      return d >= start && d <= end && m.type === 'ADJUSTMENT';
+    });
+
+    let totalOpeningStock = 0;
+    let totalStockIn = 0;
+    let totalStockOut = 0;
+    let totalCurrentStock = 0;
+    let stockInPurchases = 0;
+    let stockInAdjustments = 0;
+    let stockOutSales = 0;
+    let stockOutAdjustments = 0;
+
+    const items: InventoryMovementReportItem[] = [];
+
+    this.products.forEach((p) => {
+      if (params.categoryId && p.categoryId !== params.categoryId) return;
+      if (params.productId && p.id !== params.productId) return;
+
+      const pVariants = this.variants.filter((v) => v.productId === p.id && v.status === 'Available');
+      pVariants.forEach((v) => {
+        if (params.companyId && v.companyId !== params.companyId) return;
+
+        const comp = this.companies.find((c) => c.id === v.companyId);
+
+        // Purchases in period for this variant
+        const purchasedUnits = periodPurchases.reduce((sum, pur) => {
+          const matchItem = pur.items.find((it) => it.variantId === v.id || (it.productId === p.id && it.companyId === v.companyId));
+          return sum + (matchItem ? matchItem.quantity : 0);
+        }, 0);
+
+        // Sales in period for this variant
+        const soldUnits = periodSales.reduce((sum, sale) => {
+          const matchItem = sale.items.find((it) => it.productVariantId === v.id || (it.productId === p.id && it.companyId === v.companyId));
+          return sum + (matchItem ? matchItem.quantity : 0);
+        }, 0);
+
+        // Adjustments in period
+        let adjIn = 0;
+        let adjOut = 0;
+        periodAdjustments.forEach((adj) => {
+          if (adj.productVariantId === v.id) {
+            if (adj.quantityDelta > 0) adjIn += adj.quantityDelta;
+            else adjOut += Math.abs(adj.quantityDelta);
+          }
+        });
+
+        const stockIn = purchasedUnits + adjIn;
+        const stockOut = soldUnits + adjOut;
+        const currentStock = v.currentStock;
+        // Mathematical identity: Opening Stock = Current Stock - Stock In + Stock Out
+        const openingStock = Math.max(0, currentStock - stockIn + stockOut);
+
+        totalOpeningStock += openingStock;
+        totalStockIn += stockIn;
+        totalStockOut += stockOut;
+        totalCurrentStock += currentStock;
+        stockInPurchases += purchasedUnits;
+        stockInAdjustments += adjIn;
+        stockOutSales += soldUnits;
+        stockOutAdjustments += adjOut;
+
+        const reorderLevel = p.reorderLevel || 10;
+        let status: 'In Stock' | 'Low Stock' | 'Out of Stock' = 'In Stock';
+        if (currentStock === 0) status = 'Out of Stock';
+        else if (currentStock <= reorderLevel) status = 'Low Stock';
+
+        items.push({
+          productId: p.id,
+          variantId: v.id,
+          productName: p.name,
+          genericName: p.genericName,
+          companyName: comp ? comp.name : 'Unknown',
+          dosage: p.dosage,
+          form: p.form,
+          openingStock,
+          stockIn,
+          stockOut,
+          currentStock,
+          reorderLevel,
+          status,
+        });
+      });
+    });
+
+    items.sort((a, b) => b.stockOut - a.stockOut || a.currentStock - b.currentStock);
+
+    return {
+      success: true,
+      data: {
+        items,
+        totalOpeningStock,
+        totalStockIn,
+        totalStockOut,
+        totalCurrentStock,
+        stockInPurchases,
+        stockInAdjustments,
+        stockOutSales,
+        stockOutAdjustments,
+      },
+      message: 'Inventory movement report loaded.',
+    };
+  }
+
+  /**
+   * 8. Customer Debt Movement Report Data
+   */
+  public async getCustomerDebtReport(
+    params: ReportFilterParams,
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<DebtMovementReportData>> {
+    await this.simulateNetwork();
+
+    const { start, end } = this.getReportDateBoundaries(
+      params.dateRange,
+      params.startDate,
+      params.endDate
+    );
+
+    // Sales creating debt in period
+    const debtSales = this.sales.filter((s) => {
+      if (s.outstandingAmount <= 0) return false;
+      const d = new Date(s.rawDate || s.createdAt || s.saleDate);
+      return d >= start && d <= end;
+    });
+
+    // Debt repayments in period
+    const periodPayments = this.debtPayments.filter((dp) => {
+      const d = new Date(dp.rawDate || dp.createdAt || dp.paymentDate);
+      return d >= start && d <= end;
+    });
+
+    const debtCreatedInPeriod = debtSales.reduce((sum, s) => sum + s.outstandingAmount, 0);
+    const debtPaymentsInPeriod = periodPayments.reduce((sum, dp) => sum + dp.amountPaid, 0);
+    const totalOutstandingDebt = this.customers.reduce((sum, c) => sum + (c.outstandingDebt || 0), 0);
+    const netDebtChange = debtCreatedInPeriod - debtPaymentsInPeriod;
+
+    // Debtors breakdown
+    const debtors = this.customers
+      .filter((c) => (c.outstandingDebt || 0) > 0 || c.totalPurchases > 0)
+      .map((c) => {
+        // Debt created in period for this customer
+        const custDebtCreated = debtSales
+          .filter((s) => s.customerId === c.id)
+          .reduce((sum, s) => sum + s.outstandingAmount, 0);
+
+        // Debt paid in period for this customer
+        const custDebtPaid = periodPayments
+          .filter((dp) => dp.customerId === c.id)
+          .reduce((sum, dp) => sum + dp.amountPaid, 0);
+
+        // Find last payment date
+        const cPayments = this.debtPayments
+          .filter((dp) => dp.customerId === c.id)
+          .sort((a, b) => (b.rawDate || b.paymentDate).localeCompare(a.rawDate || a.paymentDate));
+
+        return {
+          customerId: c.id,
+          name: c.name,
+          phone: c.phone,
+          currentDebt: c.outstandingDebt || 0,
+          totalPurchasesValue: c.totalPurchases || 0,
+          debtCreatedInPeriod: custDebtCreated,
+          debtPaidInPeriod: custDebtPaid,
+          lastPaymentDate: cPayments.length > 0 ? cPayments[0].paymentDate : undefined,
+        };
+      })
+      .sort((a, b) => b.currentDebt - a.currentDebt);
+
+    const activeDebtorsCount = debtors.filter((d) => d.currentDebt > 0).length;
+
+    // Debt timeline
+    const timelineMap = new Map<string, { date: string; label: string; debtCreated: number; debtRecovered: number }>();
+
+    debtSales.forEach((s) => {
+      const d = (s.rawDate || s.createdAt || s.saleDate).split('T')[0];
+      const cur = timelineMap.get(d) || { date: d, label: d, debtCreated: 0, debtRecovered: 0 };
+      cur.debtCreated += s.outstandingAmount;
+      timelineMap.set(d, cur);
+    });
+
+    periodPayments.forEach((dp) => {
+      const d = (dp.rawDate || dp.createdAt || dp.paymentDate).split('T')[0];
+      const cur = timelineMap.get(d) || { date: d, label: d, debtCreated: 0, debtRecovered: 0 };
+      cur.debtRecovered += dp.amountPaid;
+      timelineMap.set(d, cur);
+    });
+
+    const trends = Array.from(timelineMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+    return {
+      success: true,
+      data: {
+        summary: {
+          totalOutstandingDebt,
+          debtCreatedInPeriod,
+          debtPaymentsInPeriod,
+          netDebtChange,
+          activeDebtorsCount,
+        },
+        debtors,
+        trends,
+      },
+      message: 'Debt movement report loaded.',
+    };
+  }
+
+  // ==========================================
   // Dev Debugging & Configuration Helpers
   // ==========================================
 
@@ -2401,6 +4870,8 @@ export class MockDatabaseRepository {
     this.customers = [...MOCK_CUSTOMERS];
     this.sales = [...MOCK_CUSTOMER_SALES];
     this.debtPayments = [...MOCK_CUSTOMER_DEBT_PAYMENTS];
+    this.purchases = [...MOCK_STOCK_PURCHASES];
+    this.expenses = [...MOCK_MANUAL_EXPENSES];
     this.config = { ...DEFAULT_CONFIG };
     this.save();
   }

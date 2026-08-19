@@ -89,6 +89,13 @@ class ApiCache {
   }
 
   /**
+   * Invalidate all keys starting with prefix
+   */
+  public invalidateByPrefix(prefix: string): void {
+    this.invalidatePattern(prefix);
+  }
+
+  /**
    * Invalidate all product queries (e.g. after product or variant creation/mutation)
    */
   public invalidateProducts(productId?: string): void {

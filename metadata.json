@@ -1,6 +1,6 @@
 {
   "name": "Stitch Pharmacy - Products Module",
-  "description": "Production-ready Pharmacy Management System with Products Core, Inventory Tracking, Customer & Debt Ledgers, and Sales History & Revenue Tracking with gross profit analysis and POS dispensing receipts.",
+  "description": "Production-ready Pharmacy Management System with Products Core, Inventory Tracking, Stock Purchases, Customer & Debt Ledgers, Sales History & POS, Accountability Audit Feed, and Financial & Movement Reports.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

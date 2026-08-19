@@ -31,6 +31,9 @@ import { ModulePlaceholder } from './components/common/ModulePlaceholder';
 import { InventoryModule } from './components/inventory/InventoryModule';
 import { CustomerModule } from './components/customers';
 import { SalesModule } from './components/sales';
+import { PurchasesModule } from './components/purchases';
+import { AccountabilityModule } from './components/accountability';
+import { ReportsModule } from './components/reports';
 import { WifiOff, Activity, RefreshCw } from 'lucide-react';
 import { productService } from './services/productService';
 
@@ -425,6 +428,35 @@ export default function App() {
                   setActiveNav('customers');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
+              />
+            ) : activeNav === 'stock-purchase' ? (
+              <PurchasesModule
+                role={currentRole}
+                onNavigateToInventory={() => {
+                  setActiveNav('inventory');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
+            ) : activeNav === 'accountability' ? (
+              <AccountabilityModule
+                role={currentRole}
+                onNavigateToSource={(type, referenceId) => {
+                  if (type === 'SALE') {
+                    setActiveNav('sales');
+                  } else if (type === 'DEBT_PAYMENT') {
+                    setActiveNav('customers');
+                  } else if (type === 'STOCK_PURCHASE') {
+                    setActiveNav('stock-purchase');
+                  }
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
+            ) : activeNav === 'reports' ? (
+              <ReportsModule
+                role={currentRole}
+                categories={categories}
+                companies={companies}
+                products={products}
               />
             ) : activeNav !== 'products' ? (
               <ModulePlaceholder

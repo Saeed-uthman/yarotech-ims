@@ -53,8 +53,6 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   onSuccess,
   role,
 }) => {
-  if (!isOpen) return null;
-
   // Cart & items
   const [cart, setCart] = useState<CartItem[]>([]);
   const [productSearch, setProductSearch] = useState('');
@@ -77,8 +75,9 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Fetch products and registered customers on mount
+  // Fetch products and registered customers on mount / when open
   useEffect(() => {
+    if (!isOpen) return;
     async function loadData() {
       setIsLoadingProducts(true);
       try {
@@ -95,7 +94,9 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
       }
     }
     loadData();
-  }, [role]);
+  }, [role, isOpen]);
+
+  if (!isOpen) return null;
 
   // Flatten all variants from products
   const flatVariants = availableProducts.flatMap((p) =>

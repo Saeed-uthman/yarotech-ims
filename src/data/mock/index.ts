@@ -6,3 +6,5 @@ export * from './inventoryMovements';
 export * from './customers';
 export * from './customerSales';
 export * from './customerDebtPayments';
+export * from './stockPurchases';
+export * from './manualExpenses';

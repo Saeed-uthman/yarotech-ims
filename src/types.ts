@@ -501,4 +501,486 @@ export interface DebtPaymentInput {
   recordedBy?: string;
 }
 
+// ==========================================
+// 10. Stock Purchase Module Entities & DTOs (Part 7)
+// ==========================================
+
+export type StockPurchaseStatus = 'COMPLETED' | 'CANCELLED';
+export type PurchasePaymentMethod = 'CASH' | 'TRANSFER' | 'POS';
+export type PurchaseDateRange = 'today' | 'this_week' | 'this_month' | 'overall' | 'custom';
+
+export interface PurchaseItemEntity {
+  id: string;
+  purchaseId?: string;
+  productVariantId: string;
+  productId: string;
+  productName: string;
+  genericName: string;
+  companyName: string;
+  dosage?: string;
+  form?: string;
+  quantity: number; // Whole number > 0
+  unitPurchasePrice: number; // Purchase / Base cost per unit in NGN > 0
+  subtotal: number; // quantity * unitPurchasePrice
+}
+
+export interface StockPurchase {
+  id: string; // e.g. "PUR-0001"
+  purchaseNumber: string; // e.g. "PUR-0001"
+  purchaseDate: string; // e.g. "19 Aug 2026, 09:30 AM"
+  rawDate: string; // ISO 8601 string for reliable date sorting & range filtering
+  recordedBy: string; // e.g. "Pharm. Abdullahi (Admin)"
+  totalAmount: number; // SUM of line item subtotals
+  paymentMethod: PurchasePaymentMethod; // CASH | TRANSFER | POS
+  status: StockPurchaseStatus; // COMPLETED | CANCELLED
+  note?: string;
+  items: PurchaseItemEntity[];
+  itemCount: number; // Unique product variants purchased
+  totalUnits: number; // Sum of all item quantities
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PurchaseFilterParams {
+  search: string;
+  dateRange: PurchaseDateRange;
+  startDate?: string;
+  endDate?: string;
+  paymentMethod: 'all' | PurchasePaymentMethod;
+  status: 'all' | StockPurchaseStatus;
+  sortBy: 'date' | 'total' | 'items' | 'purchaseNumber';
+  sortOrder: 'asc' | 'desc';
+  page: number;
+  limit: number;
+}
+
+export interface PurchaseSummaryKPIs {
+  totalSpent: number; // SUM(completed purchase totals)
+  totalPurchasesCount: number; // Count of all purchases
+  completedPurchasesCount: number; // Completed purchases
+  cancelledPurchasesCount: number; // Cancelled purchases
+  totalUnitsRestocked: number; // Sum of units added to inventory
+  averagePurchaseValue: number; // totalSpent / completedPurchasesCount
+  timeframe: PurchaseDateRange;
+}
+
+export interface PurchaseChartDataPoint {
+  label: string;
+  amountSpent: number;
+  units: number;
+  purchasesCount: number;
+  rawDate: string;
+}
+
+export interface CreatePurchaseItemInput {
+  productVariantId: string;
+  quantity: number; // Must be integer > 0
+  unitPurchasePrice: number; // Must be number > 0
+}
+
+export interface CreatePurchaseInput {
+  purchaseDate?: string;
+  paymentMethod: PurchasePaymentMethod;
+  items: CreatePurchaseItemInput[];
+  note?: string;
+  recordedBy?: string;
+}
+
+// ==========================================
+// 11. Accountability Module Entities & DTOs (Part 8)
+// ==========================================
+
+export type AccountabilityDirection = 'IN' | 'OUT';
+export type AccountabilityType = 'SALE' | 'DEBT_PAYMENT' | 'STOCK_PURCHASE' | 'OTHER_EXPENSE';
+export type ExpenseCategory = 'Transport' | 'Utilities' | 'Stationery' | 'Maintenance' | 'Other';
+export type AccountabilityPaymentMethod = 'CASH' | 'TRANSFER' | 'POS';
+export type AccountabilityDateRange = 'today' | 'this_week' | 'this_month' | 'overall' | 'custom';
+
+export interface AccountabilityItemDetail {
+  name: string;
+  genericName?: string;
+  company: string;
+  dosage?: string;
+  form?: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+}
+
+export interface AccountabilitySourceDetails {
+  itemCount?: number;
+  totalUnits?: number;
+  customerPhone?: string;
+  previousBalance?: number;
+  newBalance?: number;
+  items?: AccountabilityItemDetail[];
+  note?: string;
+}
+
+export interface AccountabilityTransaction {
+  id: string; // e.g. "ACC-00021"
+  transactionNumber: string; // e.g. "ACC-00021"
+  type: AccountabilityType; // SALE | DEBT_PAYMENT | STOCK_PURCHASE | OTHER_EXPENSE
+  direction: AccountabilityDirection; // IN | OUT
+  amount: number; // Monetary amount in NGN > 0
+  description: string; // Human-friendly summary
+  category: string; // "Sales Revenue" | "Debt Recovery" | "Stock Purchase" | ExpenseCategory
+  paymentMethod: AccountabilityPaymentMethod; // CASH | TRANSFER | POS
+  referenceType: AccountabilityType;
+  referenceId: string; // Source ID (e.g. "sale-050", "PUR-0028", "pay-001", "exp-001")
+  referenceNumber: string; // Source Reference # (e.g. "Sale #000150", "PUR-0028", "RCT-2026-0045", "EXP-2026-001")
+  customerName?: string;
+  customerId?: string | null;
+  recordedBy: string; // Staff/Admin who recorded it
+  note?: string;
+  date: string; // Formatted date string (e.g. "19 Aug 2026, 11:45 AM")
+  rawDate: string; // ISO 8601 string for reliable sorting/filtering
+  status?: 'COMPLETED' | 'CANCELLED';
+  createdAt: string;
+  updatedAt?: string;
+  sourceDetails?: AccountabilitySourceDetails;
+}
+
+export interface ManualExpense {
+  id: string; // e.g. "exp-001"
+  expenseNumber: string; // e.g. "EXP-2026-001"
+  description: string;
+  category: ExpenseCategory;
+  amount: number;
+  paymentMethod: AccountabilityPaymentMethod;
+  date: string; // Formatted display date
+  rawDate: string; // ISO string
+  note?: string;
+  recordedBy: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CreateExpenseInput {
+  description: string;
+  category: ExpenseCategory;
+  amount: number;
+  paymentMethod: AccountabilityPaymentMethod;
+  date?: string;
+  note?: string;
+  recordedBy?: string;
+}
+
+export interface AccountabilityFilterParams {
+  search: string;
+  dateRange: AccountabilityDateRange;
+  startDate?: string;
+  endDate?: string;
+  direction: 'all' | AccountabilityDirection;
+  type: 'all' | AccountabilityType;
+  category?: string;
+  sortBy: 'date' | 'amount' | 'type';
+  sortOrder: 'asc' | 'desc';
+  page: number;
+  limit: number;
+}
+
+export interface AccountabilitySummary {
+  moneyIn: number; // SUM(Amount where direction = IN)
+  moneyOut: number; // SUM(Amount where direction = OUT)
+  netMovement: number; // moneyIn - moneyOut (Strictly NOT called profit)
+  totalTransactionsCount: number;
+  salesIncome: number;
+  debtPaymentsIncome: number;
+  purchasesExpense: number;
+  otherExpensesExpense: number;
+  timeframe: AccountabilityDateRange;
+}
+
+export interface AccountabilityDateGroup {
+  dateLabel: string; // e.g. "TODAY", "YESTERDAY", "Monday, 17 Aug 2026"
+  rawDate: string;
+  transactions: AccountabilityTransaction[];
+  groupMoneyIn: number;
+  groupMoneyOut: number;
+  groupNet: number;
+}
+
+// ==========================================
+// 12. Financial & Movement Reports Types (Module 9)
+// ==========================================
+
+export type ReportDateRange =
+  | 'today'
+  | 'this_week'
+  | 'this_month'
+  | 'last_month'
+  | 'this_year'
+  | 'custom';
+
+export type ReportTab =
+  | 'overview'
+  | 'sales'
+  | 'profit'
+  | 'purchases'
+  | 'financial-movement'
+  | 'inventory-movement'
+  | 'product-performance'
+  | 'debt';
+
+export interface ReportFilterParams {
+  dateRange: ReportDateRange;
+  startDate?: string;
+  endDate?: string;
+  productId?: string;
+  companyId?: string;
+  categoryId?: string;
+  paymentMethod?: string;
+}
+
+export interface FinancialSummaryReport {
+  totalSales: number;
+  totalProfit: number;
+  profitMarginPercentage: number;
+  totalStockPurchases: number;
+  moneyIn: number;
+  moneyOut: number;
+  netMoneyMovement: number; // Strictly NOT called profit
+  outstandingDebt: number;
+  totalTransactions: number;
+  totalUnitsSold: number;
+  totalUnitsPurchased: number;
+  averageSaleValue: number;
+  timeframe: ReportDateRange;
+  startDate: string;
+  endDate: string;
+}
+
+export interface DailyReportTrendPoint {
+  date: string;
+  label: string;
+  sales: number;
+  profit: number;
+  purchases: number;
+  moneyIn: number;
+  moneyOut: number;
+  unitsSold: number;
+  transactionsCount: number;
+}
+
+export interface SalesReportData {
+  summary: {
+    totalSales: number;
+    totalProfit: number;
+    profitMarginPercentage: number;
+    transactionsCount: number;
+    averageSaleValue: number;
+    totalItemsSold: number;
+  };
+  trends: DailyReportTrendPoint[];
+  salesByPaymentMethod: {
+    method: string;
+    amount: number;
+    count: number;
+    percentage: number;
+  }[];
+  salesByCategory: {
+    categoryId: string;
+    categoryName: string;
+    unitsSold: number;
+    revenue: number;
+    profit: number;
+  }[];
+  salesByCompany: {
+    companyId: string;
+    companyName: string;
+    unitsSold: number;
+    revenue: number;
+    profit: number;
+  }[];
+}
+
+export interface ProfitReportData {
+  summary: {
+    totalRevenue: number;
+    totalCost: number;
+    grossProfit: number;
+    profitMarginPercentage: number;
+    totalSoldUnits: number;
+  };
+  trends: DailyReportTrendPoint[];
+  profitByCategory: {
+    categoryId: string;
+    categoryName: string;
+    revenue: number;
+    cost: number;
+    profit: number;
+    marginPct: number;
+  }[];
+  profitByCompany: {
+    companyId: string;
+    companyName: string;
+    revenue: number;
+    cost: number;
+    profit: number;
+    marginPct: number;
+  }[];
+  topProfitableProducts: {
+    productId: string;
+    productName: string;
+    genericName: string;
+    companyName: string;
+    unitsSold: number;
+    revenue: number;
+    cost: number;
+    profit: number;
+    marginPct: number;
+  }[];
+}
+
+export interface StockPurchaseReportData {
+  summary: {
+    totalSpent: number;
+    totalPurchasesCount: number;
+    totalUnitsPurchased: number;
+    averagePurchaseValue: number;
+  };
+  trends: {
+    date: string;
+    label: string;
+    amount: number;
+    units: number;
+    count: number;
+  }[];
+  purchasesByCompany: {
+    companyId: string;
+    companyName: string;
+    purchasesCount: number;
+    unitsPurchased: number;
+    totalAmount: number;
+    percentage: number;
+  }[];
+  topPurchasedProducts: {
+    productId: string;
+    productName: string;
+    genericName: string;
+    companyName: string;
+    unitsPurchased: number;
+    totalSpent: number;
+    unitCost: number;
+  }[];
+}
+
+export interface FinancialMovementReportData {
+  summary: {
+    moneyIn: number;
+    moneyOut: number;
+    netMovement: number; // Strictly NOT called profit
+    salesIncome: number;
+    debtPaymentsIncome: number;
+    purchasesExpense: number;
+    operatingExpenses: number;
+  };
+  trends: {
+    date: string;
+    label: string;
+    moneyIn: number;
+    moneyOut: number;
+    netMovement: number;
+  }[];
+  moneyInBreakdown: {
+    source: string;
+    amount: number;
+    count: number;
+    percentage: number;
+  }[];
+  moneyOutBreakdown: {
+    category: string;
+    amount: number;
+    count: number;
+    percentage: number;
+  }[];
+}
+
+export interface ProductPerformanceItem {
+  productId: string;
+  variantId: string;
+  productName: string;
+  genericName: string;
+  dosage?: string;
+  form?: string;
+  companyId: string;
+  companyName: string;
+  categoryName: string;
+  unitsSold: number;
+  revenue: number;
+  cost: number; // Admin only
+  profit: number; // Admin only
+  marginPct: number; // Admin only
+  currentStock: number;
+  sellingPrice: number;
+  basePrice: number;
+  velocity: 'fast' | 'moderate' | 'slow' | 'zero';
+}
+
+export interface ProductPerformanceReportData {
+  items: ProductPerformanceItem[];
+  fastMovingCount: number;
+  slowMovingCount: number;
+  zeroMovementCount: number;
+  totalUnitsSold: number;
+  totalRevenue: number;
+  totalProfit: number;
+}
+
+export interface InventoryMovementReportItem {
+  productId: string;
+  variantId: string;
+  productName: string;
+  genericName: string;
+  companyName: string;
+  dosage?: string;
+  form?: string;
+  openingStock: number;
+  stockIn: number; // purchases + positive adjustments
+  stockOut: number; // sales + negative adjustments
+  currentStock: number;
+  reorderLevel: number;
+  status: 'In Stock' | 'Low Stock' | 'Out of Stock';
+  lastMovementDate?: string;
+}
+
+export interface InventoryMovementReportData {
+  items: InventoryMovementReportItem[];
+  totalOpeningStock: number;
+  totalStockIn: number;
+  totalStockOut: number;
+  totalCurrentStock: number;
+  stockInPurchases: number;
+  stockInAdjustments: number;
+  stockOutSales: number;
+  stockOutAdjustments: number;
+}
+
+export interface DebtMovementReportData {
+  summary: {
+    totalOutstandingDebt: number;
+    debtCreatedInPeriod: number;
+    debtPaymentsInPeriod: number;
+    netDebtChange: number;
+    activeDebtorsCount: number;
+  };
+  debtors: {
+    customerId: string;
+    name: string;
+    phone: string;
+    currentDebt: number;
+    totalPurchasesValue: number;
+    debtCreatedInPeriod: number;
+    debtPaidInPeriod: number;
+    lastPaymentDate?: string;
+  }[];
+  trends: {
+    date: string;
+    label: string;
+    debtCreated: number;
+    debtRecovered: number;
+  }[];
+}
+
 
