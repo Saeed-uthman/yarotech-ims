@@ -96,6 +96,34 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
     loadData();
   }, [role, isOpen]);
 
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setCart([]);
+      setProductSearch('');
+      setCustomerType('walking');
+      setSelectedCustomerId('');
+      setCustomerSearch('');
+      setDiscount(0);
+      setPaymentMethod('CASH');
+      setAmountPaid('');
+      setNotes('');
+      setFormError(null);
+    }
+  }, [isOpen]);
+
+  // Calculations
+  const subtotal = cart.reduce((sum, item) => sum + item.sellingPrice * item.quantity, 0);
+  const numericDiscount = Math.max(0, Number(discount) || 0);
+  const grandTotal = Math.max(0, subtotal - numericDiscount);
+
+  // Set default amountPaid when grandTotal changes if not edited
+  useEffect(() => {
+    if (isOpen && (amountPaid === '' || Number(amountPaid) === 0)) {
+      setAmountPaid(String(grandTotal));
+    }
+  }, [grandTotal, isOpen, amountPaid]);
+
   if (!isOpen) return null;
 
   // Flatten all variants from products
@@ -116,18 +144,6 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
       variant.companyName.toLowerCase().includes(q)
     );
   });
-
-  // Calculations
-  const subtotal = cart.reduce((sum, item) => sum + item.sellingPrice * item.quantity, 0);
-  const numericDiscount = Math.max(0, Number(discount) || 0);
-  const grandTotal = Math.max(0, subtotal - numericDiscount);
-
-  // Set default amountPaid when grandTotal changes if not edited
-  useEffect(() => {
-    if (amountPaid === '' || Number(amountPaid) === 0) {
-      setAmountPaid(String(grandTotal));
-    }
-  }, [grandTotal]);
 
   const numericAmountPaid = amountPaid === '' ? grandTotal : Number(amountPaid);
   const outstandingBalance = Math.max(0, grandTotal - numericAmountPaid);

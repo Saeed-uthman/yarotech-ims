@@ -79,6 +79,11 @@ const MODULE_META: Record<string, { title: string; subtitle: string; icon: React
     subtitle: 'Cryptographically sealed audit trail and shift handovers.',
     icon: ShieldCheck,
   },
+  users: {
+    title: 'User Accounts & Admin Approvals',
+    subtitle: 'Manage staff registration requests, credentials, and access roles.',
+    icon: Users,
+  },
   settings: {
     title: 'System Preferences',
     subtitle: 'Pharmacy profiles, role permissions, and database backup.',

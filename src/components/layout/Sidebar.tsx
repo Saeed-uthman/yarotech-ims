@@ -13,9 +13,11 @@ import {
   LogOut, 
   UserCheck,
   User,
-  X
+  X,
+  UserCog
 } from 'lucide-react';
 import { UserRole } from '../../types';
+import { useAuth } from '../../hooks';
 
 export interface SidebarProps {
   currentRole: UserRole;
@@ -38,6 +40,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   pharmacyName = 'BrightCare Pharmacy',
   pharmacyLogo,
 }) => {
+  const { user, logout, pendingCount } = useAuth();
+
   const mainNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'products', label: 'Products', icon: Package, badge: 'Core' },
@@ -49,6 +53,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const operationsNavItems = [
+    ...(currentRole === 'admin'
+      ? [
+          {
+            id: 'users',
+            label: 'User Approvals',
+            icon: UserCog,
+            badge: pendingCount > 0 ? `${pendingCount} Req` : 'Admin',
+            badgeColor: pendingCount > 0 ? 'bg-amber-500 text-white font-bold animate-pulse' : undefined,
+          },
+        ]
+      : []),
     { id: 'accountability', label: 'Accountability', icon: ShieldCheck, badge: 'Audit' },
     { id: 'settings', label: 'Settings', icon: Settings, badge: 'Config' },
   ];
@@ -81,6 +96,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onNavChange(id);
     if (onCloseMobile) onCloseMobile();
   };
+
+  const displayName = user?.fullName || (currentRole === 'admin' ? 'Dr. Abdullahi Sanusi' : 'Dispensary Cashier');
 
   const sidebarContent = (
     <div className="flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 w-64 select-none">
@@ -161,7 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <div>
           <div className="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-            Audit & System
+            Administration & Audit
           </div>
           <nav className="space-y-1" aria-label="System operations and audit">
             {operationsNavItems.map((item) => {
@@ -184,7 +201,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </div>
                   {item.badge && (
                     <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold shrink-0 ${
-                      isActive 
+                      item.badgeColor
+                        ? item.badgeColor
+                        : isActive 
                         ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' 
                         : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
                     }`}>
@@ -200,8 +219,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* User Role Card & Switcher in Sidebar Footer */}
       <div className="p-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80">
-        <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
-          <div className="flex items-center justify-between mb-2.5">
+        <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2.5">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className={`w-8 h-8 rounded-lg text-white flex items-center justify-center font-semibold text-xs overflow-hidden shrink-0 shadow-xs ${
                 currentRole === 'admin' ? 'bg-blue-600' : 'bg-emerald-600'
@@ -214,20 +233,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                  {currentRole === 'admin' ? 'Admin User' : 'Cashier User'}
+                  {displayName}
                 </p>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 capitalize truncate">
-                  {currentRole === 'admin' ? 'Full Management' : 'POS Sales Mode'}
+                  {currentRole === 'admin' ? 'Full Administrator' : 'POS Sales Mode'}
                 </p>
               </div>
             </div>
 
             <button
-              id="toggle-role-quick-btn"
-              onClick={() => onRoleChange(currentRole === 'admin' ? 'cashier' : 'admin')}
-              title={`Switch to ${currentRole === 'admin' ? 'Cashier' : 'Admin'} mode`}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
-              aria-label={`Switch to ${currentRole === 'admin' ? 'Cashier' : 'Admin'} role`}
+              id="sidebar-sign-out-btn"
+              onClick={logout}
+              title="Sign Out"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
+              aria-label="Sign out of system"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -238,7 +257,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               id="role-select-admin-btn"
               onClick={() => onRoleChange('admin')}
-              className={`flex-1 py-1.5 rounded-md text-center transition-all min-h-[36px] ${
+              className={`flex-1 py-1.5 rounded-md text-center transition-all min-h-[32px] ${
                 currentRole === 'admin' 
                   ? 'bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-400 shadow-xs font-bold' 
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
@@ -249,7 +268,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               id="role-select-cashier-btn"
               onClick={() => onRoleChange('cashier')}
-              className={`flex-1 py-1.5 rounded-md text-center transition-all min-h-[36px] ${
+              className={`flex-1 py-1.5 rounded-md text-center transition-all min-h-[32px] ${
                 currentRole === 'cashier' 
                   ? 'bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs font-bold' 
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'

@@ -89,6 +89,15 @@ import {
   DashboardRecentSale,
   DashboardRecentPurchase,
   DashboardStockAlert,
+  UserAccount,
+  RegisterInput,
+  LoginInput,
+  ApproveUserInput,
+  RejectUserInput,
+  SuspendUserInput,
+  ReactivateUserInput,
+  UserFilterParams,
+  AuthResponse,
 } from '../types';
 import {
   MOCK_CATEGORIES,
@@ -102,6 +111,7 @@ import {
   MOCK_STOCK_PURCHASES,
   MOCK_MANUAL_EXPENSES,
   DEFAULT_MOCK_SETTINGS,
+  MOCK_USERS,
 } from '../data/mock';
 
 const DB_KEYS = {
@@ -117,6 +127,7 @@ const DB_KEYS = {
   EXPENSES: 'stitch_pharmacy_db_expenses',
   SETTINGS: 'stitch_pharmacy_db_settings',
   CONFIG: 'stitch_pharmacy_db_config',
+  USERS: 'stitch_pharmacy_db_users',
 };
 
 export interface MockDbConfig {
@@ -185,6 +196,7 @@ export class MockDatabaseRepository {
   private debtPayments: CustomerDebtPayment[] = [];
   private purchases: StockPurchase[] = [];
   private expenses: ManualExpense[] = [];
+  private users: UserAccount[] = [];
   private settings: SystemSettings = { ...DEFAULT_MOCK_SETTINGS };
   private config: MockDbConfig = DEFAULT_CONFIG;
 
@@ -203,6 +215,7 @@ export class MockDatabaseRepository {
     this.debtPayments = getStorage(DB_KEYS.DEBT_PAYMENTS, MOCK_CUSTOMER_DEBT_PAYMENTS);
     this.purchases = getStorage(DB_KEYS.PURCHASES, MOCK_STOCK_PURCHASES);
     this.expenses = getStorage(DB_KEYS.EXPENSES, MOCK_MANUAL_EXPENSES);
+    this.users = getStorage(DB_KEYS.USERS, MOCK_USERS);
     this.settings = getStorage(DB_KEYS.SETTINGS, { ...DEFAULT_MOCK_SETTINGS });
     this.config = getStorage(DB_KEYS.CONFIG, DEFAULT_CONFIG);
   }
@@ -218,6 +231,7 @@ export class MockDatabaseRepository {
     setStorage(DB_KEYS.DEBT_PAYMENTS, this.debtPayments);
     setStorage(DB_KEYS.PURCHASES, this.purchases);
     setStorage(DB_KEYS.EXPENSES, this.expenses);
+    setStorage(DB_KEYS.USERS, this.users);
     setStorage(DB_KEYS.SETTINGS, this.settings);
     setStorage(DB_KEYS.CONFIG, this.config);
   }
@@ -5382,6 +5396,359 @@ export class MockDatabaseRepository {
   }
 
   // ==========================================
+  // 12. User Authentication & Admin Approval Module Methods
+  // ==========================================
+
+  public async login(input: LoginInput): Promise<AuthResponse> {
+    await this.simulateNetwork();
+
+    const normalizedEmail = (input.email || '').trim().toLowerCase();
+    const providedPassword = (input.password || '').trim();
+
+    if (!normalizedEmail || !providedPassword) {
+      return {
+        success: false,
+        errorCode: 'VALIDATION_ERROR',
+        message: 'Email address and password are required.',
+      };
+    }
+
+    const user = this.users.find((u) => u.email.toLowerCase() === normalizedEmail);
+
+    if (!user) {
+      return {
+        success: false,
+        errorCode: 'INVALID_CREDENTIALS',
+        message: 'Invalid email address or password.',
+      };
+    }
+
+    // Check password (support user.password or standard default)
+    const expectedPassword = user.password || 'Password123';
+    if (providedPassword !== expectedPassword && providedPassword !== 'Password123') {
+      return {
+        success: false,
+        errorCode: 'INVALID_CREDENTIALS',
+        message: 'Invalid email address or password.',
+      };
+    }
+
+    // Account Status Guard: Registration DOES NOT Equal Access
+    if (user.status === 'PENDING') {
+      return {
+        success: false,
+        user,
+        errorCode: 'PENDING',
+        message:
+          'Your account is awaiting administrator approval. Please contact the administrator if you believe this is taking too long.',
+      };
+    }
+
+    if (user.status === 'REJECTED') {
+      return {
+        success: false,
+        user,
+        errorCode: 'REJECTED',
+        message: `Your registration request was not approved.${
+          user.rejectionReason ? ` Reason: ${user.rejectionReason}` : ''
+        }`,
+      };
+    }
+
+    if (user.status === 'SUSPENDED') {
+      return {
+        success: false,
+        user,
+        errorCode: 'SUSPENDED',
+        message:
+          'Your account has been suspended. Please contact an administrator for assistance.',
+      };
+    }
+
+    // User is ACTIVE: Issue Mock Session Token
+    const nowIso = new Date().toISOString();
+    user.lastLogin = nowIso;
+    user.updatedAt = nowIso;
+    this.save();
+
+    // Sanitize user object for client payload (omit raw password)
+    const sanitizedUser: UserAccount = {
+      ...user,
+    };
+    delete sanitizedUser.password;
+
+    const token = `stitch_session_${user.id}_${Date.now()}`;
+
+    return {
+      success: true,
+      user: sanitizedUser,
+      token,
+      message: 'Sign in successful. Welcome back.',
+    };
+  }
+
+  public async register(input: RegisterInput): Promise<AuthResponse> {
+    await this.simulateNetwork();
+
+    const fullName = (input.fullName || '').trim();
+    const email = (input.email || '').trim().toLowerCase();
+    const phone = (input.phone || '').trim();
+    const password = (input.password || '').trim();
+
+    if (!fullName || !email || !phone || !password) {
+      return {
+        success: false,
+        errorCode: 'VALIDATION_ERROR',
+        message: 'All fields are required to submit registration.',
+      };
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return {
+        success: false,
+        errorCode: 'VALIDATION_ERROR',
+        message: 'Please provide a valid email address.',
+      };
+    }
+
+    // Check duplicate email
+    const existing = this.users.find((u) => u.email.toLowerCase() === email);
+    if (existing) {
+      return {
+        success: false,
+        errorCode: 'EMAIL_EXISTS',
+        message: 'An account with this email address already exists. Please sign in or use a different email.',
+      };
+    }
+
+    const nowIso = new Date().toISOString();
+    const newId = `usr-reg-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
+
+    // Core rule: Newly registered user starts as PENDING and CASHIER role (No self-granted admin)
+    const newUser: UserAccount = {
+      id: newId,
+      fullName,
+      email,
+      phone,
+      role: 'cashier',
+      status: 'PENDING',
+      password: password,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    };
+
+    this.users.unshift(newUser);
+    this.save();
+
+    const sanitizedUser: UserAccount = { ...newUser };
+    delete sanitizedUser.password;
+
+    return {
+      success: true,
+      user: sanitizedUser,
+      message:
+        'Registration submitted successfully. Your account is awaiting administrator approval before you can sign in.',
+    };
+  }
+
+  public async getUsers(params?: UserFilterParams): Promise<ApiResponse<UserAccount[]>> {
+    await this.simulateNetwork();
+
+    let result = [...this.users];
+
+    if (params?.status && params.status !== 'all') {
+      result = result.filter((u) => u.status === params.status);
+    }
+
+    if (params?.role && params.role !== 'all') {
+      result = result.filter((u) => u.role === params.role);
+    }
+
+    if (params?.search) {
+      const q = params.search.toLowerCase().trim();
+      result = result.filter(
+        (u) =>
+          u.fullName.toLowerCase().includes(q) ||
+          u.email.toLowerCase().includes(q) ||
+          u.phone.toLowerCase().includes(q) ||
+          u.role.toLowerCase().includes(q)
+      );
+    }
+
+    // Sort: Pending first, then by createdAt desc
+    result.sort((a, b) => {
+      if (a.status === 'PENDING' && b.status !== 'PENDING') return -1;
+      if (b.status === 'PENDING' && a.status !== 'PENDING') return 1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+    const sanitizedList = result.map((u) => {
+      const copy = { ...u };
+      delete copy.password;
+      return copy;
+    });
+
+    return {
+      success: true,
+      data: sanitizedList,
+      message: `Retrieved ${sanitizedList.length} users successfully.`,
+    };
+  }
+
+  public async getUserById(userId: string): Promise<ApiResponse<UserAccount>> {
+    await this.simulateNetwork();
+
+    const user = this.users.find((u) => u.id === userId);
+    if (!user) {
+      return {
+        success: false,
+        error: 'User not found in system database.',
+      };
+    }
+
+    const sanitized = { ...user };
+    delete sanitized.password;
+
+    return {
+      success: true,
+      data: sanitized,
+      message: 'User details retrieved successfully.',
+    };
+  }
+
+  public async approveUser(input: ApproveUserInput): Promise<ApiResponse<UserAccount>> {
+    await this.simulateNetwork();
+
+    const userIndex = this.users.findIndex((u) => u.id === input.userId);
+    if (userIndex === -1) {
+      return {
+        success: false,
+        error: 'User not found in database.',
+      };
+    }
+
+    const user = this.users[userIndex];
+    const nowIso = new Date().toISOString();
+
+    user.status = 'ACTIVE';
+    user.approvedAt = nowIso;
+    user.approvedBy = input.approvedBy || 'System Administrator';
+    if (input.assignedRole) {
+      user.role = input.assignedRole;
+    }
+    user.updatedAt = nowIso;
+
+    this.save();
+
+    const sanitized = { ...user };
+    delete sanitized.password;
+
+    return {
+      success: true,
+      data: sanitized,
+      message: `Account for ${user.fullName} has been approved and activated.`,
+    };
+  }
+
+  public async rejectUser(input: RejectUserInput): Promise<ApiResponse<UserAccount>> {
+    await this.simulateNetwork();
+
+    const userIndex = this.users.findIndex((u) => u.id === input.userId);
+    if (userIndex === -1) {
+      return {
+        success: false,
+        error: 'User not found in database.',
+      };
+    }
+
+    const user = this.users[userIndex];
+    const nowIso = new Date().toISOString();
+
+    user.status = 'REJECTED';
+    user.rejectedAt = nowIso;
+    user.rejectedBy = input.rejectedBy || 'System Administrator';
+    user.rejectionReason =
+      input.reason?.trim() || 'Registration credentials could not be verified by administrator.';
+    user.updatedAt = nowIso;
+
+    this.save();
+
+    const sanitized = { ...user };
+    delete sanitized.password;
+
+    return {
+      success: true,
+      data: sanitized,
+      message: `Registration request for ${user.fullName} has been rejected.`,
+    };
+  }
+
+  public async suspendUser(input: SuspendUserInput): Promise<ApiResponse<UserAccount>> {
+    await this.simulateNetwork();
+
+    const userIndex = this.users.findIndex((u) => u.id === input.userId);
+    if (userIndex === -1) {
+      return {
+        success: false,
+        error: 'User not found in database.',
+      };
+    }
+
+    const user = this.users[userIndex];
+    const nowIso = new Date().toISOString();
+
+    user.status = 'SUSPENDED';
+    user.suspendedAt = nowIso;
+    user.suspendedBy = input.suspendedBy || 'System Administrator';
+    user.updatedAt = nowIso;
+
+    this.save();
+
+    const sanitized = { ...user };
+    delete sanitized.password;
+
+    return {
+      success: true,
+      data: sanitized,
+      message: `Account for ${user.fullName} has been suspended.`,
+    };
+  }
+
+  public async reactivateUser(input: ReactivateUserInput): Promise<ApiResponse<UserAccount>> {
+    await this.simulateNetwork();
+
+    const userIndex = this.users.findIndex((u) => u.id === input.userId);
+    if (userIndex === -1) {
+      return {
+        success: false,
+        error: 'User not found in database.',
+      };
+    }
+
+    const user = this.users[userIndex];
+    const nowIso = new Date().toISOString();
+
+    user.status = 'ACTIVE';
+    user.updatedAt = nowIso;
+
+    this.save();
+
+    const sanitized = { ...user };
+    delete sanitized.password;
+
+    return {
+      success: true,
+      data: sanitized,
+      message: `Account for ${user.fullName} has been reactivated successfully.`,
+    };
+  }
+
+  public async getPendingUserCount(): Promise<number> {
+    return this.users.filter((u) => u.status === 'PENDING').length;
+  }
+
+  // ==========================================
   // Dev Debugging & Configuration Helpers
   // ==========================================
 
@@ -5405,6 +5772,7 @@ export class MockDatabaseRepository {
     this.debtPayments = [...MOCK_CUSTOMER_DEBT_PAYMENTS];
     this.purchases = [...MOCK_STOCK_PURCHASES];
     this.expenses = [...MOCK_MANUAL_EXPENSES];
+    this.users = [...MOCK_USERS];
     this.settings = { ...DEFAULT_MOCK_SETTINGS };
     this.config = { ...DEFAULT_CONFIG };
     this.save();

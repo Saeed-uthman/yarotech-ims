@@ -12,3 +12,4 @@ export * from './accountabilityService';
 export * from './reportService';
 export * from './settingsService';
 export * from './dashboardService';
+export * from './authService';

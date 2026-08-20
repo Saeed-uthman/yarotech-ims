@@ -1,4 +1,78 @@
 export type UserRole = 'admin' | 'cashier';
+export type AccountStatus = 'PENDING' | 'ACTIVE' | 'REJECTED' | 'SUSPENDED';
+
+// ==========================================
+// Authentication & User Management Types
+// ==========================================
+
+export interface UserAccount {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  role: UserRole;
+  status: AccountStatus;
+  password?: string;
+  createdAt: string;
+  updatedAt: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  rejectedAt?: string;
+  rejectedBy?: string;
+  rejectionReason?: string;
+  suspendedAt?: string;
+  suspendedBy?: string;
+  lastLogin?: string;
+}
+
+export interface RegisterInput {
+  fullName: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirmPassword?: string;
+}
+
+export interface LoginInput {
+  email: string;
+  password: string;
+}
+
+export interface ApproveUserInput {
+  userId: string;
+  approvedBy: string;
+  assignedRole?: UserRole;
+}
+
+export interface RejectUserInput {
+  userId: string;
+  rejectedBy: string;
+  reason?: string;
+}
+
+export interface SuspendUserInput {
+  userId: string;
+  suspendedBy: string;
+}
+
+export interface ReactivateUserInput {
+  userId: string;
+  reactivatedBy: string;
+}
+
+export interface UserFilterParams {
+  search?: string;
+  status?: 'all' | AccountStatus;
+  role?: 'all' | UserRole;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  user?: UserAccount;
+  token?: string;
+  message: string;
+  errorCode?: 'PENDING' | 'REJECTED' | 'SUSPENDED' | 'INVALID_CREDENTIALS' | 'EMAIL_EXISTS' | 'VALIDATION_ERROR';
+}
 
 export type ProductStatus = 'Active' | 'Inactive';
 export type CompanyVariantStatus = 'Available' | 'Inactive';
@@ -148,9 +222,10 @@ export interface ApiMeta {
 
 export interface ApiResponse<T> {
   success: boolean;
-  data: T;
-  message: string;
+  data?: T;
+  message?: string;
   meta?: ApiMeta;
+  error?: string;
   errors?: Record<string, string[]>;
 }
 

@@ -9,3 +9,4 @@ export * from './customerDebtPayments';
 export * from './stockPurchases';
 export * from './manualExpenses';
 export * from './settings';
+export * from './users';

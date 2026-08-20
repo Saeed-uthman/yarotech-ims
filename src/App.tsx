@@ -12,8 +12,11 @@ import {
   useReferenceData, 
   useProductMutations, 
   useSmartPolling, 
-  useNetworkStatus 
+  useNetworkStatus,
+  useAuth
 } from './hooks';
+import { AuthProvider } from './contexts/AuthContext';
+import { AuthContainer } from './components/auth/AuthContainer';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { BottomNav } from './components/layout/BottomNav';
@@ -36,13 +39,28 @@ import { AccountabilityModule } from './components/accountability';
 import { ReportsModule } from './components/reports';
 import { SettingsModule } from './components/settings';
 import { DashboardModule } from './components/dashboard';
-import { WifiOff, Activity, RefreshCw } from 'lucide-react';
+import { UserManagementModule } from './components/users';
+import { WifiOff, Activity, RefreshCw, Loader2, HeartPulse } from 'lucide-react';
 import { productService } from './services/productService';
 import { useSettings } from './hooks/useSettings';
 
-export default function App() {
+function MainPharmacyApp() {
+  const { isAuthenticated, isLoading: isAuthLoading, user, role: authRole, switchRole } = useAuth();
+
   // User Role (Administrator vs Cashier)
-  const [currentRole, setCurrentRole] = useState<UserRole>('admin');
+  const [currentRole, setCurrentRole] = useState<UserRole>(authRole || 'admin');
+
+  // Sync role when auth role changes
+  useEffect(() => {
+    if (authRole) {
+      setCurrentRole(authRole);
+    }
+  }, [authRole]);
+
+  const handleRoleChange = (newRole: UserRole) => {
+    setCurrentRole(newRole);
+    switchRole(newRole);
+  };
 
   // Navigation & View Mode
   const [activeNav, setActiveNav] = useState<string>('dashboard');
@@ -101,6 +119,7 @@ export default function App() {
       }
     }
   }, [settings?.theme]);
+
   const {
     isMutating,
     createProduct,
@@ -148,333 +167,254 @@ export default function App() {
   // Sync selected product if updated in products list
   useEffect(() => {
     if (selectedProduct) {
-      const refreshed = products.find((p) => p.id === selectedProduct.id);
-      if (refreshed) {
-        setSelectedProduct(refreshed);
-      }
+      const updated = products.find((p) => p.id === selectedProduct.id);
+      if (updated) setSelectedProduct(updated);
     }
-  }, [products]);
+  }, [products, selectedProduct]);
 
-  // Handle product fetch error toast
-  useEffect(() => {
-    if (productsError) {
-      addToast('error', 'Network Notice', productsError);
-    }
-  }, [productsError, addToast]);
+  // Auth Loading State
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
+        <div className="text-center space-y-4 animate-in fade-in">
+          <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white mx-auto shadow-lg animate-pulse">
+            <HeartPulse className="w-8 h-8" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              {settings?.pharmacyName || 'BrightCare Pharmacy'}
+            </h2>
+            <p className="text-xs text-slate-400">Loading authorized session...</p>
+          </div>
+          <Loader2 className="w-5 h-5 text-blue-600 animate-spin mx-auto" />
+        </div>
+      </div>
+    );
+  }
 
-  // Product Navigation & CRUD Handlers
-  const handleViewProduct = (product: Product) => {
-    setSelectedProduct(product);
-    setViewMode('details');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  // Not Authenticated: Render Authentication & Registration Portal
+  if (!isAuthenticated || !user || user.status !== 'ACTIVE') {
+    return (
+      <AuthContainer
+        pharmacyName={settings?.pharmacyName || 'BrightCare Pharmacy'}
+        pharmacyLogo={settings?.pharmacyLogo}
+      />
+    );
+  }
 
+  // Handlers for Views & Wizard
   const handleOpenAddProduct = () => {
-    if (currentRole !== 'admin') {
-      addToast('error', 'Restricted Action', 'Cashiers cannot create products. Switch to Admin role.');
-      return;
-    }
     setProductToEdit(null);
     setViewMode('wizard');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setActiveNav('products');
   };
 
   const handleOpenEditProduct = (product: Product) => {
-    if (currentRole !== 'admin') {
-      addToast('error', 'Restricted Action', 'Cashiers cannot edit products. Switch to Admin role.');
-      return;
-    }
     setProductToEdit(product);
     setViewMode('wizard');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setActiveNav('products');
   };
 
-  const handleSaveProductWizard = async (input: ProductCreateInput) => {
-    try {
-      if (productToEdit) {
-        const updated = await updateProduct(productToEdit.id, input, currentRole);
-        addToast('success', 'Product Updated', `${updated.name} has been successfully updated.`);
-        setSelectedProduct(updated);
-        setViewMode('details');
-      } else {
-        const created = await createProduct(input, currentRole);
-        addToast('success', 'Product Created', `${created.name} added with ${created.variants.length} manufacturer variant(s).`);
-        setSelectedProduct(created);
-        setViewMode('details');
+  const handleViewProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setViewMode('details');
+    setActiveNav('products');
+  };
+
+  const handleSaveProductWizard = async (data: ProductCreateInput) => {
+    if (productToEdit) {
+      try {
+        const updated = await updateProduct(productToEdit.id, data, currentRole);
+        addToast('success', 'Product Updated', `${data.name} was updated successfully.`);
+        if (selectedProduct && selectedProduct.id === productToEdit.id) {
+          setSelectedProduct(updated);
+          setViewMode('details');
+        } else {
+          setViewMode('list');
+        }
+      } catch (err: any) {
+        addToast('error', 'Update Failed', err?.message || 'Unable to update product.');
       }
-      refetchProducts(true);
-      refetchKPIs();
-    } catch (err: any) {
-      addToast('error', 'Error Saving Product', err.message || 'An unexpected error occurred.');
+    } else {
+      try {
+        await createProduct(data, currentRole);
+        addToast('success', 'Product Created', `${data.name} was added to inventory.`);
+        setViewMode('list');
+      } catch (err: any) {
+        addToast('error', 'Creation Failed', err?.message || 'Unable to create product.');
+      }
     }
   };
 
   const handleRequestDeactivation = (product: Product) => {
-    if (currentRole !== 'admin') {
-      addToast('error', 'Restricted Action', 'Cashiers cannot deactivate products.');
-      return;
-    }
     setProductToDeactivate(product);
   };
 
-  const handleConfirmDeactivation = async () => {
+  const handleConfirmDeactivation = async (reason: string) => {
     if (!productToDeactivate) return;
     setIsDeactivating(true);
+    updateOptimisticStatus(productToDeactivate.id, 'Inactive');
 
     try {
-      // Optimistic deactivation with automatic rollback
-      await deactivateProduct(productToDeactivate, currentRole, {
-        onOptimistic: () => {
-          updateOptimisticStatus(productToDeactivate.id, 'Inactive');
-          if (selectedProduct?.id === productToDeactivate.id) {
-            setSelectedProduct((prev) => prev ? { ...prev, status: 'Inactive' } : null);
-          }
-        },
-        onRollback: (previousStatus) => {
-          rollbackOptimisticStatus(productToDeactivate.id, previousStatus);
-          if (selectedProduct?.id === productToDeactivate.id) {
-            setSelectedProduct((prev) => prev ? { ...prev, status: previousStatus } : null);
-          }
-        },
-      });
-
-      addToast(
-        'info',
-        'Product Deactivated',
-        `${productToDeactivate.name} is now inactive. Historical data is preserved.`
-      );
-      setProductToDeactivate(null);
-      refetchProducts(true);
-      refetchKPIs();
+      const updated = await deactivateProduct(productToDeactivate, currentRole);
+      addToast('info', 'Product Deactivated', `${productToDeactivate.name} has been archived.`);
+      if (selectedProduct && selectedProduct.id === productToDeactivate.id) {
+        setSelectedProduct(updated);
+      }
     } catch (err: any) {
-      addToast('error', 'Deactivation Failed', `${err.message} — Restored previous state.`);
+      rollbackOptimisticStatus(productToDeactivate.id, 'Active');
+      addToast('error', 'Deactivation Failed', err?.message || 'Server rejected deactivation.');
     } finally {
       setIsDeactivating(false);
+      setProductToDeactivate(null);
     }
   };
 
   const handleActivateProduct = async (product: Product) => {
-    if (currentRole !== 'admin') {
-      addToast('error', 'Restricted Action', 'Cashiers cannot activate products.');
-      return;
-    }
-
+    updateOptimisticStatus(product.id, 'Active');
     try {
-      // Optimistic activation with automatic rollback
-      await activateProduct(product, currentRole, {
-        onOptimistic: () => {
-          updateOptimisticStatus(product.id, 'Active');
-          if (selectedProduct?.id === product.id) {
-            setSelectedProduct((prev) => prev ? { ...prev, status: 'Active' } : null);
-          }
-        },
-        onRollback: (previousStatus) => {
-          rollbackOptimisticStatus(product.id, previousStatus);
-          if (selectedProduct?.id === product.id) {
-            setSelectedProduct((prev) => prev ? { ...prev, status: previousStatus } : null);
-          }
-        },
-      });
-
-      addToast('success', 'Product Activated', `${product.name} is now available for sales.`);
-      refetchProducts(true);
-      refetchKPIs();
+      const updated = await activateProduct(product, currentRole);
+      addToast('success', 'Product Activated', `${product.name} is now active.`);
+      if (selectedProduct && selectedProduct.id === product.id) {
+        setSelectedProduct(updated);
+      }
     } catch (err: any) {
-      addToast('error', 'Activation Failed', `${err.message} — Restored previous state.`);
+      rollbackOptimisticStatus(product.id, 'Inactive');
+      addToast('error', 'Activation Failed', err?.message || 'Server error activating product.');
     }
   };
 
-  // Authoritative financial variant handlers
-  const handleAddVariant = async (productId: string, variantInput: any) => {
+  const handleAddVariant = async (productId: string, variant: Omit<CompanyVariant, 'id'>) => {
     try {
-      const updated = await addVariant(productId, variantInput, currentRole);
-      addToast('success', 'Variant Added', `Added ${variantInput.companyName} variant to ${updated.name}.`);
+      const updated = await addVariant(productId, variant, currentRole);
+      addToast('success', 'Variant Added', `Added ${variant.companyName} variant.`);
       setSelectedProduct(updated);
-      refetchProducts(true);
-      refetchKPIs();
     } catch (err: any) {
-      addToast('error', 'Failed to Add Variant', err.message);
+      addToast('error', 'Failed to Add Variant', err?.message || 'Could not add variant.');
     }
   };
 
-  const handleUpdateVariant = async (
-    productId: string,
-    variantId: string,
-    updates: Partial<CompanyVariant>
-  ) => {
+  const handleUpdateVariant = async (productId: string, variantId: string, updates: Partial<CompanyVariant>) => {
     try {
       const updated = await updateVariant(productId, variantId, updates, currentRole);
-      addToast('success', 'Variant Updated', 'Manufacturer pricing and stock have been updated.');
+      addToast('success', 'Variant Updated', 'Company pricing updated successfully.');
       setSelectedProduct(updated);
-      refetchProducts(true);
-      refetchKPIs();
     } catch (err: any) {
-      addToast('error', 'Failed to Update Variant', err.message);
+      addToast('error', 'Failed to Update Variant', err?.message || 'Could not update variant.');
     }
   };
 
   const handleDeleteVariant = async (productId: string, variantId: string) => {
     try {
       const updated = await deleteVariant(productId, variantId, currentRole);
-      addToast('info', 'Variant Removed', 'Manufacturer variant has been removed.');
+      addToast('info', 'Variant Removed', 'Variant removed from product.');
       setSelectedProduct(updated);
-      refetchProducts(true);
-      refetchKPIs();
     } catch (err: any) {
-      addToast('error', 'Failed to Delete Variant', err.message);
+      addToast('error', 'Failed to Remove Variant', err?.message || 'Could not remove variant.');
     }
   };
 
-  const handleUpdateProductImage = async (productId: string, newImageUrl: string) => {
+  const handleUpdateProductImage = async (productId: string, imageUrl: string) => {
     try {
-      const updated = await updateProduct(productId, { image: newImageUrl }, currentRole);
-      addToast('success', 'Image Updated', 'Product image updated across all company variants.');
+      const updated = await updateProduct(productId, { imageUrl } as any, currentRole);
       setSelectedProduct(updated);
-      refetchProducts(true);
+      addToast('success', 'Image Updated', 'Product photo updated successfully.');
     } catch (err: any) {
-      addToast('error', 'Image Update Failed', err.message);
+      addToast('error', 'Failed to Update Image', err?.message || 'Could not update image.');
     }
   };
 
-  const handleResetData = () => {
-    if (window.confirm('Reset all products and company variants back to initial factory demo state?')) {
+  const handleSortChange = (sortBy: ProductFilterParams['sortBy']) => {
+    setFilters((prev) => ({
+      ...prev,
+      sortBy,
+      sortOrder: prev.sortBy === sortBy && prev.sortOrder === 'asc' ? 'desc' : 'asc',
+      page: 1,
+    }));
+  };
+
+  const handleResetData = async () => {
+    if (window.confirm('Reset all demo data and inventory back to seed state? This will reset custom modifications.')) {
       productService.resetToDefaults();
-      setViewMode('list');
-      setSelectedProduct(null);
-      setProductToEdit(null);
       refetchProducts(true);
       refetchKPIs();
-      addToast('info', 'Data Reset', 'Products catalogue restored to initial demo specifications.');
+      addToast('info', 'System Reset', 'Data restored to factory seed state.');
     }
-  };
-
-  const handleSortChange = (field: 'name' | 'stock' | 'price' | 'date') => {
-    setFilters((prev) => {
-      if (prev.sortBy === field) {
-        return { ...prev, sortOrder: prev.sortOrder === 'asc' ? 'desc' : 'asc', page: 1 };
-      }
-      return { ...prev, sortBy: field, sortOrder: 'asc', page: 1 };
-    });
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col antialiased">
-      {/* Offline Alert Banner */}
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col md:flex-row text-slate-900 dark:text-slate-100 antialiased font-sans transition-colors">
+      {/* Network Alert Banner */}
       {!isOnline && (
-        <div className="bg-amber-500 text-slate-950 font-semibold px-4 py-2 text-xs flex items-center justify-center gap-2 sticky top-0 z-50 shadow-sm">
-          <WifiOff className="w-4 h-4" />
-          <span>You are currently offline. Operating from local cache. Mutations will sync when reconnected.</span>
+        <div 
+          role="alert" 
+          aria-live="assertive"
+          className="bg-amber-600 dark:bg-amber-700 text-white text-xs py-1.5 px-4 text-center font-medium flex items-center justify-center gap-2 fixed top-0 left-0 right-0 z-50 shadow-md"
+        >
+          <WifiOff className="w-3.5 h-3.5" />
+          <span>Offline Mode Active - Changes will sync when network returns.</span>
         </div>
       )}
 
-      <div className="flex flex-1 min-h-screen">
-        {/* Desktop Sidebar & Mobile Drawer */}
-        <Sidebar
-          currentRole={currentRole}
-          pharmacyName={settings.pharmacyName}
-          pharmacyLogo={settings.logo}
-          onRoleChange={(role) => {
-            setCurrentRole(role);
-            addToast(
-              'info',
-              `Switched to ${role === 'admin' ? 'Administrator' : 'Cashier'} Mode`,
-              role === 'cashier' 
-                ? 'Base costs, inventory values, and admin controls are now hidden.' 
-                : 'Full access to costs, margins, and product management enabled.'
-            );
-          }}
+      {/* Main Persistent Sidebar */}
+      <Sidebar
+        currentRole={currentRole}
+        onRoleChange={handleRoleChange}
+        activeNav={activeNav}
+        onNavChange={(nav) => {
+          setActiveNav(nav);
+          if (nav === 'products') setViewMode('list');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        isMobileOpen={isMobileMenuOpen}
+        onCloseMobile={() => setIsMobileMenuOpen(false)}
+        pharmacyName={settings?.pharmacyName}
+        pharmacyLogo={settings?.pharmacyLogo}
+      />
+
+      {/* Content Area Wrapper */}
+      <div className={`flex-1 flex flex-col min-w-0 pb-16 md:pb-0 ${!isOnline ? 'pt-7' : ''}`}>
+        {/* Header Bar */}
+        <Header
           activeNav={activeNav}
           onNavChange={(nav) => {
             setActiveNav(nav);
-            if (nav === 'products') {
-              setViewMode('list');
-            }
+            if (nav === 'products') setViewMode('list');
           }}
-          isMobileOpen={isMobileMenuOpen}
-          onCloseMobile={() => setIsMobileMenuOpen(false)}
+          pharmacyName={settings?.pharmacyName}
+          pharmacyLogo={settings?.pharmacyLogo}
+          currentRole={currentRole}
+          onRoleChange={handleRoleChange}
+          searchQuery={filters.search || ''}
+          onSearchChange={(search) => setFilters((prev) => ({ ...prev, search, page: 1 }))}
+          onOpenAddProduct={handleOpenAddProduct}
+          onOpenBarcodeScanner={() => setIsBarcodeScannerOpen(true)}
+          onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
+          onResetData={handleResetData}
+          isOnline={isOnline}
         />
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Header */}
-          <Header
-            activeNav={activeNav}
-            onNavChange={(nav) => {
-              setActiveNav(nav);
-              if (nav === 'products') {
-                setViewMode('list');
-              }
-            }}
-            pharmacyName={settings.pharmacyName}
-            pharmacyLogo={settings.logo}
-            currentRole={currentRole}
-            onRoleChange={(role) => {
-              setCurrentRole(role);
-              addToast(
-                'info',
-                `Switched to ${role === 'admin' ? 'Administrator' : 'Cashier'} Mode`,
-                role === 'cashier' 
-                  ? 'Base costs, inventory values, and admin controls are now hidden.' 
-                  : 'Full access to costs, margins, and product management enabled.'
-              );
-            }}
-            searchQuery={filters.search}
-            onSearchChange={(q) => setFilters((prev) => ({ ...prev, search: q, page: 1 }))}
-            onOpenAddProduct={handleOpenAddProduct}
-            onOpenBarcodeScanner={() => setIsBarcodeScannerOpen(true)}
-            onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
-            onResetData={handleResetData}
-            isOnline={isOnline}
-          />
-
-          {/* Subheader / Role banner if in cashier view */}
-          {currentRole === 'cashier' && (
-            <div className="bg-emerald-50 border-b border-emerald-200 px-4 sm:px-8 py-2 text-xs text-emerald-800 flex items-center justify-between">
-              <span>
-                💡 <strong>Cashier Sales View Active:</strong> Showing retail prices and available stock. Wholesale base prices, margin calculations, and inventory values are securely protected.
-              </span>
-              <button
-                onClick={() => setCurrentRole('admin')}
-                className="font-bold underline text-emerald-900 hover:text-emerald-700 ml-2"
-              >
-                Switch to Admin
-              </button>
-            </div>
-          )}
-
-          {/* Page Body */}
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-20 md:pb-8">
+        <div className="flex-1 p-3 sm:p-5 lg:p-6 max-w-7xl w-full mx-auto">
+          <main id="main-content" role="main" tabIndex={-1} className="focus:outline-none">
             {activeNav === 'dashboard' ? (
               <DashboardModule
                 role={currentRole}
-                onNavigate={(module) => {
-                  setActiveNav(module);
-                  if (module === 'products') setViewMode('list');
+                onNavigate={(nav) => {
+                  setActiveNav(nav);
+                  if (nav === 'products') setViewMode('list');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                onOpenProductWizard={() => {
-                  setProductToEdit(null);
-                  setActiveNav('products');
-                  setViewMode('wizard');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                settings={settings}
               />
             ) : activeNav === 'inventory' ? (
               <InventoryModule
-                currentRole={currentRole}
-                onNavigateToProduct={async (productId) => {
-                  try {
-                    const res = await productService.getProductById(productId, currentRole);
-                    if (res.data) {
-                      setSelectedProduct(res.data);
-                      setActiveNav('products');
-                      setViewMode('details');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                  } catch {
+                role={currentRole}
+                onNavigateToProduct={(productId) => {
+                  const p = products.find((prod) => prod.id === productId);
+                  if (p) {
+                    setSelectedProduct(p);
+                    setViewMode('details');
                     setActiveNav('products');
-                    setViewMode('list');
                   }
                 }}
               />
@@ -508,6 +448,14 @@ export default function App() {
                     setActiveNav('stock-purchase');
                   }
                   window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
+            ) : activeNav === 'users' ? (
+              <UserManagementModule
+                role={currentRole}
+                onNavigateToProducts={() => {
+                  setActiveNav('products');
+                  setViewMode('list');
                 }}
               />
             ) : activeNav === 'reports' ? (
@@ -624,11 +572,11 @@ export default function App() {
 
                   {/* Mobile Simple Pagination */}
                   {totalPages > 1 && (
-                    <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700">
+                    <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300">
                       <button
                         onClick={() => setFilters((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
                         disabled={currentPage <= 1}
-                        className="px-3 py-1.5 rounded-md border border-slate-200 disabled:opacity-40"
+                        className="px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 disabled:opacity-40"
                       >
                         Previous
                       </button>
@@ -638,7 +586,7 @@ export default function App() {
                       <button
                         onClick={() => setFilters((prev) => ({ ...prev, page: Math.min(totalPages, prev.page + 1) }))}
                         disabled={currentPage >= totalPages}
-                        className="px-3 py-1.5 rounded-md border border-slate-200 disabled:opacity-40"
+                        className="px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 disabled:opacity-40"
                       >
                         Next
                       </button>
@@ -647,7 +595,7 @@ export default function App() {
                 </div>
 
                 {/* Network & Simulation Floating Trigger */}
-                <div className="flex items-center justify-between pt-4 text-xs text-slate-400 border-t border-slate-200">
+                <div className="flex items-center justify-between pt-4 text-xs text-slate-400 dark:text-slate-500 border-t border-slate-200 dark:border-slate-800">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
                     <span>REST Service Mock Layer Active</span>
@@ -655,7 +603,7 @@ export default function App() {
                   </div>
                   <button
                     onClick={() => setIsNetworkConfigOpen(true)}
-                    className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 font-medium px-2 py-1 rounded hover:bg-slate-100 transition-colors"
+                    className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 dark:hover:text-white font-medium px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     <Activity className="w-3.5 h-3.5 text-blue-600" />
                     <span>Network & Latency Settings</span>
@@ -709,5 +657,13 @@ export default function App() {
       {/* Toast Feedback Messages */}
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainPharmacyApp />
+    </AuthProvider>
   );
 }

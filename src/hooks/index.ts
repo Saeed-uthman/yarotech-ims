@@ -13,3 +13,4 @@ export * from './useAccountability';
 export * from './useReports';
 export * from './useSettings';
 export * from './useDashboard';
+export * from './useAuth';

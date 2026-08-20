@@ -11,9 +11,12 @@ import {
   Check, 
   Sparkles,
   HelpCircle,
-  LogOut
+  LogOut,
+  Users,
+  Clock
 } from 'lucide-react';
 import { UserRole } from '../../types';
+import { useAuth } from '../../hooks';
 
 interface HeaderUserMenuProps {
   currentRole: UserRole;
@@ -28,6 +31,7 @@ export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
   onNavigate,
   isOnline = true,
 }) => {
+  const { user, logout, pendingCount } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -77,6 +81,14 @@ export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
     }
   };
 
+  const handleSignOut = () => {
+    setIsOpen(false);
+    logout();
+  };
+
+  const displayName = user?.fullName || (currentRole === 'admin' ? 'Dr. Abdullahi Sanusi' : 'Dispensary Cashier');
+  const displayEmail = user?.email || (currentRole === 'admin' ? 'admin@brightcare.test' : 'cashier@brightcare.test');
+
   return (
     <div className="relative">
       {/* Profile Trigger Button */}
@@ -118,8 +130,8 @@ export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
         {/* User Info (Hidden on mobile, visible on desktop) */}
         <div className="hidden xl:block text-left min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold text-slate-900 dark:text-white leading-none truncate max-w-[100px]">
-              {currentRole === 'admin' ? 'Dr. Admin' : 'Cashier Staff'}
+            <span className="text-xs font-bold text-slate-900 dark:text-white leading-none truncate max-w-[120px]">
+              {displayName}
             </span>
             <span className={`text-[10px] font-mono uppercase px-1.5 py-0.2 rounded font-semibold ${
               currentRole === 'admin'
@@ -130,7 +142,7 @@ export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
             </span>
           </div>
           <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
-            {currentRole === 'admin' ? 'Pharmacy Manager' : 'Dispensary & POS'}
+            {currentRole === 'admin' ? 'System Administrator' : 'Dispensary & POS'}
           </p>
         </div>
 
@@ -162,7 +174,7 @@ export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                    {currentRole === 'admin' ? 'Administrator' : 'Cashier Staff'}
+                    {displayName}
                   </h4>
                   <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded-full font-bold ${
                     currentRole === 'admin'
@@ -173,23 +185,31 @@ export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                  {currentRole === 'admin' ? 'admin@brightcare.pharmacy' : 'pos@brightcare.pharmacy'}
+                  {displayEmail}
                 </p>
               </div>
             </div>
 
-            <div className="mt-3 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
-              <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-              <span className="font-medium">
-                {isOnline ? 'Connected (Live Offline Cache Ready)' : 'Offline (Local Cache Mode)'}
-              </span>
+            <div className="mt-3 flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
+              <div className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                <span className="font-medium">
+                  {isOnline ? 'Online (Connected)' : 'Offline (Local Cache)'}
+                </span>
+              </div>
+
+              {currentRole === 'admin' && pendingCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 animate-pulse">
+                  {pendingCount} Pending Approvals
+                </span>
+              )}
             </div>
           </div>
 
           {/* Quick Role Switcher Section */}
           <div className="p-3">
             <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-2">
-              Switch User Role
+              Switch Active Role (Testing Mode)
             </label>
             
             <div className="space-y-1.5">
@@ -216,7 +236,7 @@ export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
                     )}
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    Full access to base costs, margins, product catalog, and accounting.
+                    Full access to costs, catalog, user approvals, and accounting.
                   </p>
                 </div>
               </button>
@@ -253,6 +273,24 @@ export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
 
           {/* Quick System Navigation Shortcuts */}
           <div className="p-2 space-y-0.5">
+            {currentRole === 'admin' && (
+              <button
+                role="menuitem"
+                onClick={() => handleNavClick('users')}
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Users className="w-4 h-4 text-blue-600" />
+                  <span className="font-semibold text-blue-700 dark:text-blue-300">Staff Accounts & Approvals</span>
+                </div>
+                {pendingCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-white font-mono">
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+            )}
+
             <button
               role="menuitem"
               onClick={() => handleNavClick('settings')}
@@ -269,6 +307,18 @@ export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
             >
               <ShieldCheck className="w-4 h-4 text-slate-400" />
               <span>Accountability & Shift Logs</span>
+            </button>
+          </div>
+
+          {/* Sign Out Button */}
+          <div className="p-2 bg-slate-50/50 dark:bg-slate-900/50">
+            <button
+              role="menuitem"
+              onClick={handleSignOut}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-md transition-colors"
+            >
+              <LogOut className="w-4 h-4 text-rose-500" />
+              <span>Sign Out</span>
             </button>
           </div>
         </div>
