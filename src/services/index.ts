@@ -10,3 +10,5 @@ export * from './salesService';
 export * from './purchaseService';
 export * from './accountabilityService';
 export * from './reportService';
+export * from './settingsService';
+export * from './dashboardService';

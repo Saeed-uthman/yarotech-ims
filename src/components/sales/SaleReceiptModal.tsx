@@ -1,7 +1,8 @@
 import React from 'react';
-import { X, Printer, CheckCircle, ShieldCheck } from 'lucide-react';
+import { X, Printer, CheckCircle, ShieldCheck, Store, MapPin, Phone } from 'lucide-react';
 import { Sale } from '../../types';
 import { formatNaira } from '../../utils/formatters';
+import { useSettings } from '../../hooks';
 
 interface SaleReceiptModalProps {
   sale: Sale | null;
@@ -14,6 +15,8 @@ export const SaleReceiptModal: React.FC<SaleReceiptModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const { settings } = useSettings();
+
   if (!isOpen || !sale) return null;
 
   const handlePrint = () => {
@@ -22,6 +25,7 @@ export const SaleReceiptModal: React.FC<SaleReceiptModalProps> = ({
 
   const isWalking = !sale.customerId;
   const hasOutstanding = sale.outstandingAmount > 0;
+  const showDecimals = settings.showDecimals;
 
   return (
     <div
@@ -64,36 +68,63 @@ export const SaleReceiptModal: React.FC<SaleReceiptModalProps> = ({
         >
           {/* Pharmacy Header */}
           <div className="text-center space-y-1 border-b border-dashed border-slate-300 pb-3">
-            <h1 className="text-base font-extrabold tracking-tight uppercase text-slate-900">
-              STITCH PHARMACY & STORES
+            {settings.receiptLogo && settings.logo && (
+              <div className="flex justify-center mb-1">
+                <img
+                  src={settings.logo}
+                  alt="Pharmacy Logo"
+                  className="h-10 w-auto object-contain max-w-[120px]"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            )}
+            <h1 className="text-sm font-extrabold tracking-tight uppercase text-slate-900">
+              {settings.pharmacyName || 'BRIGHTCARE PHARMACY'}
             </h1>
-            <p className="text-[10px] text-slate-500 font-sans">
-              Prescription & Healthcare Dispensing
-            </p>
-            <p className="text-[10px] text-slate-500">
-              Plot 14 Commercial Ave, Kano • Tel: +234 800 STITCH RX
-            </p>
+            {settings.businessDescription && (
+              <p className="text-[9px] text-slate-500 font-sans">
+                {settings.businessDescription}
+              </p>
+            )}
+            {settings.receiptAddress && settings.address && (
+              <p className="text-[9px] text-slate-500">
+                {settings.address}
+              </p>
+            )}
+            {settings.receiptPhone && settings.phone && (
+              <p className="text-[9px] text-slate-500">
+                Tel: {settings.phone}
+              </p>
+            )}
           </div>
 
           {/* Transaction Metadata */}
           <div className="text-[11px] space-y-1 border-b border-dashed border-slate-300 pb-3">
-            <div className="flex justify-between font-bold">
-              <span>INVOICE:</span>
-              <span className="text-slate-900">{sale.invoiceNumber}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">DATE:</span>
-              <span>{sale.date}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">CASHIER:</span>
-              <span>{sale.servedBy}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">CUSTOMER:</span>
-              <span className="font-semibold">{isWalking ? 'Walking Customer' : sale.customerName}</span>
-            </div>
-            {sale.customerPhone && (
+            {settings.receiptNumber && (
+              <div className="flex justify-between font-bold">
+                <span>INVOICE:</span>
+                <span className="text-slate-900">{sale.invoiceNumber}</span>
+              </div>
+            )}
+            {settings.receiptDatetime && (
+              <div className="flex justify-between">
+                <span className="text-slate-500">DATE:</span>
+                <span>{sale.date}</span>
+              </div>
+            )}
+            {settings.receiptCashier && (
+              <div className="flex justify-between">
+                <span className="text-slate-500">CASHIER:</span>
+                <span>{sale.servedBy}</span>
+              </div>
+            )}
+            {settings.receiptCustomer && (
+              <div className="flex justify-between">
+                <span className="text-slate-500">CUSTOMER:</span>
+                <span className="font-semibold">{isWalking ? 'Walking Customer' : sale.customerName}</span>
+              </div>
+            )}
+            {settings.receiptCustomer && sale.customerPhone && (
               <div className="flex justify-between text-[10px] text-slate-500">
                 <span>PHONE:</span>
                 <span>{sale.customerPhone}</span>
@@ -114,11 +145,11 @@ export const SaleReceiptModal: React.FC<SaleReceiptModalProps> = ({
                   <span className="truncate pr-2">
                     {item.productName} ({item.companyName})
                   </span>
-                  <span>{formatNaira(item.subtotal)}</span>
+                  <span>{formatNaira(item.subtotal, showDecimals)}</span>
                 </div>
                 <div className="text-[10px] text-slate-500 flex justify-between">
                   <span>
-                    {item.quantity} x {formatNaira(item.sellingPrice)}
+                    {item.quantity} x {formatNaira(item.sellingPrice, showDecimals)}
                   </span>
                   {item.dosage && <span>{item.dosage}</span>}
                 </div>
@@ -130,26 +161,26 @@ export const SaleReceiptModal: React.FC<SaleReceiptModalProps> = ({
           <div className="space-y-1 text-[11px] border-b border-dashed border-slate-300 pb-3">
             <div className="flex justify-between text-slate-600">
               <span>Subtotal:</span>
-              <span>{formatNaira(sale.subtotal)}</span>
+              <span>{formatNaira(sale.subtotal, showDecimals)}</span>
             </div>
             {sale.discount > 0 && (
               <div className="flex justify-between text-rose-600">
                 <span>Discount Applied:</span>
-                <span>- {formatNaira(sale.discount)}</span>
+                <span>- {formatNaira(sale.discount, showDecimals)}</span>
               </div>
             )}
             <div className="flex justify-between font-extrabold text-sm text-slate-900 pt-1 border-t border-slate-200">
-              <span>TOTAL DUE:</span>
-              <span>{formatNaira(sale.total)}</span>
+              <span>TOTAL ({settings.currency}):</span>
+              <span>{formatNaira(sale.total, showDecimals)}</span>
             </div>
             <div className="flex justify-between text-slate-800 font-semibold pt-1">
               <span>AMOUNT PAID ({sale.paymentMethod}):</span>
-              <span>{formatNaira(sale.amountPaid)}</span>
+              <span>{formatNaira(sale.amountPaid, showDecimals)}</span>
             </div>
             {hasOutstanding && (
               <div className="flex justify-between font-bold text-amber-700 pt-1">
                 <span>OUTSTANDING BALANCE:</span>
-                <span>{formatNaira(sale.outstandingAmount)}</span>
+                <span>{formatNaira(sale.outstandingAmount, showDecimals)}</span>
               </div>
             )}
             <div className="flex justify-between text-[10px] text-slate-500 pt-1">
@@ -163,12 +194,15 @@ export const SaleReceiptModal: React.FC<SaleReceiptModalProps> = ({
             <div className="font-mono text-xs tracking-widest text-slate-400 bg-slate-50 py-1.5 rounded-sm border border-slate-200">
               ||| | ||||| || |||| ||| ||||| ||
             </div>
-            <p className="text-[10px] text-slate-500 font-medium">
-              Thank you for trusting Stitch Pharmacy!
-            </p>
-            <p className="text-[9px] text-slate-400">
-              Medicines dispensed in good condition are not returnable according to PCN regulations.
-            </p>
+            {settings.receiptFooter ? (
+              <p className="text-[10px] text-slate-600 italic px-2">
+                "{settings.receiptFooter}"
+              </p>
+            ) : (
+              <p className="text-[10px] text-slate-500 font-medium">
+                Thank you for your patronage!
+              </p>
+            )}
           </div>
         </div>
 
@@ -193,3 +227,4 @@ export const SaleReceiptModal: React.FC<SaleReceiptModalProps> = ({
     </div>
   );
 };
+

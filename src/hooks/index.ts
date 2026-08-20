@@ -11,3 +11,5 @@ export * from './useSales';
 export * from './usePurchases';
 export * from './useAccountability';
 export * from './useReports';
+export * from './useSettings';
+export * from './useDashboard';

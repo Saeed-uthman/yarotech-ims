@@ -983,4 +983,179 @@ export interface DebtMovementReportData {
   }[];
 }
 
+// ==========================================
+// 10. System Preferences & Configuration Types
+// ==========================================
+
+export type AppTheme = 'light' | 'dark' | 'system';
+export type AppLanguage = 'English';
+export type SessionTimeout = '15m' | '30m' | '60m' | 'never';
+
+export interface SystemSettings {
+  id: string;
+  // 1. Pharmacy Identity & Info
+  pharmacyName: string;
+  phone: string;
+  email: string;
+  address: string;
+  logo: string;
+  businessDescription: string;
+
+  // 2. Currency & Number Formatting
+  currency: string;
+  currencySymbol: string;
+  showDecimals: boolean;
+
+  // 3. Sales & POS Rules
+  allowWalkingSales: boolean;
+  allowCreditSales: boolean;
+  requireCustomerForCredit: boolean;
+  requireSaleConfirmation: boolean;
+
+  // 4. Inventory Rules
+  lowStockThreshold: number;
+  allowNegativeStock: boolean;
+  requireAdminStockAdjustment: boolean;
+
+  // 5. Receipt Preferences
+  receiptLogo: boolean;
+  receiptPhone: boolean;
+  receiptAddress: boolean;
+  receiptCashier: boolean;
+  receiptCustomer: boolean;
+  receiptDatetime: boolean;
+  receiptNumber: boolean;
+  receiptFooter: string;
+
+  // 6. Notification Settings
+  lowStockNotifications: boolean;
+  outOfStockNotifications: boolean;
+  newDebtNotifications: boolean;
+  largeTransactionAlert: boolean;
+  largeTransactionThreshold: number;
+
+  // 7. User & Appearance Preferences
+  theme: AppTheme;
+  language: AppLanguage;
+  sessionTimeout: SessionTimeout;
+
+  // Audit
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export type UpdateSettingsInput = Partial<Omit<SystemSettings, 'id' | 'updatedAt' | 'updatedBy'>>;
+
+export interface ChangePasswordInput {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+// ==========================================
+// 11. Executive Dashboard Types
+// ==========================================
+
+export type DashboardPeriod = 'today' | 'this_week' | 'this_month' | 'last_month' | 'custom';
+
+export interface DashboardFilterParams {
+  period: DashboardPeriod;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface DashboardSummaryKPIs {
+  totalSales: number;
+  totalProfit: number; // Admin only
+  transactionCount: number;
+  itemsSold: number;
+  moneyIn: number;
+  moneyOut: number;
+  netMoneyMovement: number; // Strictly NOT called net profit
+  outstandingDebt: number;
+  debtorCount: number;
+  inventoryValue: number; // Admin only: current stock * base price
+  totalStockUnits: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+  registeredCustomersCount: number;
+  totalPurchasesAmount: number;
+  purchasesCount: number;
+}
+
+export interface DashboardSalesTrendPoint {
+  date: string;
+  label: string;
+  sales: number;
+  profit: number; // Admin only
+  transactions: number;
+}
+
+export interface DashboardFinancialMovementPoint {
+  date: string;
+  label: string;
+  moneyIn: number;
+  moneyOut: number;
+  netMovement: number;
+}
+
+export interface DashboardTopProduct {
+  productId: string;
+  variantId: string;
+  productName: string;
+  genericName: string;
+  companyName: string;
+  categoryName: string;
+  unitsSold: number;
+  revenue: number;
+  profit: number; // Admin only
+  currentStock: number;
+}
+
+export interface DashboardRecentSale {
+  id: string;
+  receiptNumber: string;
+  date: string;
+  rawDate: string;
+  customerName: string;
+  isWalkIn: boolean;
+  totalAmount: number;
+  paymentMethod: string;
+  paymentStatus: string;
+  itemCount: number;
+}
+
+export interface DashboardRecentPurchase {
+  id: string;
+  invoiceNumber: string;
+  purchaseDate: string;
+  rawDate?: string;
+  companyName: string;
+  totalAmount: number;
+  paymentStatus: string;
+  itemsCount: number;
+}
+
+export interface DashboardStockAlert {
+  productId: string;
+  variantId: string;
+  productName: string;
+  genericName: string;
+  companyName: string;
+  currentStock: number;
+  reorderLevel: number;
+  status: 'low_stock' | 'out_of_stock';
+}
+
+export interface DashboardData {
+  summary: DashboardSummaryKPIs;
+  salesTrends: DashboardSalesTrendPoint[];
+  financialMovementTrends: DashboardFinancialMovementPoint[];
+  topProducts: DashboardTopProduct[];
+  recentSales: DashboardRecentSale[];
+  recentPurchases: DashboardRecentPurchase[];
+  stockAlerts: DashboardStockAlert[];
+  lowStockThreshold: number;
+}
+
 

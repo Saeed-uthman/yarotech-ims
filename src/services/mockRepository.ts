@@ -77,6 +77,18 @@ import {
   InventoryMovementReportItem,
   InventoryMovementReportData,
   DebtMovementReportData,
+  SystemSettings,
+  UpdateSettingsInput,
+  ChangePasswordInput,
+  DashboardFilterParams,
+  DashboardData,
+  DashboardSummaryKPIs,
+  DashboardSalesTrendPoint,
+  DashboardFinancialMovementPoint,
+  DashboardTopProduct,
+  DashboardRecentSale,
+  DashboardRecentPurchase,
+  DashboardStockAlert,
 } from '../types';
 import {
   MOCK_CATEGORIES,
@@ -89,6 +101,7 @@ import {
   MOCK_CUSTOMER_DEBT_PAYMENTS,
   MOCK_STOCK_PURCHASES,
   MOCK_MANUAL_EXPENSES,
+  DEFAULT_MOCK_SETTINGS,
 } from '../data/mock';
 
 const DB_KEYS = {
@@ -102,6 +115,7 @@ const DB_KEYS = {
   DEBT_PAYMENTS: 'stitch_pharmacy_db_debt_payments',
   PURCHASES: 'stitch_pharmacy_db_stock_purchases',
   EXPENSES: 'stitch_pharmacy_db_expenses',
+  SETTINGS: 'stitch_pharmacy_db_settings',
   CONFIG: 'stitch_pharmacy_db_config',
 };
 
@@ -171,6 +185,7 @@ export class MockDatabaseRepository {
   private debtPayments: CustomerDebtPayment[] = [];
   private purchases: StockPurchase[] = [];
   private expenses: ManualExpense[] = [];
+  private settings: SystemSettings = { ...DEFAULT_MOCK_SETTINGS };
   private config: MockDbConfig = DEFAULT_CONFIG;
 
   constructor() {
@@ -188,6 +203,7 @@ export class MockDatabaseRepository {
     this.debtPayments = getStorage(DB_KEYS.DEBT_PAYMENTS, MOCK_CUSTOMER_DEBT_PAYMENTS);
     this.purchases = getStorage(DB_KEYS.PURCHASES, MOCK_STOCK_PURCHASES);
     this.expenses = getStorage(DB_KEYS.EXPENSES, MOCK_MANUAL_EXPENSES);
+    this.settings = getStorage(DB_KEYS.SETTINGS, { ...DEFAULT_MOCK_SETTINGS });
     this.config = getStorage(DB_KEYS.CONFIG, DEFAULT_CONFIG);
   }
 
@@ -202,6 +218,7 @@ export class MockDatabaseRepository {
     setStorage(DB_KEYS.DEBT_PAYMENTS, this.debtPayments);
     setStorage(DB_KEYS.PURCHASES, this.purchases);
     setStorage(DB_KEYS.EXPENSES, this.expenses);
+    setStorage(DB_KEYS.SETTINGS, this.settings);
     setStorage(DB_KEYS.CONFIG, this.config);
   }
 
@@ -3675,7 +3692,7 @@ export class MockDatabaseRepository {
 
     // 1. Filter Sales within period
     const periodSales = this.sales.filter((sale) => {
-      const saleDate = new Date(sale.rawDate || sale.createdAt || sale.saleDate);
+      const saleDate = new Date(sale.rawDate || sale.date);
       if (saleDate < start || saleDate > end) return false;
 
       if (params.paymentMethod && params.paymentMethod !== 'all') {
@@ -3701,11 +3718,14 @@ export class MockDatabaseRepository {
     // 2. Filter Stock Purchases within period (Completed only)
     const periodPurchases = this.purchases.filter((purchase) => {
       if (purchase.status !== 'COMPLETED') return false;
-      const purDate = new Date(purchase.rawDate || purchase.createdAt || purchase.purchaseDate);
+      const purDate = new Date(purchase.rawDate || purchase.purchaseDate);
       if (purDate < start || purDate > end) return false;
 
       if (params.companyId) {
-        const matchesComp = purchase.items.some((it) => it.companyId === params.companyId);
+        const matchesComp = purchase.items.some((it) => {
+          const v = this.variants.find((variant) => variant.id === it.productVariantId);
+          return (v && v.companyId === params.companyId) || it.companyName === this.companies.find((c) => c.id === params.companyId)?.name;
+        });
         if (!matchesComp) return false;
       }
       if (params.productId) {
@@ -3718,18 +3738,18 @@ export class MockDatabaseRepository {
 
     // 3. Filter Debt Payments within period
     const periodDebtPayments = this.debtPayments.filter((dp) => {
-      const dpDate = new Date(dp.rawDate || dp.createdAt || dp.paymentDate);
+      const dpDate = new Date(dp.rawDate || dp.paymentDate);
       return dpDate >= start && dpDate <= end;
     });
 
     // 4. Filter Operating Expenses within period
     const periodExpenses = this.expenses.filter((exp) => {
-      const expDate = new Date(exp.rawDate || exp.createdAt || exp.date);
+      const expDate = new Date(exp.rawDate || exp.date);
       return expDate >= start && expDate <= end;
     });
 
     // Calculations
-    const totalSales = periodSales.reduce((sum, s) => sum + s.totalAmount, 0);
+    const totalSales = periodSales.reduce((sum, s) => sum + (s.total || s.totalAmount || 0), 0);
 
     // Profit is calculated from snapshot prices at time of sale: SUM((selling - base) * qty) - discount
     let totalProfit = 0;
@@ -3747,8 +3767,8 @@ export class MockDatabaseRepository {
     const totalStockPurchases = periodPurchases.reduce((sum, p) => sum + p.totalAmount, 0);
 
     // Money In: completed sale cash/transfer/pos payments + customer debt repayments
-    const salesCashReceived = periodSales.reduce((sum, s) => sum + (s.amountPaid || 0), 0);
-    const debtPaymentsReceived = periodDebtPayments.reduce((sum, dp) => sum + dp.amountPaid, 0);
+    const salesCashReceived = periodSales.reduce((sum, s) => sum + (s.amountPaid || s.paidAmount || 0), 0);
+    const debtPaymentsReceived = periodDebtPayments.reduce((sum, dp) => sum + dp.amount, 0);
     const moneyIn = salesCashReceived + debtPaymentsReceived;
 
     // Money Out: stock purchase payments + approved operating expenses
@@ -3759,7 +3779,8 @@ export class MockDatabaseRepository {
     const netMoneyMovement = moneyIn - moneyOut;
 
     // Outstanding Debt across all active customers
-    const outstandingDebt = this.customers.reduce(
+    const hydratedCustomers = this.customers.map((c) => this.hydrateCustomer(c));
+    const outstandingDebt = hydratedCustomers.reduce(
       (sum, c) => sum + (c.outstandingDebt || 0),
       0
     );
@@ -3816,7 +3837,7 @@ export class MockDatabaseRepository {
 
     // Filter Sales
     const filteredSales = this.sales.filter((sale) => {
-      const saleDate = new Date(sale.rawDate || sale.createdAt || sale.saleDate);
+      const saleDate = new Date(sale.rawDate || sale.date);
       if (saleDate < start || saleDate > end) return false;
 
       if (params.paymentMethod && params.paymentMethod !== 'all') {
@@ -3838,7 +3859,7 @@ export class MockDatabaseRepository {
       return true;
     });
 
-    const totalSales = filteredSales.reduce((sum, s) => sum + s.totalAmount, 0);
+    const totalSales = filteredSales.reduce((sum, s) => sum + (s.total || s.totalAmount || 0), 0);
     let totalProfit = 0;
     if (isAdmin) {
       totalProfit = filteredSales.reduce((sum, s) => {
@@ -3880,7 +3901,7 @@ export class MockDatabaseRepository {
     }
 
     filteredSales.forEach((s) => {
-      const sDateStr = (s.rawDate || s.createdAt || s.saleDate).split('T')[0];
+      const sDateStr = (s.rawDate || s.date).split('T')[0];
       let point = trendMap.get(sDateStr);
       if (!point) {
         point = {
@@ -3896,7 +3917,7 @@ export class MockDatabaseRepository {
         };
         trendMap.set(sDateStr, point);
       }
-      point.sales += s.totalAmount;
+      point.sales += s.total || s.totalAmount || 0;
       if (isAdmin) {
         const pProfit = s.items.reduce(
           (acc, it) => acc + ((it.sellingPrice || 0) - (it.basePrice || 0)) * it.quantity,
@@ -3904,7 +3925,7 @@ export class MockDatabaseRepository {
         );
         point.profit += Math.max(0, pProfit - (s.discount || 0));
       }
-      point.moneyIn += s.amountPaid || 0;
+      point.moneyIn += s.amountPaid || s.paidAmount || 0;
       point.unitsSold += s.items.reduce((acc, it) => acc + it.quantity, 0);
       point.transactionsCount += 1;
     });
@@ -3916,7 +3937,7 @@ export class MockDatabaseRepository {
     filteredSales.forEach((s) => {
       const m = s.paymentMethod || 'CASH';
       const cur = methodMap.get(m) || { amount: 0, count: 0 };
-      cur.amount += s.totalAmount;
+      cur.amount += s.total || s.totalAmount || 0;
       cur.count += 1;
       methodMap.set(m, cur);
     });
@@ -3938,14 +3959,15 @@ export class MockDatabaseRepository {
       s.items.forEach((it) => {
         const prod = this.products.find((p) => p.id === it.productId);
         const catId = prod ? prod.categoryId : 'uncategorized';
+        const foundCat = this.categories.find((c) => c.id === catId);
         const cat = categoryMap.get(catId) || {
-          name: prod ? prod.categoryName || 'Other' : 'Other',
+          name: foundCat ? foundCat.name : 'Other',
           units: 0,
           revenue: 0,
           profit: 0,
         };
         cat.units += it.quantity;
-        cat.revenue += it.subtotal;
+        cat.revenue += it.subtotal || ((it.sellingPrice || 0) * it.quantity);
         if (isAdmin) {
           cat.profit += ((it.sellingPrice || 0) - (it.basePrice || 0)) * it.quantity;
         }
@@ -3980,7 +4002,7 @@ export class MockDatabaseRepository {
           profit: 0,
         };
         comp.units += it.quantity;
-        comp.revenue += it.subtotal;
+        comp.revenue += it.subtotal || ((it.sellingPrice || 0) * it.quantity);
         if (isAdmin) {
           comp.profit += ((it.sellingPrice || 0) - (it.basePrice || 0)) * it.quantity;
         }
@@ -4036,7 +4058,7 @@ export class MockDatabaseRepository {
     const isAdmin = role === 'admin';
 
     const filteredSales = this.sales.filter((sale) => {
-      const sDate = new Date(sale.rawDate || sale.createdAt || sale.saleDate);
+      const sDate = new Date(sale.rawDate || sale.date);
       if (sDate < start || sDate > end) return false;
       if (params.paymentMethod && params.paymentMethod !== 'all' && sale.paymentMethod !== params.paymentMethod) return false;
       return true;
@@ -4073,10 +4095,10 @@ export class MockDatabaseRepository {
     }>();
 
     filteredSales.forEach((s) => {
-      totalRevenue += s.totalAmount;
+      totalRevenue += s.total || s.totalAmount || 0;
       s.items.forEach((it) => {
         const itemQty = it.quantity;
-        const itemRev = it.subtotal;
+        const itemRev = it.subtotal || ((it.sellingPrice || 0) * itemQty);
         const itemCost = (it.basePrice || 0) * itemQty;
         const itemProf = isAdmin ? itemRev - itemCost : 0;
 
@@ -4085,7 +4107,7 @@ export class MockDatabaseRepository {
         grossProfit += itemProf;
 
         // Product key by variant to distinguish Paracetamol DANA vs EMZOR
-        const pKey = it.productVariantId || `${it.productId}-${it.companyId}`;
+        const pKey = it.productVariantId || `${it.productId}-${it.companyId || 'gen'}`;
         const pCur = prodProfitMap.get(pKey) || {
           productId: it.productId,
           productName: it.productName,
@@ -4105,8 +4127,9 @@ export class MockDatabaseRepository {
         // Category
         const prod = this.products.find((p) => p.id === it.productId);
         const catId = prod ? prod.categoryId : 'other';
+        const foundCat = this.categories.find((c) => c.id === catId);
         const catCur = catProfitMap.get(catId) || {
-          name: prod ? prod.categoryName || 'Other' : 'Other',
+          name: foundCat ? foundCat.name : 'Other',
           revenue: 0,
           cost: 0,
           profit: 0,
@@ -4202,10 +4225,13 @@ export class MockDatabaseRepository {
 
     const periodPurchases = this.purchases.filter((p) => {
       if (p.status !== 'COMPLETED') return false;
-      const pDate = new Date(p.rawDate || p.createdAt || p.purchaseDate);
+      const pDate = new Date(p.rawDate || p.purchaseDate);
       if (pDate < start || pDate > end) return false;
       if (params.companyId) {
-        const match = p.items.some((it) => it.companyId === params.companyId);
+        const match = p.items.some((it) => {
+          const v = this.variants.find((variant) => variant.id === it.productVariantId);
+          return (v && v.companyId === params.companyId) || it.companyName === this.companies.find((c) => c.id === params.companyId)?.name;
+        });
         if (!match) return false;
       }
       return true;
@@ -4237,7 +4263,7 @@ export class MockDatabaseRepository {
     const trendMap = new Map<string, { date: string; label: string; amount: number; units: number; count: number }>();
 
     periodPurchases.forEach((p) => {
-      const pDateStr = (p.rawDate || p.createdAt || p.purchaseDate).split('T')[0];
+      const pDateStr = (p.rawDate || p.purchaseDate).split('T')[0];
       const curTrend = trendMap.get(pDateStr) || {
         date: pDateStr,
         label: pDateStr,
@@ -4251,7 +4277,10 @@ export class MockDatabaseRepository {
       trendMap.set(pDateStr, curTrend);
 
       p.items.forEach((it) => {
-        const cId = it.companyId || 'other';
+        const v = this.variants.find((variant) => variant.id === it.productVariantId);
+        const comp = this.companies.find((c) => c.name === it.companyName || (v && c.id === v.companyId));
+        const cId = comp ? comp.id : (v ? v.companyId : 'other');
+
         const cCur = companyMap.get(cId) || {
           name: it.companyName || 'Other',
           count: 0,
@@ -4263,7 +4292,7 @@ export class MockDatabaseRepository {
         cCur.total += it.subtotal;
         companyMap.set(cId, cCur);
 
-        const itKey = `${it.productId}-${it.companyId}`;
+        const itKey = `${it.productId}-${cId}`;
         const itCur = itemMap.get(itKey) || {
           productId: it.productId,
           productName: it.productName,
@@ -4338,26 +4367,26 @@ export class MockDatabaseRepository {
 
     // Money In
     const periodSales = this.sales.filter((s) => {
-      const sDate = new Date(s.rawDate || s.createdAt || s.saleDate);
+      const sDate = new Date(s.rawDate || s.date);
       return sDate >= start && sDate <= end;
     });
     const periodDebtPayments = this.debtPayments.filter((dp) => {
-      const dpDate = new Date(dp.rawDate || dp.createdAt || dp.paymentDate);
+      const dpDate = new Date(dp.rawDate || dp.paymentDate);
       return dpDate >= start && dpDate <= end;
     });
 
-    const salesIncome = periodSales.reduce((sum, s) => sum + (s.amountPaid || 0), 0);
-    const debtPaymentsIncome = periodDebtPayments.reduce((sum, dp) => sum + dp.amountPaid, 0);
+    const salesIncome = periodSales.reduce((sum, s) => sum + (s.amountPaid || s.paidAmount || 0), 0);
+    const debtPaymentsIncome = periodDebtPayments.reduce((sum, dp) => sum + dp.amount, 0);
     const moneyIn = salesIncome + debtPaymentsIncome;
 
     // Money Out
     const periodPurchases = this.purchases.filter((p) => {
       if (p.status !== 'COMPLETED') return false;
-      const pDate = new Date(p.rawDate || p.createdAt || p.purchaseDate);
+      const pDate = new Date(p.rawDate || p.purchaseDate);
       return pDate >= start && pDate <= end;
     });
     const periodExpenses = this.expenses.filter((exp) => {
-      const expDate = new Date(exp.rawDate || exp.createdAt || exp.date);
+      const expDate = new Date(exp.rawDate || exp.date);
       return expDate >= start && expDate <= end;
     });
 
@@ -4409,23 +4438,24 @@ export class MockDatabaseRepository {
     const dailyMap = new Map<string, { date: string; label: string; moneyIn: number; moneyOut: number; netMovement: number }>();
 
     periodSales.forEach((s) => {
-      const d = (s.rawDate || s.createdAt || s.saleDate).split('T')[0];
+      const d = (s.rawDate || s.date).split('T')[0];
       const cur = dailyMap.get(d) || { date: d, label: d, moneyIn: 0, moneyOut: 0, netMovement: 0 };
-      cur.moneyIn += s.amountPaid || 0;
-      cur.netMovement += s.amountPaid || 0;
+      const paid = s.amountPaid || s.paidAmount || 0;
+      cur.moneyIn += paid;
+      cur.netMovement += paid;
       dailyMap.set(d, cur);
     });
 
     periodDebtPayments.forEach((dp) => {
-      const d = (dp.rawDate || dp.createdAt || dp.paymentDate).split('T')[0];
+      const d = (dp.rawDate || dp.paymentDate).split('T')[0];
       const cur = dailyMap.get(d) || { date: d, label: d, moneyIn: 0, moneyOut: 0, netMovement: 0 };
-      cur.moneyIn += dp.amountPaid;
-      cur.netMovement += dp.amountPaid;
+      cur.moneyIn += dp.amount;
+      cur.netMovement += dp.amount;
       dailyMap.set(d, cur);
     });
 
     periodPurchases.forEach((p) => {
-      const d = (p.rawDate || p.createdAt || p.purchaseDate).split('T')[0];
+      const d = (p.rawDate || p.purchaseDate).split('T')[0];
       const cur = dailyMap.get(d) || { date: d, label: d, moneyIn: 0, moneyOut: 0, netMovement: 0 };
       cur.moneyOut += p.totalAmount;
       cur.netMovement -= p.totalAmount;
@@ -4433,7 +4463,7 @@ export class MockDatabaseRepository {
     });
 
     periodExpenses.forEach((exp) => {
-      const d = (exp.rawDate || exp.createdAt || exp.date).split('T')[0];
+      const d = (exp.rawDate || exp.date).split('T')[0];
       const cur = dailyMap.get(d) || { date: d, label: d, moneyIn: 0, moneyOut: 0, netMovement: 0 };
       cur.moneyOut += exp.amount;
       cur.netMovement -= exp.amount;
@@ -4485,6 +4515,9 @@ export class MockDatabaseRepository {
       if (params.categoryId && p.categoryId !== params.categoryId) return;
       if (params.productId && p.id !== params.productId) return;
 
+      const cat = this.categories.find((c) => c.id === p.categoryId);
+      const categoryName = cat ? cat.name : 'General';
+
       const pVariants = this.variants.filter((v) => v.productId === p.id && v.status === 'Available');
       pVariants.forEach((v) => {
         if (params.companyId && v.companyId !== params.companyId) return;
@@ -4499,7 +4532,7 @@ export class MockDatabaseRepository {
           form: p.form,
           companyId: v.companyId,
           companyName: comp ? comp.name : 'Unknown',
-          categoryName: p.categoryName || 'General',
+          categoryName,
           unitsSold: 0,
           revenue: 0,
           cost: 0,
@@ -4515,7 +4548,7 @@ export class MockDatabaseRepository {
 
     // 2. Accumulate sales in period
     const filteredSales = this.sales.filter((s) => {
-      const sDate = new Date(s.rawDate || s.createdAt || s.saleDate);
+      const sDate = new Date(s.rawDate || s.date);
       return sDate >= start && sDate <= end;
     });
 
@@ -4529,16 +4562,19 @@ export class MockDatabaseRepository {
           if (params.productId && it.productId !== params.productId) return;
           if (params.companyId && it.companyId !== params.companyId) return;
 
+          const cat = prod ? this.categories.find((c) => c.id === prod.categoryId) : null;
+          const categoryName = cat ? cat.name : 'General';
+
           vItem = {
             productId: it.productId,
             variantId: it.productVariantId,
             productName: it.productName,
             genericName: it.genericName || '',
-            dosage: it.dosage,
-            form: it.form,
-            companyId: it.companyId,
+            dosage: it.dosage || '',
+            form: it.form || '',
+            companyId: it.companyId || '',
             companyName: it.companyName,
-            categoryName: prod ? prod.categoryName || 'General' : 'General',
+            categoryName,
             unitsSold: 0,
             revenue: 0,
             cost: 0,
@@ -4546,18 +4582,18 @@ export class MockDatabaseRepository {
             marginPct: 0,
             currentStock: 0,
             sellingPrice: it.sellingPrice,
-            basePrice: it.basePrice,
+            basePrice: it.basePrice || 0,
             velocity: 'zero',
           };
           variantMap.set(it.productVariantId, vItem);
         }
 
         vItem.unitsSold += it.quantity;
-        vItem.revenue += it.subtotal;
+        vItem.revenue += it.subtotal || (it.sellingPrice * it.quantity);
         const itemCost = (it.basePrice || 0) * it.quantity;
         vItem.cost += itemCost;
         if (isAdmin) {
-          vItem.profit += it.subtotal - itemCost;
+          vItem.profit += (it.subtotal || (it.sellingPrice * it.quantity)) - itemCost;
         }
       });
     });
@@ -4630,18 +4666,18 @@ export class MockDatabaseRepository {
 
     // Filter sales and purchases in period
     const periodSales = this.sales.filter((s) => {
-      const d = new Date(s.rawDate || s.createdAt || s.saleDate);
+      const d = new Date(s.rawDate || s.date);
       return d >= start && d <= end;
     });
 
     const periodPurchases = this.purchases.filter((p) => {
       if (p.status !== 'COMPLETED') return false;
-      const d = new Date(p.rawDate || p.createdAt || p.purchaseDate);
+      const d = new Date(p.rawDate || p.purchaseDate);
       return d >= start && d <= end;
     });
 
     const periodAdjustments = this.movements.filter((m) => {
-      const d = new Date(m.createdAt || m.date);
+      const d = new Date(m.createdAt);
       return d >= start && d <= end && m.type === 'ADJUSTMENT';
     });
 
@@ -4668,7 +4704,7 @@ export class MockDatabaseRepository {
 
         // Purchases in period for this variant
         const purchasedUnits = periodPurchases.reduce((sum, pur) => {
-          const matchItem = pur.items.find((it) => it.variantId === v.id || (it.productId === p.id && it.companyId === v.companyId));
+          const matchItem = pur.items.find((it) => it.productVariantId === v.id || (it.productId === p.id && it.companyName === (comp ? comp.name : '')));
           return sum + (matchItem ? matchItem.quantity : 0);
         }, 0);
 
@@ -4683,8 +4719,9 @@ export class MockDatabaseRepository {
         let adjOut = 0;
         periodAdjustments.forEach((adj) => {
           if (adj.productVariantId === v.id) {
-            if (adj.quantityDelta > 0) adjIn += adj.quantityDelta;
-            else adjOut += Math.abs(adj.quantityDelta);
+            const diff = adj.newStock - adj.previousStock;
+            if (diff > 0) adjIn += diff;
+            else adjOut += Math.abs(diff);
           }
         });
 
@@ -4703,7 +4740,7 @@ export class MockDatabaseRepository {
         stockOutSales += soldUnits;
         stockOutAdjustments += adjOut;
 
-        const reorderLevel = p.reorderLevel || 10;
+        const reorderLevel = v.reorderLevel || 10;
         let status: 'In Stock' | 'Low Stock' | 'Out of Stock' = 'In Stock';
         if (currentStock === 0) status = 'Out of Stock';
         else if (currentStock <= reorderLevel) status = 'Low Stock';
@@ -4763,24 +4800,26 @@ export class MockDatabaseRepository {
     // Sales creating debt in period
     const debtSales = this.sales.filter((s) => {
       if (s.outstandingAmount <= 0) return false;
-      const d = new Date(s.rawDate || s.createdAt || s.saleDate);
+      const d = new Date(s.rawDate || s.date);
       return d >= start && d <= end;
     });
 
     // Debt repayments in period
     const periodPayments = this.debtPayments.filter((dp) => {
-      const d = new Date(dp.rawDate || dp.createdAt || dp.paymentDate);
+      const d = new Date(dp.rawDate || dp.paymentDate);
       return d >= start && d <= end;
     });
 
     const debtCreatedInPeriod = debtSales.reduce((sum, s) => sum + s.outstandingAmount, 0);
-    const debtPaymentsInPeriod = periodPayments.reduce((sum, dp) => sum + dp.amountPaid, 0);
-    const totalOutstandingDebt = this.customers.reduce((sum, c) => sum + (c.outstandingDebt || 0), 0);
+    const debtPaymentsInPeriod = periodPayments.reduce((sum, dp) => sum + dp.amount, 0);
+
+    const hydratedCustomers = this.customers.map((c) => this.hydrateCustomer(c));
+    const totalOutstandingDebt = hydratedCustomers.reduce((sum, c) => sum + (c.outstandingDebt || 0), 0);
     const netDebtChange = debtCreatedInPeriod - debtPaymentsInPeriod;
 
     // Debtors breakdown
-    const debtors = this.customers
-      .filter((c) => (c.outstandingDebt || 0) > 0 || c.totalPurchases > 0)
+    const debtors = hydratedCustomers
+      .filter((c) => (c.outstandingDebt || 0) > 0 || (c.totalPurchases || 0) > 0)
       .map((c) => {
         // Debt created in period for this customer
         const custDebtCreated = debtSales
@@ -4790,7 +4829,7 @@ export class MockDatabaseRepository {
         // Debt paid in period for this customer
         const custDebtPaid = periodPayments
           .filter((dp) => dp.customerId === c.id)
-          .reduce((sum, dp) => sum + dp.amountPaid, 0);
+          .reduce((sum, dp) => sum + dp.amount, 0);
 
         // Find last payment date
         const cPayments = this.debtPayments
@@ -4816,16 +4855,16 @@ export class MockDatabaseRepository {
     const timelineMap = new Map<string, { date: string; label: string; debtCreated: number; debtRecovered: number }>();
 
     debtSales.forEach((s) => {
-      const d = (s.rawDate || s.createdAt || s.saleDate).split('T')[0];
+      const d = (s.rawDate || s.date).split('T')[0];
       const cur = timelineMap.get(d) || { date: d, label: d, debtCreated: 0, debtRecovered: 0 };
       cur.debtCreated += s.outstandingAmount;
       timelineMap.set(d, cur);
     });
 
     periodPayments.forEach((dp) => {
-      const d = (dp.rawDate || dp.createdAt || dp.paymentDate).split('T')[0];
+      const d = (dp.rawDate || dp.paymentDate).split('T')[0];
       const cur = timelineMap.get(d) || { date: d, label: d, debtCreated: 0, debtRecovered: 0 };
-      cur.debtRecovered += dp.amountPaid;
+      cur.debtRecovered += dp.amount;
       timelineMap.set(d, cur);
     });
 
@@ -4845,6 +4884,500 @@ export class MockDatabaseRepository {
         trends,
       },
       message: 'Debt movement report loaded.',
+    };
+  }
+
+  // ==========================================
+  // 12. System Preferences & Configurations Methods
+  // ==========================================
+
+  public async getSettings(): Promise<ApiResponse<SystemSettings>> {
+    await this.simulateNetwork();
+    return {
+      success: true,
+      data: { ...this.settings },
+      message: 'System settings loaded successfully.',
+    };
+  }
+
+  public async updateSettings(
+    input: UpdateSettingsInput,
+    role: UserRole
+  ): Promise<ApiResponse<SystemSettings>> {
+    await this.simulateNetwork();
+
+    // Enforce role permissions: Cashier can only edit theme
+    if (role === 'cashier') {
+      const allowedKeys = ['theme'];
+      const modifiedKeys = Object.keys(input);
+      const unauthorizedKeys = modifiedKeys.filter((k) => !allowedKeys.includes(k));
+      if (unauthorizedKeys.length > 0) {
+        throw new Error(
+          'Unauthorized: Cashier role can only adjust local appearance preferences. Business settings require Administrator privileges.'
+        );
+      }
+    }
+
+    // Validation
+    if (input.pharmacyName !== undefined && !input.pharmacyName.trim()) {
+      throw new Error('Pharmacy name is required and cannot be empty.');
+    }
+
+    if (input.lowStockThreshold !== undefined && input.lowStockThreshold < 0) {
+      throw new Error('Low stock threshold must be zero or a positive number.');
+    }
+
+    if (input.receiptFooter !== undefined && input.receiptFooter.length > 150) {
+      throw new Error('Receipt footer message cannot exceed 150 characters.');
+    }
+
+    const now = new Date();
+    this.settings = {
+      ...this.settings,
+      ...input,
+      updatedAt: now.toISOString(),
+      updatedBy: role === 'admin' ? 'Pharm. Abdullahi (Admin)' : 'Cashier Zainab',
+    };
+
+    this.save();
+
+    return {
+      success: true,
+      data: { ...this.settings },
+      message: 'System preferences saved successfully.',
+    };
+  }
+
+  public async resetSettings(role: UserRole): Promise<ApiResponse<SystemSettings>> {
+    await this.simulateNetwork();
+
+    if (role !== 'admin') {
+      throw new Error('Unauthorized: Only administrators can reset system settings to defaults.');
+    }
+
+    const now = new Date();
+    this.settings = {
+      ...DEFAULT_MOCK_SETTINGS,
+      updatedAt: now.toISOString(),
+      updatedBy: 'Pharm. Abdullahi (Admin)',
+    };
+
+    this.save();
+
+    return {
+      success: true,
+      data: { ...this.settings },
+      message: 'System preferences reset to default values.',
+    };
+  }
+
+  public async changePassword(
+    input: ChangePasswordInput,
+    role: UserRole
+  ): Promise<ApiResponse<boolean>> {
+    await this.simulateNetwork();
+
+    if (!input.currentPassword) {
+      throw new Error('Please enter your current password.');
+    }
+    if (!input.newPassword || input.newPassword.length < 6) {
+      throw new Error('New password must be at least 6 characters long.');
+    }
+    if (input.newPassword !== input.confirmPassword) {
+      throw new Error('New password and confirmation do not match.');
+    }
+
+    return {
+      success: true,
+      data: true,
+      message: 'Password updated successfully.',
+    };
+  }
+
+  // ==========================================
+  // 13. Executive Dashboard Aggregations (Module 1)
+  // ==========================================
+
+  public async getDashboardData(
+    params: DashboardFilterParams,
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<DashboardData>> {
+    await this.simulateNetwork();
+
+    const isAdmin = role === 'admin';
+    const lowStockThreshold = this.settings?.lowStockThreshold ?? 10;
+
+    // 1. Date boundaries
+    const { start, end } = this.getReportDateBoundaries(
+      params.period as ReportDateRange,
+      params.startDate,
+      params.endDate
+    );
+
+    // 2. Sales in period
+    const periodSales = this.sales.filter((sale) => {
+      const sDate = new Date(sale.rawDate || sale.date);
+      return sDate >= start && sDate <= end;
+    });
+
+    const totalSales = periodSales.reduce(
+      (sum, s) => sum + (s.total || s.totalAmount || 0),
+      0
+    );
+    const transactionCount = periodSales.length;
+    const itemsSold = periodSales.reduce(
+      (sum, s) => sum + s.items.reduce((iSum, it) => iSum + it.quantity, 0),
+      0
+    );
+
+    // Historical profit: Selling Price at Sale - Base Price at Sale * Qty - Discount (Admin only)
+    let totalProfit = 0;
+    if (isAdmin) {
+      totalProfit = periodSales.reduce((sum, s) => {
+        const grossProfit = s.items.reduce(
+          (iSum, it) =>
+            iSum + ((it.sellingPrice || 0) - (it.basePrice || 0)) * it.quantity,
+          0
+        );
+        return sum + Math.max(0, grossProfit - (s.discount || 0));
+      }, 0);
+    }
+
+    // 3. Money In (Sales receipts + Debt payments in period)
+    const periodDebtPayments = this.debtPayments.filter((dp) => {
+      const dpDate = new Date(dp.rawDate || dp.paymentDate);
+      return dpDate >= start && dpDate <= end;
+    });
+    const salesCashReceived = periodSales.reduce(
+      (sum, s) => sum + (s.amountPaid || s.paidAmount || 0),
+      0
+    );
+    const debtPaymentsReceived = periodDebtPayments.reduce(
+      (sum, dp) => sum + dp.amount,
+      0
+    );
+    const moneyIn = salesCashReceived + debtPaymentsReceived;
+
+    // 4. Money Out (Completed Stock Purchases + Expenses in period)
+    const periodPurchases = this.purchases.filter((p) => {
+      if (p.status !== 'COMPLETED') return false;
+      const pDate = new Date(p.rawDate || p.purchaseDate);
+      return pDate >= start && pDate <= end;
+    });
+    const periodExpenses = this.expenses.filter((exp) => {
+      const expDate = new Date(exp.rawDate || exp.date);
+      return expDate >= start && expDate <= end;
+    });
+    const purchasesExpense = periodPurchases.reduce(
+      (sum, p) => sum + p.totalAmount,
+      0
+    );
+    const operatingExpenses = periodExpenses.reduce(
+      (sum, exp) => sum + exp.amount,
+      0
+    );
+    const moneyOut = purchasesExpense + operatingExpenses;
+
+    // Net Money Movement (Strictly NOT labeled net profit)
+    const netMoneyMovement = moneyIn - moneyOut;
+
+    // 5. Customer Debt (Current State)
+    const hydratedCustomers = this.customers.map((c) => this.hydrateCustomer(c));
+    const outstandingDebt = hydratedCustomers.reduce(
+      (sum, c) => sum + (c.outstandingDebt || 0),
+      0
+    );
+    const debtorCount = hydratedCustomers.filter(
+      (c) => (c.outstandingDebt || 0) > 0
+    ).length;
+    const registeredCustomersCount = this.customers.length;
+
+    // 6. Inventory & Stock (Current State)
+    const activeVariants = this.variants.filter((v) => v.status === 'Available');
+    const totalStockUnits = activeVariants.reduce(
+      (sum, v) => sum + v.currentStock,
+      0
+    );
+    // Inventory value is strictly Base Price * Current Stock (Admin only)
+    const inventoryValue = isAdmin
+      ? activeVariants.reduce((sum, v) => sum + v.currentStock * v.basePrice, 0)
+      : 0;
+
+    const lowStockVariants = activeVariants.filter(
+      (v) => v.currentStock <= lowStockThreshold && v.currentStock > 0
+    );
+    const outOfStockVariants = activeVariants.filter((v) => v.currentStock === 0);
+
+    const lowStockCount = lowStockVariants.length;
+    const outOfStockCount = outOfStockVariants.length;
+
+    // 7. Stock Alerts (Combined out of stock + low stock, sorted by stock ascending)
+    const productMap = new Map(this.products.map((p) => [p.id, p]));
+    const companyMap = this.getCompanyMap();
+
+    const stockAlerts: DashboardStockAlert[] = [...outOfStockVariants, ...lowStockVariants]
+      .map((v) => {
+        const prod = productMap.get(v.productId);
+        const comp = companyMap.get(v.companyId);
+        return {
+          productId: v.productId,
+          variantId: v.id,
+          productName: prod ? prod.name : 'Unknown Product',
+          genericName: prod ? prod.genericName : '',
+          companyName: comp ? comp.name : 'Unknown Manufacturer',
+          currentStock: v.currentStock,
+          reorderLevel: v.reorderLevel || lowStockThreshold,
+          status: (v.currentStock === 0 ? 'out_of_stock' : 'low_stock') as 'out_of_stock' | 'low_stock',
+        };
+      })
+      .sort((a, b) => a.currentStock - b.currentStock)
+      .slice(0, 8);
+
+    // 8. Trends: Sales & Profit + Financial Movement
+    const trendMap = new Map<
+      string,
+      {
+        date: string;
+        label: string;
+        sales: number;
+        profit: number;
+        transactions: number;
+        moneyIn: number;
+        moneyOut: number;
+      }
+    >();
+
+    // Pre-populate daily timeline
+    const cursor = new Date(start);
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    while (cursor <= end && trendMap.size < 35) {
+      const dStr = cursor.toISOString().split('T')[0];
+      const label = `${cursor.getUTCDate()} ${monthNames[cursor.getUTCMonth()]}`;
+      trendMap.set(dStr, {
+        date: dStr,
+        label,
+        sales: 0,
+        profit: 0,
+        transactions: 0,
+        moneyIn: 0,
+        moneyOut: 0,
+      });
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+
+    periodSales.forEach((s) => {
+      const sDateStr = (s.rawDate || s.date).split('T')[0];
+      let point = trendMap.get(sDateStr);
+      if (!point) {
+        point = {
+          date: sDateStr,
+          label: sDateStr,
+          sales: 0,
+          profit: 0,
+          transactions: 0,
+          moneyIn: 0,
+          moneyOut: 0,
+        };
+        trendMap.set(sDateStr, point);
+      }
+      point.sales += s.total || s.totalAmount || 0;
+      point.transactions += 1;
+      const sPaid = s.amountPaid || s.paidAmount || 0;
+      point.moneyIn += sPaid;
+
+      if (isAdmin) {
+        const pProfit = s.items.reduce(
+          (acc, it) => acc + ((it.sellingPrice || 0) - (it.basePrice || 0)) * it.quantity,
+          0
+        );
+        point.profit += Math.max(0, pProfit - (s.discount || 0));
+      }
+    });
+
+    periodDebtPayments.forEach((dp) => {
+      const dpDateStr = (dp.rawDate || dp.paymentDate).split('T')[0];
+      let point = trendMap.get(dpDateStr);
+      if (point) {
+        point.moneyIn += dp.amount;
+      }
+    });
+
+    periodPurchases.forEach((p) => {
+      const pDateStr = (p.rawDate || p.purchaseDate).split('T')[0];
+      let point = trendMap.get(pDateStr);
+      if (point) {
+        point.moneyOut += p.totalAmount;
+      }
+    });
+
+    periodExpenses.forEach((exp) => {
+      const expDateStr = (exp.rawDate || exp.date).split('T')[0];
+      let point = trendMap.get(expDateStr);
+      if (point) {
+        point.moneyOut += exp.amount;
+      }
+    });
+
+    const sortedTrendList = Array.from(trendMap.values()).sort((a, b) =>
+      a.date.localeCompare(b.date)
+    );
+
+    const salesTrends: DashboardSalesTrendPoint[] = sortedTrendList.map((t) => ({
+      date: t.date,
+      label: t.label,
+      sales: t.sales,
+      profit: isAdmin ? t.profit : 0,
+      transactions: t.transactions,
+    }));
+
+    const financialMovementTrends: DashboardFinancialMovementPoint[] = sortedTrendList.map((t) => ({
+      date: t.date,
+      label: t.label,
+      moneyIn: t.moneyIn,
+      moneyOut: t.moneyOut,
+      netMovement: t.moneyIn - t.moneyOut,
+    }));
+
+    // 9. Top-Selling Products in Period (Variant-Aware)
+    const productItemMap = new Map<
+      string,
+      {
+        productId: string;
+        variantId: string;
+        productName: string;
+        genericName: string;
+        companyName: string;
+        categoryName: string;
+        unitsSold: number;
+        revenue: number;
+        profit: number;
+      }
+    >();
+
+    const categoryMap = this.getCategoryMap();
+
+    periodSales.forEach((s) => {
+      s.items.forEach((it) => {
+        const vKey = `${it.productId}_${it.productVariantId || it.companyId || 'default'}`;
+        const prod = productMap.get(it.productId);
+        const cat = prod ? categoryMap.get(prod.categoryId) : undefined;
+        const comp = it.companyId ? companyMap.get(it.companyId) : undefined;
+
+        let item = productItemMap.get(vKey);
+        if (!item) {
+          item = {
+            productId: it.productId,
+            variantId: it.productVariantId || it.companyId || '',
+            productName: it.productName || prod?.name || 'Product',
+            genericName: it.genericName || prod?.genericName || '',
+            companyName: it.companyName || comp?.name || 'Manufacturer',
+            categoryName: cat ? cat.name : 'General',
+            unitsSold: 0,
+            revenue: 0,
+            profit: 0,
+          };
+          productItemMap.set(vKey, item);
+        }
+
+        item.unitsSold += it.quantity;
+        item.revenue += it.subtotal || (it.sellingPrice || 0) * it.quantity;
+        if (isAdmin) {
+          item.profit += ((it.sellingPrice || 0) - (it.basePrice || 0)) * it.quantity;
+        }
+      });
+    });
+
+    const topProducts: DashboardTopProduct[] = Array.from(productItemMap.values())
+      .map((item) => {
+        const v = this.variants.find(
+          (variant) =>
+            variant.productId === item.productId &&
+            (variant.id === item.variantId ||
+              variant.companyId === item.variantId ||
+              item.variantId === '')
+        );
+        return {
+          ...item,
+          currentStock: v ? v.currentStock : 0,
+          profit: isAdmin ? item.profit : 0,
+        };
+      })
+      .sort((a, b) => b.unitsSold - a.unitsSold)
+      .slice(0, 5);
+
+    // 10. Recent Sales (Last 5)
+    const sortedSalesDesc = [...this.sales].sort((a, b) => {
+      const dateA = new Date(a.rawDate || a.date).getTime();
+      const dateB = new Date(b.rawDate || b.date).getTime();
+      return dateB - dateA;
+    });
+
+    const recentSales: DashboardRecentSale[] = sortedSalesDesc.slice(0, 6).map((s) => ({
+      id: s.id,
+      receiptNumber: s.invoiceNumber || s.id,
+      date: s.date,
+      rawDate: s.rawDate || s.date,
+      customerName: s.customerName || (s.customerId ? 'Registered Customer' : 'Walking Customer'),
+      isWalkIn: !s.customerId || s.customerName === 'Walking Customer',
+      totalAmount: s.total || s.totalAmount || 0,
+      paymentMethod: s.paymentMethod,
+      paymentStatus: s.paymentStatus,
+      itemCount: s.items.reduce((sum, it) => sum + it.quantity, 0),
+    }));
+
+    // 11. Recent Purchases (Last 4)
+    const sortedPurchasesDesc = [...this.purchases].sort((a, b) => {
+      const dateA = new Date(a.rawDate || a.purchaseDate).getTime();
+      const dateB = new Date(b.rawDate || b.purchaseDate).getTime();
+      return dateB - dateA;
+    });
+
+    const recentPurchases: DashboardRecentPurchase[] = sortedPurchasesDesc
+      .slice(0, 4)
+      .map((p) => {
+        const firstItem = p.items[0];
+        return {
+          id: p.id,
+          invoiceNumber: p.purchaseNumber || p.id,
+          purchaseDate: p.purchaseDate,
+          rawDate: p.rawDate || p.purchaseDate,
+          companyName: firstItem?.companyName || 'Pharmaceutical Manufacturer',
+          totalAmount: p.totalAmount,
+          paymentStatus: p.status === 'COMPLETED' ? 'PAID' : 'PENDING',
+          itemsCount: p.items.length,
+        };
+      });
+
+    return {
+      success: true,
+      data: {
+        summary: {
+          totalSales,
+          totalProfit: isAdmin ? totalProfit : 0,
+          transactionCount,
+          itemsSold,
+          moneyIn,
+          moneyOut,
+          netMoneyMovement,
+          outstandingDebt,
+          debtorCount,
+          inventoryValue,
+          totalStockUnits,
+          lowStockCount,
+          outOfStockCount,
+          registeredCustomersCount,
+          totalPurchasesAmount: purchasesExpense,
+          purchasesCount: periodPurchases.length,
+        },
+        salesTrends,
+        financialMovementTrends,
+        topProducts,
+        recentSales,
+        recentPurchases,
+        stockAlerts,
+        lowStockThreshold,
+      },
+      message: 'Dashboard data loaded successfully.',
     };
   }
 
@@ -4872,6 +5405,7 @@ export class MockDatabaseRepository {
     this.debtPayments = [...MOCK_CUSTOMER_DEBT_PAYMENTS];
     this.purchases = [...MOCK_STOCK_PURCHASES];
     this.expenses = [...MOCK_MANUAL_EXPENSES];
+    this.settings = { ...DEFAULT_MOCK_SETTINGS };
     this.config = { ...DEFAULT_CONFIG };
     this.save();
   }

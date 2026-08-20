@@ -34,15 +34,18 @@ import { SalesModule } from './components/sales';
 import { PurchasesModule } from './components/purchases';
 import { AccountabilityModule } from './components/accountability';
 import { ReportsModule } from './components/reports';
+import { SettingsModule } from './components/settings';
+import { DashboardModule } from './components/dashboard';
 import { WifiOff, Activity, RefreshCw } from 'lucide-react';
 import { productService } from './services/productService';
+import { useSettings } from './hooks/useSettings';
 
 export default function App() {
   // User Role (Administrator vs Cashier)
   const [currentRole, setCurrentRole] = useState<UserRole>('admin');
 
   // Navigation & View Mode
-  const [activeNav, setActiveNav] = useState<string>('products');
+  const [activeNav, setActiveNav] = useState<string>('dashboard');
   const [viewMode, setViewMode] = useState<'list' | 'details' | 'wizard'>('list');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
@@ -80,6 +83,24 @@ export default function App() {
 
   const { stats, isLoading: isKPIsLoading, refetch: refetchKPIs } = useKPIStats(currentRole);
   const { categories, companies } = useReferenceData();
+  const { settings, refetch: refetchSettings } = useSettings(currentRole);
+
+  // Apply Theme Preference to Root Document
+  useEffect(() => {
+    if (!settings) return;
+    if (settings.theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else if (settings.theme === 'light') {
+      document.documentElement.classList.remove('dark');
+    } else {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (prefersDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  }, [settings?.theme]);
   const {
     isMutating,
     createProduct,
@@ -350,6 +371,8 @@ export default function App() {
         {/* Desktop Sidebar & Mobile Drawer */}
         <Sidebar
           currentRole={currentRole}
+          pharmacyName={settings.pharmacyName}
+          pharmacyLogo={settings.logo}
           onRoleChange={(role) => {
             setCurrentRole(role);
             addToast(
@@ -375,13 +398,33 @@ export default function App() {
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
           <Header
+            activeNav={activeNav}
+            onNavChange={(nav) => {
+              setActiveNav(nav);
+              if (nav === 'products') {
+                setViewMode('list');
+              }
+            }}
+            pharmacyName={settings.pharmacyName}
+            pharmacyLogo={settings.logo}
             currentRole={currentRole}
+            onRoleChange={(role) => {
+              setCurrentRole(role);
+              addToast(
+                'info',
+                `Switched to ${role === 'admin' ? 'Administrator' : 'Cashier'} Mode`,
+                role === 'cashier' 
+                  ? 'Base costs, inventory values, and admin controls are now hidden.' 
+                  : 'Full access to costs, margins, and product management enabled.'
+              );
+            }}
             searchQuery={filters.search}
             onSearchChange={(q) => setFilters((prev) => ({ ...prev, search: q, page: 1 }))}
             onOpenAddProduct={handleOpenAddProduct}
             onOpenBarcodeScanner={() => setIsBarcodeScannerOpen(true)}
             onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
             onResetData={handleResetData}
+            isOnline={isOnline}
           />
 
           {/* Subheader / Role banner if in cashier view */}
@@ -401,7 +444,23 @@ export default function App() {
 
           {/* Page Body */}
           <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-20 md:pb-8">
-            {activeNav === 'inventory' ? (
+            {activeNav === 'dashboard' ? (
+              <DashboardModule
+                role={currentRole}
+                onNavigate={(module) => {
+                  setActiveNav(module);
+                  if (module === 'products') setViewMode('list');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onOpenProductWizard={() => {
+                  setProductToEdit(null);
+                  setActiveNav('products');
+                  setViewMode('wizard');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                settings={settings}
+              />
+            ) : activeNav === 'inventory' ? (
               <InventoryModule
                 currentRole={currentRole}
                 onNavigateToProduct={async (productId) => {
@@ -457,6 +516,13 @@ export default function App() {
                 categories={categories}
                 companies={companies}
                 products={products}
+              />
+            ) : activeNav === 'settings' ? (
+              <SettingsModule
+                role={currentRole}
+                onSettingsUpdated={() => {
+                  refetchSettings();
+                }}
               />
             ) : activeNav !== 'products' ? (
               <ModulePlaceholder

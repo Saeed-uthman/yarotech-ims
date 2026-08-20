@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Package, 
@@ -17,13 +17,15 @@ import {
 } from 'lucide-react';
 import { UserRole } from '../../types';
 
-interface SidebarProps {
+export interface SidebarProps {
   currentRole: UserRole;
   onRoleChange: (role: UserRole) => void;
   activeNav: string;
   onNavChange: (nav: string) => void;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
+  pharmacyName?: string;
+  pharmacyLogo?: string;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -33,21 +35,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNavChange,
   isMobileOpen = false,
   onCloseMobile,
+  pharmacyName = 'BrightCare Pharmacy',
+  pharmacyLogo,
 }) => {
   const mainNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'products', label: 'Products', icon: Package, badge: 'Active' },
+    { id: 'products', label: 'Products', icon: Package, badge: 'Core' },
     { id: 'inventory', label: 'Inventory', icon: Boxes, badge: 'Live' },
     { id: 'stock-purchase', label: 'Stock Purchase', icon: ShoppingCart, badge: 'Live' },
     { id: 'customers', label: 'Customers', icon: Users, badge: 'Live' },
-    { id: 'sales', label: 'Sales', icon: ShoppingBag, badge: 'Live' },
+    { id: 'sales', label: 'Sales & POS', icon: ShoppingBag, badge: 'Live' },
     { id: 'reports', label: 'Reports', icon: FileText, badge: 'Live' },
   ];
 
-  const otherNavItems = [
-    { id: 'accountability', label: 'Accountability', icon: ShieldCheck, badge: 'Live' },
-    { id: 'settings', label: 'Settings', icon: Settings },
+  const operationsNavItems = [
+    { id: 'accountability', label: 'Accountability', icon: ShieldCheck, badge: 'Audit' },
+    { id: 'settings', label: 'Settings', icon: Settings, badge: 'Config' },
   ];
+
+  // Prevent background scrolling when mobile drawer is open
+  useEffect(() => {
+    if (isMobileOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isMobileOpen]);
+
+  // Handle keyboard Escape to close mobile drawer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isMobileOpen && onCloseMobile) {
+        onCloseMobile();
+      }
+    };
+    if (isMobileOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMobileOpen, onCloseMobile]);
 
   const handleNavClick = (id: string) => {
     onNavChange(id);
@@ -55,18 +83,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-white border-r border-slate-200 text-slate-700 w-64 select-none">
+    <div className="flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 w-64 select-none">
       {/* Brand Header */}
-      <div className="p-5 flex items-center justify-between border-b border-slate-200">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center shadow-sm">
-            <div className="w-3.5 h-3.5 border-2 border-white rounded-xs"></div>
-          </div>
-          <div>
-            <h1 className="font-bold text-slate-900 text-base leading-tight tracking-tight">
-              Stitch <span className="text-blue-600 font-medium text-xs ml-0.5 uppercase tracking-wider">Pharma</span>
+      <div className="p-4 sm:p-5 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900">
+        <div className="flex items-center gap-3 min-w-0">
+          {pharmacyLogo ? (
+            <img
+              src={pharmacyLogo}
+              alt={pharmacyName}
+              className="w-8 h-8 rounded-lg object-contain bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs shrink-0"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-xs shrink-0 text-white">
+              <div className="w-3.5 h-3.5 border-2 border-white rounded-xs"></div>
+            </div>
+          )}
+          <div className="min-w-0">
+            <h1 className="font-bold text-slate-900 dark:text-white text-sm leading-tight tracking-tight truncate" title={pharmacyName}>
+              {pharmacyName}
             </h1>
-            <p className="text-[11px] text-slate-400 font-medium">Products Core</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium truncate">Pharmacy Management</p>
           </div>
         </div>
 
@@ -74,8 +111,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button 
             id="close-mobile-sidebar-btn"
             onClick={onCloseMobile} 
-            className="md:hidden p-1.5 rounded-md text-slate-400 hover:bg-slate-100"
-            aria-label="Close menu"
+            className="md:hidden p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 min-w-[44px] min-h-[44px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="Close navigation menu"
           >
             <X className="w-5 h-5" />
           </button>
@@ -83,12 +120,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Nav List */}
-      <div className="flex-1 overflow-y-auto px-4 py-5 space-y-6">
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6 overscroll-contain">
         <div>
-          <div className="px-3 mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-            Main Menu
+          <div className="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+            Main Navigation
           </div>
-          <nav className="space-y-1">
+          <nav className="space-y-1" aria-label="Main system modules">
             {mainNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeNav === item.id;
@@ -97,21 +134,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   key={item.id}
                   id={`nav-item-${item.id}`}
                   onClick={() => handleNavClick(item.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors min-h-[44px] ${
                     isActive
-                      ? 'bg-blue-50 text-blue-700 font-semibold'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 font-bold shadow-xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
-                    <span>{item.label}</span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`} />
+                    <span className="truncate">{item.label}</span>
                   </div>
-                  {item.id === 'products' && (
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold ${
-                      isActive ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'
+                  {item.badge && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold shrink-0 ${
+                      isActive 
+                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' 
+                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
                     }`}>
-                      Core
+                      {item.badge}
                     </span>
                   )}
                 </button>
@@ -121,11 +160,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         <div>
-          <div className="px-3 mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-            Operations
+          <div className="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+            Audit & System
           </div>
-          <nav className="space-y-1">
-            {otherNavItems.map((item) => {
+          <nav className="space-y-1" aria-label="System operations and audit">
+            {operationsNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeNav === item.id;
               return (
@@ -133,14 +172,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   key={item.id}
                   id={`nav-item-${item.id}`}
                   onClick={() => handleNavClick(item.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors min-h-[44px] ${
                     isActive
-                      ? 'bg-blue-50 text-blue-700 font-semibold'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 font-bold shadow-xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
-                  <span>{item.label}</span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`} />
+                    <span className="truncate">{item.label}</span>
+                  </div>
+                  {item.badge && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold shrink-0 ${
+                      isActive 
+                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' 
+                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                    }`}>
+                      {item.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -148,24 +198,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* User Role Card & Switcher */}
-      <div className="p-4 border-t border-slate-200 bg-slate-50/80">
-        <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-xs">
+      {/* User Role Card & Switcher in Sidebar Footer */}
+      <div className="p-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80">
+        <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
           <div className="flex items-center justify-between mb-2.5">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-md bg-slate-900 text-white flex items-center justify-center font-semibold text-xs overflow-hidden border border-slate-200">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className={`w-8 h-8 rounded-lg text-white flex items-center justify-center font-semibold text-xs overflow-hidden shrink-0 shadow-xs ${
+                currentRole === 'admin' ? 'bg-blue-600' : 'bg-emerald-600'
+              }`}>
                 {currentRole === 'admin' ? (
-                  <UserCheck className="w-4 h-4 text-blue-300" />
+                  <UserCheck className="w-4 h-4" />
                 ) : (
-                  <User className="w-4 h-4 text-emerald-300" />
+                  <User className="w-4 h-4" />
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-bold text-slate-900 truncate">
+                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
                   {currentRole === 'admin' ? 'Admin User' : 'Cashier User'}
                 </p>
-                <p className="text-[11px] text-slate-500 capitalize">
-                  {currentRole === 'admin' ? 'Pharmacy Manager' : 'Sales Staff'}
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 capitalize truncate">
+                  {currentRole === 'admin' ? 'Full Management' : 'POS Sales Mode'}
                 </p>
               </div>
             </div>
@@ -174,21 +226,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
               id="toggle-role-quick-btn"
               onClick={() => onRoleChange(currentRole === 'admin' ? 'cashier' : 'admin')}
               title={`Switch to ${currentRole === 'admin' ? 'Cashier' : 'Admin'} mode`}
-              className="p-1.5 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
+              aria-label={`Switch to ${currentRole === 'admin' ? 'Cashier' : 'Admin'} role`}
             >
-              <LogOut className="w-3.5 h-3.5" />
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
 
           {/* Quick Role Toggle Bar */}
-          <div className="flex bg-slate-100 p-0.5 rounded-md text-xs font-semibold">
+          <div className="flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg text-xs font-semibold">
             <button
               id="role-select-admin-btn"
               onClick={() => onRoleChange('admin')}
-              className={`flex-1 py-1 rounded text-center transition-all ${
+              className={`flex-1 py-1.5 rounded-md text-center transition-all min-h-[36px] ${
                 currentRole === 'admin' 
-                  ? 'bg-white text-blue-700 shadow-xs font-bold' 
-                  : 'text-slate-500 hover:text-slate-800'
+                  ? 'bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-400 shadow-xs font-bold' 
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
               Admin
@@ -196,10 +249,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               id="role-select-cashier-btn"
               onClick={() => onRoleChange('cashier')}
-              className={`flex-1 py-1 rounded text-center transition-all ${
+              className={`flex-1 py-1.5 rounded-md text-center transition-all min-h-[36px] ${
                 currentRole === 'cashier' 
-                  ? 'bg-white text-emerald-700 shadow-xs font-bold' 
-                  : 'text-slate-500 hover:text-slate-800'
+                  ? 'bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs font-bold' 
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
               Cashier
@@ -213,18 +266,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* Desktop Persistent Sidebar */}
-      <aside className="hidden md:flex flex-shrink-0 h-screen sticky top-0">
+      <aside className="hidden md:flex flex-shrink-0 h-screen sticky top-0 z-20">
         {sidebarContent}
       </aside>
 
       {/* Mobile Drawer Overlay */}
       {isMobileOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex">
+        <div 
+          className="fixed inset-0 z-50 md:hidden flex"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Mobile Navigation Menu"
+        >
+          {/* Backdrop */}
           <div 
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" 
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity duration-200 animate-in fade-in" 
             onClick={onCloseMobile}
+            aria-hidden="true"
           />
-          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white z-10 animate-in slide-in-from-left duration-200">
+          {/* Drawer Panel */}
+          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white dark:bg-slate-900 z-10 shadow-2xl animate-in slide-in-from-left duration-200">
             {sidebarContent}
           </div>
         </div>

@@ -1,141 +1,353 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, 
   Plus, 
-  Bell, 
   ScanBarcode, 
   Menu, 
   ShieldAlert, 
-  Sparkles,
-  RefreshCw
+  RefreshCw,
+  X,
+  LayoutDashboard,
+  Package,
+  Boxes,
+  ShoppingCart,
+  Users,
+  ShoppingBag,
+  FileText,
+  ShieldCheck,
+  Settings as SettingsIcon,
+  ChevronRight
 } from 'lucide-react';
 import { UserRole } from '../../types';
+import { HeaderNotifications } from './HeaderNotifications';
+import { HeaderUserMenu } from './HeaderUserMenu';
 
-interface HeaderProps {
+export interface HeaderProps {
+  activeNav?: string;
+  onNavChange?: (nav: string) => void;
+  pharmacyName?: string;
+  pharmacyLogo?: string;
   currentRole: UserRole;
+  onRoleChange?: (role: UserRole) => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
-  onOpenAddProduct: () => void;
+  onOpenAddProduct?: () => void;
   onOpenBarcodeScanner: () => void;
   onOpenMobileMenu: () => void;
   onResetData?: () => void;
+  isOnline?: boolean;
 }
 
+const MODULE_META: Record<string, { title: string; subtitle: string; icon: React.ElementType }> = {
+  dashboard: {
+    title: 'Executive Dashboard',
+    subtitle: 'Real-time revenue, gross profit margins, and pharmacy stock health.',
+    icon: LayoutDashboard,
+  },
+  products: {
+    title: 'Product Management',
+    subtitle: 'Manage medicines and company-specific pricing variants.',
+    icon: Package,
+  },
+  inventory: {
+    title: 'Inventory Tracking',
+    subtitle: 'Stock level monitoring, reorder alerts, and warehouse distribution.',
+    icon: Boxes,
+  },
+  'stock-purchase': {
+    title: 'Stock Purchases',
+    subtitle: 'Procurement orders, manufacturer invoices, and cost verification.',
+    icon: ShoppingCart,
+  },
+  customers: {
+    title: 'Customer Ledgers',
+    subtitle: 'Patient accounts, credit limits, and debt recovery records.',
+    icon: Users,
+  },
+  sales: {
+    title: 'Point of Sale & History',
+    subtitle: 'Cashier checkout terminal, invoices, and sales receipts.',
+    icon: ShoppingBag,
+  },
+  reports: {
+    title: 'Financial & Movement Reports',
+    subtitle: 'Profit and loss analytics, product velocity, and tax summaries.',
+    icon: FileText,
+  },
+  accountability: {
+    title: 'Accountability Audit Feed',
+    subtitle: 'Cryptographically sealed audit trail and shift handovers.',
+    icon: ShieldCheck,
+  },
+  settings: {
+    title: 'System Preferences',
+    subtitle: 'Pharmacy profiles, role permissions, and database backup.',
+    icon: SettingsIcon,
+  },
+};
+
 export const Header: React.FC<HeaderProps> = ({
+  activeNav = 'products',
+  onNavChange,
+  pharmacyName = 'BrightCare Pharmacy',
+  pharmacyLogo,
   currentRole,
+  onRoleChange,
   searchQuery,
   onSearchChange,
   onOpenAddProduct,
   onOpenBarcodeScanner,
   onOpenMobileMenu,
   onResetData,
+  isOnline = true,
 }) => {
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const activeMeta = MODULE_META[activeNav] || {
+    title: 'Pharmacy System',
+    subtitle: 'Pharmacy management and inventory control.',
+    icon: Package,
+  };
+
+  // Keyboard shortcut Ctrl+K or Cmd+K to focus search input
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        if (window.innerWidth < 768) {
+          setIsMobileSearchOpen(true);
+        }
+        setTimeout(() => {
+          searchInputRef.current?.focus();
+        }, 50);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
-    <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 sm:px-6 lg:px-8 py-3.5">
-      <div className="flex items-center justify-between gap-4">
-        {/* Left: Mobile hamburger & Title */}
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            id="mobile-menu-trigger-btn"
-            onClick={onOpenMobileMenu}
-            className="p-2 -ml-2 rounded-md text-slate-600 hover:bg-slate-100 md:hidden"
-            aria-label="Open Navigation Menu"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+    <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 transition-colors">
+      {/* Primary Header Row */}
+      <div className="px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3">
+        <div className="flex items-center justify-between gap-2 sm:gap-4">
+          
+          {/* ======================================================== */}
+          {/* LEFT: Mobile Menu Button + Brand / Active Module Context */}
+          {/* ======================================================== */}
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {/* Mobile Hamburger Button with ≥44px touch target */}
+            <button
+              id="mobile-menu-trigger-btn"
+              onClick={onOpenMobileMenu}
+              className="p-2 -ml-1 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 md:hidden flex items-center justify-center min-w-[44px] min-h-[44px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Open navigation menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
 
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-tight">
-                Product Management
-              </h1>
-              {currentRole === 'cashier' && (
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono">
-                  Cashier Mode
-                </span>
+            {/* Mobile Brand Logo & Name (visible only on small mobile / tablet where sidebar is hidden) */}
+            <div className="flex items-center gap-2 md:hidden">
+              {pharmacyLogo ? (
+                <img
+                  src={pharmacyLogo}
+                  alt={pharmacyName}
+                  className="w-7 h-7 rounded object-contain bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="w-7 h-7 bg-blue-600 rounded flex items-center justify-center shadow-xs shrink-0">
+                  <div className="w-3 h-3 border-2 border-white rounded-xs" />
+                </div>
               )}
+              <div className="min-w-0">
+                <span className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm tracking-tight truncate block max-w-[110px] xs:max-w-[150px] sm:max-w-[200px]">
+                  {pharmacyName}
+                </span>
+              </div>
             </div>
-            <p className="text-xs sm:text-sm text-slate-500 hidden sm:block">
-              Manage medicines and company-specific pricing variants.
-            </p>
-          </div>
-        </div>
 
-        {/* Center: Search Bar (Desktop) */}
-        <div className="hidden lg:flex items-center flex-1 max-w-md mx-6">
-          <div className="relative w-full">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              id="header-global-search-input"
-              type="text"
-              placeholder="Search medicines, barcodes, or categories..."
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="block w-full pl-10 pr-10 py-2 border border-slate-200 rounded-md leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 sm:text-sm transition-colors text-slate-900"
-            />
-            {searchQuery && (
+            {/* Desktop Active Module Title & Breadcrumbs */}
+            <div className="hidden md:block min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight truncate">
+                  {activeMeta.title}
+                </h1>
+
+                {currentRole === 'cashier' && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-mono">
+                    Cashier Mode
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-md hidden lg:block">
+                {activeMeta.subtitle}
+              </p>
+            </div>
+          </div>
+
+          {/* ======================================================== */}
+          {/* CENTER: Search Bar (Desktop / Tablet)                    */}
+          {/* ======================================================== */}
+          <div className="hidden md:flex items-center flex-1 max-w-xs lg:max-w-md mx-2 lg:mx-4">
+            <div className="relative w-full">
+              <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                ref={searchInputRef}
+                id="header-global-search-input"
+                type="text"
+                placeholder="Search medicines, barcodes, or categories..."
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                className="block w-full pl-9 pr-14 py-1.5 lg:py-2 border border-slate-200 dark:border-slate-700 rounded-lg leading-5 bg-slate-50 dark:bg-slate-800/90 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm transition-colors text-slate-900 dark:text-slate-100"
+              />
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                {searchQuery ? (
+                  <button
+                    onClick={() => onSearchChange('')}
+                    className="text-xs font-semibold text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-1 py-0.5"
+                    aria-label="Clear search query"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-slate-200/60 dark:bg-slate-700/60 rounded border border-slate-300 dark:border-slate-600">
+                    ⌘K
+                  </kbd>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ======================================================== */}
+          {/* RIGHT: Quick Actions, Notifications, User Profile Menu   */}
+          {/* ======================================================== */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            {/* Mobile Search Toggle Button */}
+            <button
+              id="header-mobile-search-toggle"
+              onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+              className={`p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 md:hidden flex items-center justify-center min-w-[40px] min-h-[40px] transition-colors ${
+                isMobileSearchOpen ? 'bg-blue-50 text-blue-600 dark:bg-slate-800 dark:text-blue-400' : ''
+              }`}
+              aria-label={isMobileSearchOpen ? 'Close search' : 'Open search'}
+            >
+              <Search className="w-5 h-5" />
+            </button>
+
+            {/* Barcode Scanner Quick Trigger Button */}
+            <button
+              id="open-barcode-scanner-btn"
+              onClick={onOpenBarcodeScanner}
+              title="Scan Medicine Barcode"
+              className="px-2.5 py-1.5 sm:px-3 sm:py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-700/80 flex items-center gap-1.5 transition-colors min-h-[40px] sm:min-h-[44px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <ScanBarcode className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+              <span className="hidden sm:inline">Scan Barcode</span>
+            </button>
+
+            {/* Reset Demo Data Button (if provided) */}
+            {onResetData && (
               <button
-                onClick={() => onSearchChange('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 hover:text-slate-600"
+                id="reset-demo-data-btn"
+                onClick={onResetData}
+                title="Reset to initial mock data"
+                className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-colors hidden xl:flex shadow-xs min-h-[44px] min-w-[44px] items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                Clear
+                <RefreshCw className="w-4 h-4" />
               </button>
             )}
+
+            {/* Add Product Button (Admin only on Products/Inventory or Desktop) */}
+            {onOpenAddProduct && (
+              currentRole === 'admin' ? (
+                <button
+                  id="open-add-product-modal-btn"
+                  onClick={onOpenAddProduct}
+                  className="hidden md:flex px-3 sm:px-3.5 py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-semibold shadow-xs hover:bg-blue-700 active:bg-blue-800 transition-colors items-center gap-1.5 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden lg:inline">Add Product</span>
+                  <span className="lg:hidden">Add</span>
+                </button>
+              ) : (
+                <div className="hidden lg:flex items-center gap-1 px-2.5 py-2 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-lg text-xs font-medium cursor-not-allowed border border-slate-200/60 dark:border-slate-700 min-h-[44px]">
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>Admin Mode Only</span>
+                </div>
+              )
+            )}
+
+            {/* Notifications Menu Popover */}
+            <HeaderNotifications
+              currentRole={currentRole}
+              onNavigate={onNavChange}
+            />
+
+            {/* User Profile & Role Switcher Menu */}
+            <HeaderUserMenu
+              currentRole={currentRole}
+              onRoleChange={(newRole) => {
+                if (onRoleChange) onRoleChange(newRole);
+              }}
+              onNavigate={onNavChange}
+              isOnline={isOnline}
+            />
           </div>
         </div>
 
-        {/* Right: Quick Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Barcode Quick Scan */}
-          <button
-            id="open-barcode-scanner-btn"
-            onClick={onOpenBarcodeScanner}
-            title="Scan Medicine Barcode"
-            className="px-3 py-2 border border-slate-200 rounded-md bg-white text-xs sm:text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 flex items-center gap-1.5 transition-colors"
-          >
-            <ScanBarcode className="w-4 h-4 text-blue-600" />
-            <span className="hidden sm:inline">Scan Barcode</span>
-          </button>
-
-          {/* Reset Demo Data Button */}
-          {onResetData && (
-            <button
-              id="reset-demo-data-btn"
-              onClick={onResetData}
-              title="Reset to initial mock data"
-              className="p-2 rounded-md border border-slate-200 bg-white text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors hidden sm:flex shadow-sm"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          )}
-
-          {/* Notification Bell */}
-          <button 
-            id="header-notification-btn"
-            className="p-2 rounded-md text-slate-500 hover:text-slate-700 hover:bg-slate-100 relative transition-colors"
-            title="Notifications"
-          >
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 rounded-full ring-2 ring-white"></span>
-          </button>
-
-          {/* Add Product Button (Admin only) */}
-          {currentRole === 'admin' ? (
-            <button
-              id="open-add-product-modal-btn"
-              onClick={onOpenAddProduct}
-              className="px-3.5 sm:px-4 py-2 bg-blue-600 text-white rounded-md text-xs sm:text-sm font-semibold shadow-sm hover:bg-blue-700 active:bg-blue-800 transition-colors flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add New Product</span>
-            </button>
-          ) : (
-            <div className="hidden sm:flex items-center gap-1 px-3 py-2 bg-slate-100 text-slate-400 rounded-md text-xs font-medium cursor-not-allowed">
-              <ShieldAlert className="w-3.5 h-3.5" />
-              <span>Admin Action</span>
+        {/* ======================================================== */}
+        {/* COLLAPSIBLE MOBILE SEARCH BAR (Smooth Expand)            */}
+        {/* ======================================================== */}
+        {isMobileSearchOpen && (
+          <div className="md:hidden mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 animate-in slide-in-from-top-2 duration-150">
+            <div className="relative flex items-center">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                ref={searchInputRef}
+                id="header-mobile-search-input"
+                type="text"
+                autoFocus
+                placeholder="Search medicines, barcodes, stock..."
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                className="w-full pl-9 pr-16 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <div className="absolute right-2 flex items-center gap-1">
+                {searchQuery && (
+                  <button
+                    onClick={() => onSearchChange('')}
+                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    aria-label="Clear mobile search"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  onClick={() => setIsMobileSearchOpen(false)}
+                  className="text-xs font-semibold text-blue-600 dark:text-blue-400 px-1.5 py-1"
+                >
+                  Done
+                </button>
+              </div>
             </div>
-          )}
+          </div>
+        )}
+      </div>
+
+      {/* Breadcrumb / Context Bar for Mobile (compact display) */}
+      <div className="md:hidden px-3 py-1.5 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+        <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 truncate">
+          <span className="font-semibold text-slate-900 dark:text-white truncate">
+            {activeMeta.title}
+          </span>
         </div>
+        {currentRole === 'cashier' && (
+          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-semibold shrink-0">
+            Cashier Mode
+          </span>
+        )}
       </div>
     </header>
   );

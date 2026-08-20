@@ -8,3 +8,4 @@ export * from './customerSales';
 export * from './customerDebtPayments';
 export * from './stockPurchases';
 export * from './manualExpenses';
+export * from './settings';
