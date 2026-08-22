@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import {
   Package,
   Search,
-  FileSpreadsheet,
+  FileText,
   ArrowDownRight,
   ArrowUpRight,
   Building2,
 } from 'lucide-react';
 import { InventoryMovementReportData, UserRole } from '../../types';
-import { exportToCSV } from './exportUtils';
+import { exportToPDF } from './exportUtils';
 
 interface InventoryMovementReportViewProps {
   inventoryMovement: InventoryMovementReportData | null;
@@ -51,15 +51,15 @@ export const InventoryMovementReportView: React.FC<InventoryMovementReportViewPr
     return true;
   });
 
-  const handleExportCSV = () => {
+  const handleExportPDF = () => {
     const headers = [
       'Medicine Name',
       'Formulation',
       'Manufacturer',
       'Category',
       'Opening Stock',
-      'Stock In (Procurement + In Adjustments)',
-      'Stock Out (Sales + Out Adjustments)',
+      'Stock In (+)',
+      'Stock Out (-)',
       'Current Stock',
       'Status',
     ];
@@ -76,7 +76,11 @@ export const InventoryMovementReportView: React.FC<InventoryMovementReportViewPr
       it.status.replace('_', ' ').toUpperCase(),
     ]);
 
-    exportToCSV('inventory-movement-report', headers, rows);
+    exportToPDF('inventory-movement-report', headers, rows, {
+      title: 'Inventory Movement & Stock Reconciliation Report',
+      subtitle: `Total Items: ${filteredItems.length} | Status Filter: ${stockStatusFilter.toUpperCase()}`,
+      orientation: 'landscape',
+    });
   };
 
   return (
@@ -205,11 +209,12 @@ export const InventoryMovementReportView: React.FC<InventoryMovementReportViewPr
 
             <button
               type="button"
-              onClick={handleExportCSV}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-white border border-emerald-300 rounded-lg hover:bg-emerald-50 transition-colors"
+              onClick={handleExportPDF}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors"
+              title="Export filtered movement records to PDF"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Export CSV</span>
+              <FileText className="w-3.5 h-3.5" />
+              <span>Export PDF</span>
             </button>
           </div>
         </div>

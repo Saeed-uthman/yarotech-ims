@@ -3,11 +3,11 @@ import {
   ShoppingBag,
   Building2,
   Package,
-  FileSpreadsheet,
+  FileText,
   TrendingUp,
 } from 'lucide-react';
 import { StockPurchaseReportData, UserRole } from '../../types';
-import { exportToCSV } from './exportUtils';
+import { exportToPDF } from './exportUtils';
 
 interface StockPurchaseReportViewProps {
   purchaseReport: StockPurchaseReportData | null;
@@ -35,7 +35,7 @@ export const StockPurchaseReportView: React.FC<StockPurchaseReportViewProps> = (
   const { summary, trends, purchasesByCompany, topPurchasedProducts } = purchaseReport;
   const maxTrend = Math.max(...trends.map((t) => t.amount), 1000);
 
-  const handleExportCSV = () => {
+  const handleExportPDF = () => {
     const headers = ['Manufacturer / Company', 'Purchases Count', 'Units Acquired', 'Total Spend (₦)', '% of Spend'];
     const rows = purchasesByCompany.map((c) => [
       c.companyName,
@@ -44,7 +44,10 @@ export const StockPurchaseReportView: React.FC<StockPurchaseReportViewProps> = (
       c.totalAmount,
       `${c.percentage}%`,
     ]);
-    exportToCSV('stock-purchases-by-manufacturer', headers, rows);
+    exportToPDF('stock-purchases-by-manufacturer', headers, rows, {
+      title: 'Procurement & Stock Purchases by Manufacturer Report',
+      subtitle: `Total Spend: NGN ${summary.totalSpent.toLocaleString()} | Units: ${summary.totalUnitsPurchased.toLocaleString()}`,
+    });
   };
 
   return (
@@ -181,11 +184,12 @@ export const StockPurchaseReportView: React.FC<StockPurchaseReportViewProps> = (
 
           <button
             type="button"
-            onClick={handleExportCSV}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-700 bg-white border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
+            onClick={handleExportPDF}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors"
+            title="Export procurement report to PDF"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Export CSV</span>
+            <FileText className="w-3.5 h-3.5" />
+            <span>Export PDF</span>
           </button>
         </div>
 

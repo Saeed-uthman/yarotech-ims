@@ -21,6 +21,7 @@ import {
 import { ProductImage } from './ProductImage';
 import { ProductStatusBadge } from './ProductStatusBadge';
 import { StockStatusBadge } from './StockStatusBadge';
+import { StockLevelHeatmap } from './StockLevelHeatmap';
 
 interface ProductListTableProps {
   products: Product[];
@@ -245,17 +246,25 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
                     </td>
 
                     {/* 5. Total Stock */}
-                    <td className="py-3.5 px-4 sm:px-6 text-right font-mono font-bold text-slate-900">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <span className={stockStatus === 'Low Stock' ? 'text-amber-600' : stockStatus === 'Out of Stock' ? 'text-rose-600' : 'text-slate-900'}>
-                          {formatNumber(totalStock)}
-                        </span>
-                        {stockStatus === 'Low Stock' && (
-                          <span 
-                            title="Low stock threshold reached" 
-                            className="w-2 h-2 rounded-full bg-amber-500 inline-block"
-                          />
-                        )}
+                    <td className="py-3.5 px-4 sm:px-6 text-right">
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="flex items-center justify-end gap-1.5 font-mono font-bold text-slate-900">
+                          <span className={stockStatus === 'Low Stock' ? 'text-amber-600' : stockStatus === 'Out of Stock' ? 'text-rose-600' : 'text-slate-900'}>
+                            {formatNumber(totalStock)}
+                          </span>
+                          {stockStatus === 'Low Stock' && (
+                            <span 
+                              title="Low stock threshold reached" 
+                              className="w-2 h-2 rounded-full bg-amber-500 inline-block"
+                            />
+                          )}
+                        </div>
+                        {/* Stock Level Heatmap Density Visual */}
+                        <StockLevelHeatmap
+                          variants={product.variants}
+                          totalStock={totalStock}
+                          compact={true}
+                        />
                       </div>
                     </td>
 

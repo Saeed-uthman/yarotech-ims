@@ -5,7 +5,7 @@ import {
   ArrowUpRight,
   Package,
   Layers,
-  FileSpreadsheet,
+  FileText,
   Building2,
   AlertCircle,
 } from 'lucide-react';
@@ -17,7 +17,7 @@ import {
   DebtMovementReportData,
   UserRole,
 } from '../../types';
-import { exportToCSV } from './exportUtils';
+import { exportToPDF } from './exportUtils';
 
 interface OverviewReportViewProps {
   summary: FinancialSummaryReport | null;
@@ -81,7 +81,10 @@ export const OverviewReportView: React.FC<OverviewReportViewProps> = ({
       ]);
     }
 
-    exportToCSV(`financial-overview-${summary.timeframe}`, headers, rows);
+    exportToPDF(`financial-overview-${summary.timeframe}`, headers, rows, {
+      title: 'Financial & Movement Executive Summary',
+      subtitle: `Period: ${summary.startDate} to ${summary.endDate} (${summary.timeframe.replace('_', ' ')})`,
+    });
   };
 
   return (
@@ -102,11 +105,11 @@ export const OverviewReportView: React.FC<OverviewReportViewProps> = ({
           <button
             type="button"
             onClick={handleExportOverview}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors"
-            id="btn-export-overview-csv"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors"
+            id="btn-export-overview-pdf"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Export Executive Summary (CSV)</span>
+            <FileText className="w-3.5 h-3.5" />
+            <span>Export Executive Summary (PDF)</span>
           </button>
         </div>
       </div>

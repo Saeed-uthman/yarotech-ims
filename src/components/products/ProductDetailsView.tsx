@@ -17,12 +17,14 @@ import {
   AlertCircle,
   TrendingUp,
   Image as ImageIcon,
-  Check
+  Check,
+  QrCode
 } from 'lucide-react';
 import { Product, UserRole, CompanyVariant } from '../../types';
 import { formatNaira, formatNumber } from '../../utils/formatters';
 import { ProductPriceHistoryTab } from './ProductPriceHistoryTab';
 import { ProductLowStockBanner } from './ProductLowStockBanner';
+import { ProductQRCodeModal } from './ProductQRCodeModal';
 
 interface ProductDetailsViewProps {
   product: Product;
@@ -62,6 +64,13 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   const [showMenu, setShowMenu] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [newImageInput, setNewImageInput] = useState(product.image || '');
+  const [showQRCodeModal, setShowQRCodeModal] = useState(false);
+  const [selectedQRVariant, setSelectedQRVariant] = useState<CompanyVariant | null>(null);
+
+  const handleOpenQRCode = (variant?: CompanyVariant) => {
+    setSelectedQRVariant(variant || null);
+    setShowQRCodeModal(true);
+  };
 
   // Add Variant Form State
   const [variantForm, setVariantForm] = useState({
@@ -159,6 +168,18 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Generate QR Code Action Button */}
+          <button
+            id="details-generate-qr-btn"
+            onClick={() => handleOpenQRCode()}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white rounded-md text-sm font-semibold shadow-xs transition-colors cursor-pointer"
+            title="Generate, download and print QR code sticker with barcode info"
+          >
+            <QrCode className="w-4 h-4 text-blue-400" />
+            <span className="hidden sm:inline">Generate QR Code</span>
+            <span className="sm:hidden">QR Code</span>
+          </button>
+
           {isAdmin ? (
             <button
               id="details-edit-product-btn"
@@ -188,6 +209,18 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setShowMenu(false)} />
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-30 animate-in fade-in zoom-in-95 duration-100">
+                  <button
+                    id="details-menu-qr-btn"
+                    onClick={() => {
+                      setShowMenu(false);
+                      handleOpenQRCode();
+                    }}
+                    className="w-full px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Generate QR Code</span>
+                  </button>
+
                   {isAdmin && (
                     <>
                       <button
@@ -387,14 +420,24 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                     </div>
 
                     <div className="pb-3 border-b border-slate-100">
-                      <span className="text-xs text-slate-400 font-medium block mb-1">Barcode</span>
-                      <div className="flex items-center gap-3">
+                      <span className="text-xs text-slate-400 font-medium block mb-1">Barcode & QR Code</span>
+                      <div className="flex flex-wrap items-center gap-3">
                         <div className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-md flex items-center gap-2">
                           <Barcode className="w-5 h-5 text-slate-700" />
                           <span className="font-mono font-bold text-slate-900 tracking-wider text-sm">
                             {product.barcode}
                           </span>
                         </div>
+                        <button
+                          id="overview-generate-qr-btn"
+                          type="button"
+                          onClick={() => handleOpenQRCode()}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-50 hover:bg-blue-100/80 text-blue-700 border border-blue-200 text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                          title="Generate downloadable 2D QR code label"
+                        >
+                          <QrCode className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Generate QR Code</span>
+                        </button>
                       </div>
                     </div>
 
@@ -505,7 +548,14 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
 
                             {isAdmin && (
                               <td className="py-3.5 px-4 text-center">
-                                <div className="flex items-center justify-center gap-2">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    onClick={() => handleOpenQRCode(v)}
+                                    title="Generate QR Code Label for this variant"
+                                    className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                  >
+                                    <QrCode className="w-3.5 h-3.5" />
+                                  </button>
                                   <button
                                     onClick={() => setEditingVariant(v)}
                                     title="Edit Variant"
@@ -897,6 +947,19 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal: QR Code Generator */}
+      {showQRCodeModal && (
+        <ProductQRCodeModal
+          isOpen={showQRCodeModal}
+          onClose={() => {
+            setShowQRCodeModal(false);
+            setSelectedQRVariant(null);
+          }}
+          product={product}
+          selectedVariant={selectedQRVariant}
+        />
       )}
     </div>
   );

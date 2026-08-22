@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import {
   Package,
   Search,
-  FileSpreadsheet,
+  FileText,
   Zap,
   Clock,
   AlertCircle,
   Building2,
 } from 'lucide-react';
 import { ProductPerformanceReportData, UserRole } from '../../types';
-import { exportToCSV } from './exportUtils';
+import { exportToPDF } from './exportUtils';
 
 interface ProductPerformanceReportViewProps {
   performanceData: ProductPerformanceReportData | null;
@@ -54,17 +54,17 @@ export const ProductPerformanceReportView: React.FC<ProductPerformanceReportView
     return true;
   });
 
-  const handleExportCSV = () => {
+  const handleExportPDF = () => {
     const headers = [
       'Medicine Name',
       'Dosage / Form',
-      'Manufacturer / Company',
+      'Manufacturer',
       'Category',
       'Velocity',
       'Units Sold',
       'Revenue (₦)',
-      ...(isAdmin ? ['Base Cost (₦)', 'Gross Profit (₦)', 'Margin %'] : []),
-      'Current Stock Remaining',
+      ...(isAdmin ? ['Cost (₦)', 'Profit (₦)', 'Margin %'] : []),
+      'Stock Left',
     ];
 
     const rows = filteredItems.map((it) => [
@@ -79,7 +79,11 @@ export const ProductPerformanceReportView: React.FC<ProductPerformanceReportView
       it.currentStock,
     ]);
 
-    exportToCSV('product-performance-report', headers, rows);
+    exportToPDF('product-performance-report', headers, rows, {
+      title: 'Medication Velocity & Sales Performance Report',
+      subtitle: `Total Items: ${filteredItems.length} | Velocity Filter: ${velocityFilter.toUpperCase()}`,
+      orientation: 'landscape',
+    });
   };
 
   return (
@@ -198,11 +202,12 @@ export const ProductPerformanceReportView: React.FC<ProductPerformanceReportView
 
             <button
               type="button"
-              onClick={handleExportCSV}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-white border border-emerald-300 rounded-lg hover:bg-emerald-50 transition-colors"
+              onClick={handleExportPDF}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors"
+              title="Export velocity report to PDF"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Export CSV</span>
+              <FileText className="w-3.5 h-3.5" />
+              <span>Export PDF</span>
             </button>
           </div>
         </div>

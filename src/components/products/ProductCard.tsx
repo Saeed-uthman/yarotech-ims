@@ -3,6 +3,7 @@ import { Product, UserRole } from '../../types';
 import { ProductImage } from './ProductImage';
 import { ProductStatusBadge } from './ProductStatusBadge';
 import { StockStatusBadge } from './StockStatusBadge';
+import { StockLevelHeatmap } from './StockLevelHeatmap';
 import { 
   getTotalStock, 
   getCompanyCount, 
@@ -83,12 +84,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
       {/* Stock & Selling Price Bar */}
       <div className="px-4 py-2.5 bg-slate-50/80 border-t border-b border-slate-100 flex items-center justify-between text-xs">
-        <div className="flex items-center gap-2">
-          <span className="text-slate-500 font-medium">Stock:</span>
+        <div className="flex items-center gap-2 flex-wrap">
           <StockStatusBadge
             stock={totalStock}
             statusOverride={stockStatus}
             showCount={true}
+          />
+          <StockLevelHeatmap
+            variants={product.variants}
+            totalStock={totalStock}
+            compact={true}
           />
         </div>
 

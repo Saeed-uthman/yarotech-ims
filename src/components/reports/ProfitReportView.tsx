@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   DollarSign,
   Lock,
-  FileSpreadsheet,
+  FileText,
   TrendingUp,
   Award,
   Layers,
@@ -10,7 +10,7 @@ import {
   Search,
 } from 'lucide-react';
 import { ProfitReportData, UserRole } from '../../types';
-import { exportToCSV } from './exportUtils';
+import { exportToPDF } from './exportUtils';
 
 interface ProfitReportViewProps {
   profitReport: ProfitReportData | null;
@@ -71,7 +71,7 @@ export const ProfitReportView: React.FC<ProfitReportViewProps> = ({
       p.companyName.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleExportCSV = () => {
+  const handleExportPDF = () => {
     if (activeTab === 'products') {
       const headers = ['Medicine Name', 'Generic Name', 'Manufacturer', 'Units Sold', 'Revenue (₦)', 'Base Cost (₦)', 'Gross Profit (₦)', 'Margin %'];
       const rows = topProfitableProducts.map((p) => [
@@ -84,15 +84,25 @@ export const ProfitReportView: React.FC<ProfitReportViewProps> = ({
         p.profit,
         p.marginPct,
       ]);
-      exportToCSV('profit-by-product-report', headers, rows);
+      exportToPDF('profit-by-product-report', headers, rows, {
+        title: 'Profit Contribution by Product Report',
+        subtitle: `Total Products: ${topProfitableProducts.length}`,
+        orientation: 'landscape',
+      });
     } else if (activeTab === 'categories') {
       const headers = ['Category', 'Revenue (₦)', 'Base Cost (₦)', 'Gross Profit (₦)', 'Margin %'];
       const rows = profitByCategory.map((c) => [c.categoryName, c.revenue, c.cost, c.profit, c.marginPct]);
-      exportToCSV('profit-by-category-report', headers, rows);
+      exportToPDF('profit-by-category-report', headers, rows, {
+        title: 'Profit Contribution by Therapeutic Category',
+        subtitle: `Total Categories: ${profitByCategory.length}`,
+      });
     } else {
       const headers = ['Manufacturer / Company', 'Revenue (₦)', 'Base Cost (₦)', 'Gross Profit (₦)', 'Margin %'];
       const rows = profitByCompany.map((c) => [c.companyName, c.revenue, c.cost, c.profit, c.marginPct]);
-      exportToCSV('profit-by-company-report', headers, rows);
+      exportToPDF('profit-by-company-report', headers, rows, {
+        title: 'Profit Contribution by Manufacturer / Brand',
+        subtitle: `Total Manufacturers: ${profitByCompany.length}`,
+      });
     }
   };
 
@@ -235,11 +245,12 @@ export const ProfitReportView: React.FC<ProfitReportViewProps> = ({
 
             <button
               type="button"
-              onClick={handleExportCSV}
-              className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-indigo-700 bg-white border border-indigo-300 rounded-lg hover:bg-indigo-50 transition-colors"
+              onClick={handleExportPDF}
+              className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors"
+              title="Export report to PDF"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Export CSV</span>
+              <FileText className="w-3.5 h-3.5" />
+              <span>Export PDF</span>
             </button>
           </div>
         </div>
