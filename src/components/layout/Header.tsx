@@ -16,7 +16,9 @@ import {
   FileText,
   ShieldCheck,
   Settings as SettingsIcon,
-  ChevronRight
+  ChevronRight,
+  Keyboard,
+  AlertTriangle
 } from 'lucide-react';
 import { UserRole } from '../../types';
 import { HeaderNotifications } from './HeaderNotifications';
@@ -34,8 +36,11 @@ export interface HeaderProps {
   onOpenAddProduct?: () => void;
   onOpenBarcodeScanner: () => void;
   onOpenMobileMenu: () => void;
+  onOpenShortcuts?: () => void;
   onResetData?: () => void;
   isOnline?: boolean;
+  onOpenLowStockAlerts?: () => void;
+  lowStockCount?: number;
 }
 
 const MODULE_META: Record<string, { title: string; subtitle: string; icon: React.ElementType }> = {
@@ -103,11 +108,16 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAddProduct,
   onOpenBarcodeScanner,
   onOpenMobileMenu,
+  onOpenShortcuts,
   onResetData,
   isOnline = true,
+  onOpenLowStockAlerts,
+  lowStockCount = 0,
 }) => {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.userAgent);
+  const metaLabel = isMac ? '⌘' : 'Ctrl';
 
   const activeMeta = MODULE_META[activeNav] || {
     title: 'Pharmacy System',
@@ -218,7 +228,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                 ) : (
                   <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-slate-200/60 dark:bg-slate-700/60 rounded border border-slate-300 dark:border-slate-600">
-                    ⌘K
+                    {metaLabel}+F
                   </kbd>
                 )}
               </div>
@@ -245,12 +255,25 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               id="open-barcode-scanner-btn"
               onClick={onOpenBarcodeScanner}
-              title="Scan Medicine Barcode"
+              title={`Scan Medicine Barcode (${metaLabel}+B)`}
               className="px-2.5 py-1.5 sm:px-3 sm:py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-700/80 flex items-center gap-1.5 transition-colors min-h-[40px] sm:min-h-[44px] focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <ScanBarcode className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
               <span className="hidden sm:inline">Scan Barcode</span>
             </button>
+
+            {/* Keyboard Shortcuts Trigger Button */}
+            {onOpenShortcuts && (
+              <button
+                id="open-shortcuts-btn"
+                onClick={onOpenShortcuts}
+                title="Keyboard Shortcuts (?)"
+                className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-colors hidden lg:flex shadow-xs min-h-[44px] min-w-[44px] items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-label="Open keyboard shortcuts cheatsheet"
+              >
+                <Keyboard className="w-4 h-4" />
+              </button>
+            )}
 
             {/* Reset Demo Data Button (if provided) */}
             {onResetData && (
@@ -270,11 +293,15 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   id="open-add-product-modal-btn"
                   onClick={onOpenAddProduct}
+                  title={`Create Medicine Product (${metaLabel}+P)`}
                   className="hidden md:flex px-3 sm:px-3.5 py-2 bg-blue-600 text-white rounded-lg text-xs sm:text-sm font-semibold shadow-xs hover:bg-blue-700 active:bg-blue-800 transition-colors items-center gap-1.5 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <Plus className="w-4 h-4" />
                   <span className="hidden lg:inline">Add Product</span>
                   <span className="lg:hidden">Add</span>
+                  <kbd className="hidden xl:inline-block px-1.5 py-0.2 text-[10px] font-mono bg-blue-700 text-blue-100 rounded border border-blue-500/50">
+                    {metaLabel}+P
+                  </kbd>
                 </button>
               ) : (
                 <div className="hidden lg:flex items-center gap-1 px-2.5 py-2 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-lg text-xs font-medium cursor-not-allowed border border-slate-200/60 dark:border-slate-700 min-h-[44px]">
@@ -284,10 +311,25 @@ export const Header: React.FC<HeaderProps> = ({
               )
             )}
 
+            {/* Low Stock Alert Direct Trigger Button */}
+            {lowStockCount > 0 && onOpenLowStockAlerts && (
+              <button
+                id="header-low-stock-alert-trigger-btn"
+                onClick={onOpenLowStockAlerts}
+                title={`${lowStockCount} items at or below low stock threshold. Click to view alert center.`}
+                className="px-2.5 py-1.5 sm:px-3 sm:py-2 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-300 dark:border-amber-700/80 text-amber-900 dark:text-amber-200 rounded-lg text-xs sm:text-sm font-bold shadow-2xs flex items-center gap-1.5 transition-colors min-h-[40px] sm:min-h-[44px] focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer animate-in fade-in"
+              >
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span className="hidden lg:inline">{lowStockCount} Low Stock</span>
+                <span className="lg:hidden font-mono font-bold">{lowStockCount}</span>
+              </button>
+            )}
+
             {/* Notifications Menu Popover */}
             <HeaderNotifications
               currentRole={currentRole}
               onNavigate={onNavChange}
+              onOpenLowStockAlerts={onOpenLowStockAlerts}
             />
 
             {/* User Profile & Role Switcher Menu */}
@@ -297,6 +339,7 @@ export const Header: React.FC<HeaderProps> = ({
                 if (onRoleChange) onRoleChange(newRole);
               }}
               onNavigate={onNavChange}
+              onOpenShortcuts={onOpenShortcuts}
               isOnline={isOnline}
             />
           </div>

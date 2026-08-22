@@ -33,15 +33,18 @@ import { InventoryMobileList } from './InventoryMobileList';
 import { InventoryInsightsView } from './InventoryInsightsView';
 import { StockAdjustmentModal } from './StockAdjustmentModal';
 import { InventoryDetailsModal } from './InventoryDetailsModal';
+import { InventoryLowStockAlertBanner } from './InventoryLowStockAlertBanner';
 
 interface InventoryModuleProps {
   currentRole: UserRole;
   onNavigateToProduct?: (productId: string) => void;
+  onOpenLowStockAlerts?: () => void;
 }
 
 export const InventoryModule: React.FC<InventoryModuleProps> = ({
   currentRole,
   onNavigateToProduct,
+  onOpenLowStockAlerts,
 }) => {
   const [activeTab, setActiveTab] = useState<'inventory_list' | 'insights'>('inventory_list');
   const [insightsTimeframe, setInsightsTimeframe] = useState<InsightsTimeframe>('this_month');
@@ -235,6 +238,17 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Low Stock Alert Banner */}
+      {activeTab === 'inventory_list' && (
+        <InventoryLowStockAlertBanner
+          kpis={kpis}
+          currentRole={currentRole}
+          onFilterLowStock={() => handleFilterChange({ stockStatus: 'low_stock', page: 1 })}
+          onFilterOutOfStock={() => handleFilterChange({ stockStatus: 'out_of_stock', page: 1 })}
+          onOpenAlertCenter={() => onOpenLowStockAlerts && onOpenLowStockAlerts()}
+        />
+      )}
 
       {/* 5 KPI Metric Summary Cards (Always Visible in List Tab) */}
       {activeTab === 'inventory_list' && (

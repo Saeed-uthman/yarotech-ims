@@ -13,7 +13,8 @@ import {
   HelpCircle,
   LogOut,
   Users,
-  Clock
+  Clock,
+  Keyboard
 } from 'lucide-react';
 import { UserRole } from '../../types';
 import { useAuth } from '../../hooks';
@@ -22,6 +23,7 @@ interface HeaderUserMenuProps {
   currentRole: UserRole;
   onRoleChange: (role: UserRole) => void;
   onNavigate?: (nav: string) => void;
+  onOpenShortcuts?: () => void;
   isOnline?: boolean;
 }
 
@@ -29,6 +31,7 @@ export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
   currentRole,
   onRoleChange,
   onNavigate,
+  onOpenShortcuts,
   isOnline = true,
 }) => {
   const { user, logout, pendingCount } = useAuth();
@@ -308,6 +311,25 @@ export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
               <ShieldCheck className="w-4 h-4 text-slate-400" />
               <span>Accountability & Shift Logs</span>
             </button>
+
+            {onOpenShortcuts && (
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setIsOpen(false);
+                  onOpenShortcuts();
+                }}
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Keyboard className="w-4 h-4 text-slate-400" />
+                  <span>Keyboard Shortcuts</span>
+                </div>
+                <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-500 rounded border border-slate-200 dark:border-slate-700">
+                  ?
+                </kbd>
+              </button>
+            )}
           </div>
 
           {/* Sign Out Button */}

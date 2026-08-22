@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { Product, UserRole, CompanyVariant } from '../../types';
 import { formatNaira, formatNumber } from '../../utils/formatters';
+import { ProductPriceHistoryTab } from './ProductPriceHistoryTab';
+import { ProductLowStockBanner } from './ProductLowStockBanner';
 
 interface ProductDetailsViewProps {
   product: Product;
@@ -39,6 +41,7 @@ interface ProductDetailsViewProps {
   onUpdateVariant: (productId: string, variantId: string, updates: Partial<CompanyVariant>) => void;
   onDeleteVariant: (productId: string, variantId: string) => void;
   onUpdateImage?: (productId: string, newImageUrl: string) => void;
+  onNavigateToPurchases?: (productId?: string) => void;
 }
 
 export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
@@ -51,8 +54,9 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   onUpdateVariant,
   onDeleteVariant,
   onUpdateImage,
+  onNavigateToPurchases,
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'variants' | 'pricing' | 'stock'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'variants' | 'pricing' | 'stock' | 'price-history'>('overview');
   const [showAddVariantModal, setShowAddVariantModal] = useState(false);
   const [editingVariant, setEditingVariant] = useState<CompanyVariant | null>(null);
   const [showMenu, setShowMenu] = useState(false);
@@ -254,6 +258,24 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
             </span>
           </button>
 
+          <button
+            id="tab-price-history-btn"
+            onClick={() => setActiveTab('price-history')}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-semibold transition-colors ${
+              activeTab === 'price-history'
+                ? 'bg-blue-50 text-blue-700'
+                : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-blue-600" />
+              <span>Price History</span>
+            </div>
+            <span className="text-[10px] px-1.5 py-0.2 font-bold rounded bg-blue-100/70 text-blue-700">
+              Chart
+            </span>
+          </button>
+
           {isAdmin && (
             <>
               <button
@@ -295,6 +317,13 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
 
         {/* Right Content Area */}
         <div className="lg:col-span-3 space-y-6">
+          {/* Low Stock Warning Alert Banner */}
+          <ProductLowStockBanner
+            product={product}
+            currentRole={currentRole}
+            onReorderStock={onNavigateToPurchases ? () => onNavigateToPurchases(product.id) : undefined}
+          />
+
           {/* 1. Overview Tab */}
           {(activeTab === 'overview' || activeTab === 'variants') && (
             <>
@@ -587,6 +616,17 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                 </div>
               </div>
             </div>
+          )}
+
+          {/* 4. Price History Tab */}
+          {activeTab === 'price-history' && (
+            <ProductPriceHistoryTab
+              product={product}
+              currentRole={currentRole}
+              onPriceAdjusted={() => {
+                // If variant was adjusted, we can optionally notify or reload
+              }}
+            />
           )}
         </div>
       </div>

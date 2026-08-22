@@ -79,11 +79,13 @@ const INITIAL_NOTIFICATIONS: NotificationItem[] = [
 interface HeaderNotificationsProps {
   currentRole: UserRole;
   onNavigate?: (nav: string) => void;
+  onOpenLowStockAlerts?: () => void;
 }
 
 export const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({
   currentRole,
   onNavigate,
+  onOpenLowStockAlerts,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
@@ -93,6 +95,7 @@ export const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const stockAlertsCount = notifications.filter((n) => n.type === 'stock_alert').length;
   const filteredNotifications = notifications.filter((n) => {
     if (activeFilter === 'unread') return !n.read;
     return true;
@@ -143,6 +146,11 @@ export const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({
 
   const handleNotificationClick = (item: NotificationItem) => {
     markItemAsRead(item.id);
+    if (item.type === 'stock_alert' && onOpenLowStockAlerts) {
+      onOpenLowStockAlerts();
+      setIsOpen(false);
+      return;
+    }
     if (item.targetNav && onNavigate) {
       onNavigate(item.targetNav);
       setIsOpen(false);
@@ -275,6 +283,26 @@ export const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({
               Unread ({unreadCount})
             </button>
           </div>
+
+          {/* Stock Alert Quick Shortcut Banner */}
+          {stockAlertsCount > 0 && onOpenLowStockAlerts && (
+            <div 
+              onClick={() => {
+                onOpenLowStockAlerts();
+                setIsOpen(false);
+              }}
+              className="p-2.5 px-3.5 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900/60 flex items-center justify-between text-xs font-semibold text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/60 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 animate-pulse" />
+                <span>{stockAlertsCount} Low Stock Alerts active</span>
+              </div>
+              <span className="text-[11px] text-amber-700 dark:text-amber-300 font-bold underline flex items-center gap-1">
+                <span>Alert Center</span>
+                <ExternalLink className="w-3 h-3" />
+              </span>
+            </div>
+          )}
 
           {/* Notifications List */}
           <div className="max-h-[340px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 overscroll-contain">

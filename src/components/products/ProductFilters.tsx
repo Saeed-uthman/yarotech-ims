@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, SlidersHorizontal, ChevronDown, X, RotateCcw } from 'lucide-react';
+import { Search, SlidersHorizontal, ChevronDown, X, RotateCcw, ClipboardCheck, FileSpreadsheet } from 'lucide-react';
 import { ProductCategory, Company, ProductFilterParams, UserRole } from '../../types';
 
 interface ProductFiltersProps {
@@ -9,6 +9,7 @@ interface ProductFiltersProps {
   companies: Company[];
   currentRole: UserRole;
   isSearching?: boolean;
+  onOpenExportAudit?: () => void;
 }
 
 export const ProductFilters: React.FC<ProductFiltersProps> = ({
@@ -18,6 +19,7 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
   companies,
   currentRole,
   isSearching = false,
+  onOpenExportAudit,
 }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const isAdmin = currentRole === 'admin';
@@ -69,6 +71,11 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
               >
                 <X className="w-3.5 h-3.5" />
               </button>
+            )}
+            {!filters.search && !isSearching && (
+              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-slate-200/60 rounded border border-slate-300">
+                {typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.userAgent) ? '⌘F' : 'Ctrl+F'}
+              </kbd>
             )}
           </div>
         </div>
@@ -124,6 +131,20 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
               <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
             )}
           </button>
+
+          {/* Export Audit Sheet Trigger */}
+          {onOpenExportAudit && (
+            <button
+              id="open-stock-audit-export-btn"
+              onClick={onOpenExportAudit}
+              className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100/80 text-xs sm:text-sm font-semibold shadow-xs transition-colors cursor-pointer"
+              title="Export filtered list to CSV / PDF for physical stock audits"
+            >
+              <ClipboardCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="hidden sm:inline">Audit Export</span>
+              <span className="sm:hidden">Export</span>
+            </button>
+          )}
         </div>
       </div>
 

@@ -13,7 +13,8 @@ import {
   useProductMutations, 
   useSmartPolling, 
   useNetworkStatus,
-  useAuth
+  useAuth,
+  useKeyboardShortcuts
 } from './hooks';
 import { AuthProvider } from './contexts/AuthContext';
 import { AuthContainer } from './components/auth/AuthContainer';
@@ -29,6 +30,9 @@ import { ProductWizard } from './components/products/ProductWizard';
 import { ConfirmDeactivationModal } from './components/products/ConfirmDeactivationModal';
 import { BarcodeScannerModal } from './components/common/BarcodeScannerModal';
 import { NetworkConfigModal } from './components/common/NetworkConfigModal';
+import { KeyboardShortcutsModal } from './components/common/KeyboardShortcutsModal';
+import { LowStockAlertModal } from './components/common/LowStockAlertModal';
+import { ProductStockAuditModal } from './components/products/ProductStockAuditModal';
 import { ToastContainer, ToastMessage } from './components/common/Toast';
 import { ModulePlaceholder } from './components/common/ModulePlaceholder';
 import { InventoryModule } from './components/inventory/InventoryModule';
@@ -43,6 +47,7 @@ import { UserManagementModule } from './components/users';
 import { WifiOff, Activity, RefreshCw, Loader2, HeartPulse } from 'lucide-react';
 import { productService } from './services/productService';
 import { useSettings } from './hooks/useSettings';
+import { useInventoryKPIs } from './hooks/useInventory';
 
 function MainPharmacyApp() {
   const { isAuthenticated, isLoading: isAuthLoading, user, role: authRole, switchRole } = useAuth();
@@ -100,8 +105,11 @@ function MainPharmacyApp() {
   } = useProducts(filters, currentRole);
 
   const { stats, isLoading: isKPIsLoading, refetch: refetchKPIs } = useKPIStats(currentRole);
+  const { kpis: inventoryKPIs, refetch: refetchInventoryKPIs } = useInventoryKPIs(currentRole);
   const { categories, companies } = useReferenceData();
   const { settings, refetch: refetchSettings } = useSettings(currentRole);
+
+  const totalLowStockAlerts = (inventoryKPIs?.lowStockCount || 0) + (inventoryKPIs?.outOfStockCount || 0);
 
   // Apply Theme Preference to Root Document
   useEffect(() => {
@@ -138,6 +146,7 @@ function MainPharmacyApp() {
     onPoll: () => {
       refetchProducts();
       refetchKPIs();
+      refetchInventoryKPIs();
     },
   });
 
@@ -148,6 +157,9 @@ function MainPharmacyApp() {
   // Modals & UI Controls
   const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
   const [isNetworkConfigOpen, setIsNetworkConfigOpen] = useState(false);
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
+  const [isLowStockModalOpen, setIsLowStockModalOpen] = useState(false);
+  const [isStockAuditModalOpen, setIsStockAuditModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
@@ -172,42 +184,16 @@ function MainPharmacyApp() {
     }
   }, [products, selectedProduct]);
 
-  // Auth Loading State
-  if (isAuthLoading) {
-    return (
-      <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
-        <div className="text-center space-y-4 animate-in fade-in">
-          <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white mx-auto shadow-lg animate-pulse">
-            <HeartPulse className="w-8 h-8" />
-          </div>
-          <div className="space-y-1">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              {settings?.pharmacyName || 'BrightCare Pharmacy'}
-            </h2>
-            <p className="text-xs text-slate-400">Loading authorized session...</p>
-          </div>
-          <Loader2 className="w-5 h-5 text-blue-600 animate-spin mx-auto" />
-        </div>
-      </div>
-    );
-  }
-
-  // Not Authenticated: Render Authentication & Registration Portal
-  if (!isAuthenticated || !user || user.status !== 'ACTIVE') {
-    return (
-      <AuthContainer
-        pharmacyName={settings?.pharmacyName || 'BrightCare Pharmacy'}
-        pharmacyLogo={settings?.pharmacyLogo}
-      />
-    );
-  }
-
   // Handlers for Views & Wizard
-  const handleOpenAddProduct = () => {
+  const handleOpenAddProduct = useCallback(() => {
+    if (currentRole !== 'admin') {
+      addToast('info', 'Admin Access Required', 'Creating new products in the catalog requires Administrator role.');
+      return;
+    }
     setProductToEdit(null);
     setViewMode('wizard');
     setActiveNav('products');
-  };
+  }, [currentRole, addToast]);
 
   const handleOpenEditProduct = (product: Product) => {
     setProductToEdit(product);
@@ -220,6 +206,112 @@ function MainPharmacyApp() {
     setViewMode('details');
     setActiveNav('products');
   };
+
+  // Keyboard shortcut Search Focus handler (supports Ctrl+F, Cmd+F, Ctrl+K, /)
+  const handleFocusSearch = useCallback(() => {
+    if (window.innerWidth < 768) {
+      const mobileToggle = document.getElementById('header-mobile-search-toggle');
+      if (mobileToggle) {
+        mobileToggle.click();
+        setTimeout(() => {
+          const mInput = document.getElementById('header-mobile-search-input') as HTMLInputElement | null;
+          mInput?.focus();
+          mInput?.select();
+        }, 60);
+      }
+      return;
+    }
+
+    const filterSearchInput = document.getElementById('filter-search-input') as HTMLInputElement | null;
+    const headerSearchInput = document.getElementById('header-global-search-input') as HTMLInputElement | null;
+
+    if (activeNav === 'products' && viewMode === 'list' && filterSearchInput) {
+      filterSearchInput.focus();
+      filterSearchInput.select();
+    } else if (headerSearchInput) {
+      headerSearchInput.focus();
+      headerSearchInput.select();
+    }
+  }, [activeNav, viewMode]);
+
+  // Handler to safely close topmost active modal on Escape key
+  const handleCloseCurrentModal = useCallback(() => {
+    if (isStockAuditModalOpen) {
+      setIsStockAuditModalOpen(false);
+      return;
+    }
+    if (isLowStockModalOpen) {
+      setIsLowStockModalOpen(false);
+      return;
+    }
+    if (isShortcutsModalOpen) {
+      setIsShortcutsModalOpen(false);
+      return;
+    }
+    if (isBarcodeScannerOpen) {
+      setIsBarcodeScannerOpen(false);
+      return;
+    }
+    if (isNetworkConfigOpen) {
+      setIsNetworkConfigOpen(false);
+      return;
+    }
+    if (productToDeactivate) {
+      setProductToDeactivate(null);
+      return;
+    }
+    if (isMobileMenuOpen) {
+      setIsMobileMenuOpen(false);
+      return;
+    }
+    if (viewMode === 'wizard') {
+      if (selectedProduct && productToEdit) {
+        setViewMode('details');
+      } else {
+        setViewMode('list');
+      }
+      return;
+    }
+    if (viewMode === 'details') {
+      setViewMode('list');
+      return;
+    }
+  }, [
+    isStockAuditModalOpen,
+    isLowStockModalOpen,
+    isShortcutsModalOpen,
+    isBarcodeScannerOpen,
+    isNetworkConfigOpen,
+    productToDeactivate,
+    isMobileMenuOpen,
+    viewMode,
+    selectedProduct,
+    productToEdit,
+  ]);
+
+  // Fast testing role toggle handler (Ctrl+Alt+R)
+  const handleQuickRoleToggle = useCallback(() => {
+    const nextRole: UserRole = currentRole === 'admin' ? 'cashier' : 'admin';
+    handleRoleChange(nextRole);
+    addToast('info', 'Role Switched', `Active role switched to ${nextRole.toUpperCase()}`);
+  }, [currentRole, addToast]);
+
+  // Global Keyboard Shortcuts Listener
+  useKeyboardShortcuts({
+    onOpenAddProduct: handleOpenAddProduct,
+    onFocusSearch: handleFocusSearch,
+    onOpenBarcodeScanner: () => setIsBarcodeScannerOpen(true),
+    onOpenShortcutsModal: () => setIsShortcutsModalOpen(true),
+    onOpenExportAudit: () => setIsStockAuditModalOpen(true),
+    onCloseCurrentModal: handleCloseCurrentModal,
+    onNavigate: (nav) => {
+      setActiveNav(nav);
+      if (nav === 'products') setViewMode('list');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    onQuickRoleToggle: handleQuickRoleToggle,
+    isEnabled: isAuthenticated && user?.status === 'ACTIVE',
+  });
 
   const handleSaveProductWizard = async (data: ProductCreateInput) => {
     if (productToEdit) {
@@ -342,6 +434,36 @@ function MainPharmacyApp() {
     }
   };
 
+  // Auth Loading State
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
+        <div className="text-center space-y-4 animate-in fade-in">
+          <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white mx-auto shadow-lg animate-pulse">
+            <HeartPulse className="w-8 h-8" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              {settings?.pharmacyName || 'BrightCare Pharmacy'}
+            </h2>
+            <p className="text-xs text-slate-400">Loading authorized session...</p>
+          </div>
+          <Loader2 className="w-5 h-5 text-blue-600 animate-spin mx-auto" />
+        </div>
+      </div>
+    );
+  }
+
+  // Not Authenticated: Render Authentication & Registration Portal
+  if (!isAuthenticated || !user || user.status !== 'ACTIVE') {
+    return (
+      <AuthContainer
+        pharmacyName={settings?.pharmacyName || 'BrightCare Pharmacy'}
+        pharmacyLogo={settings?.pharmacyLogo}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col md:flex-row text-slate-900 dark:text-slate-100 antialiased font-sans transition-colors">
       {/* Network Alert Banner */}
@@ -390,8 +512,11 @@ function MainPharmacyApp() {
           onOpenAddProduct={handleOpenAddProduct}
           onOpenBarcodeScanner={() => setIsBarcodeScannerOpen(true)}
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
+          onOpenShortcuts={() => setIsShortcutsModalOpen(true)}
           onResetData={handleResetData}
           isOnline={isOnline}
+          onOpenLowStockAlerts={() => setIsLowStockModalOpen(true)}
+          lowStockCount={totalLowStockAlerts}
         />
 
         {/* Main Content Area */}
@@ -408,7 +533,8 @@ function MainPharmacyApp() {
               />
             ) : activeNav === 'inventory' ? (
               <InventoryModule
-                role={currentRole}
+                currentRole={currentRole}
+                onOpenLowStockAlerts={() => setIsLowStockModalOpen(true)}
                 onNavigateToProduct={(productId) => {
                   const p = products.find((prod) => prod.id === productId);
                   if (p) {
@@ -511,6 +637,10 @@ function MainPharmacyApp() {
                 onUpdateVariant={handleUpdateVariant}
                 onDeleteVariant={handleDeleteVariant}
                 onUpdateImage={handleUpdateProductImage}
+                onNavigateToPurchases={() => {
+                  setActiveNav('stock-purchase');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
               />
             ) : (
               /* Primary Products Module List View */
@@ -526,6 +656,7 @@ function MainPharmacyApp() {
                   companies={companies}
                   currentRole={currentRole}
                   isSearching={isSearching}
+                  onOpenExportAudit={() => setIsStockAuditModalOpen(true)}
                 />
 
                 {/* Desktop Data Table */}
@@ -551,6 +682,7 @@ function MainPharmacyApp() {
                       setSelectedProduct(prod);
                       setViewMode('details');
                     }}
+                    onOpenExportAudit={() => setIsStockAuditModalOpen(true)}
                   />
                 </div>
 
@@ -652,6 +784,50 @@ function MainPharmacyApp() {
           refetchProducts(true);
           refetchKPIs();
         }}
+      />
+
+      {/* Keyboard Shortcuts Cheatsheet Modal */}
+      <KeyboardShortcutsModal
+        isOpen={isShortcutsModalOpen}
+        onClose={() => setIsShortcutsModalOpen(false)}
+      />
+
+      {/* Low Stock & Reorder Alert Center Modal */}
+      <LowStockAlertModal
+        isOpen={isLowStockModalOpen}
+        onClose={() => {
+          setIsLowStockModalOpen(false);
+          refetchInventoryKPIs();
+          refetchProducts(true);
+          refetchKPIs();
+        }}
+        currentRole={currentRole}
+        onNavigateToProduct={(productId) => {
+          const p = products.find((prod) => prod.id === productId);
+          if (p) {
+            setSelectedProduct(p);
+            setViewMode('details');
+            setActiveNav('products');
+          }
+        }}
+        onNavigateToInventory={(filter) => {
+          setActiveNav('inventory');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onNavigateToPurchases={(productId) => {
+          setActiveNav('stock-purchase');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
+
+      {/* Product Stock Audit & Worksheet Export Modal */}
+      <ProductStockAuditModal
+        isOpen={isStockAuditModalOpen}
+        onClose={() => setIsStockAuditModalOpen(false)}
+        currentPageProducts={products}
+        currentFilters={filters}
+        totalFilteredCount={total}
+        currentRole={currentRole}
       />
 
       {/* Toast Feedback Messages */}

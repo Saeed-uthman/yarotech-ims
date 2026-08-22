@@ -244,6 +244,66 @@ export interface ProductKPIStats {
 }
 
 // ==========================================
+// 6b. Product Price History & Adjustments
+// ==========================================
+
+export type PriceAdjustmentType = 'INCREASE' | 'DECREASE' | 'INITIAL' | 'CORRECTION' | 'SUPPLIER_REVISION';
+
+export interface ProductPriceAdjustment {
+  id: string;
+  productId: string;
+  variantId: string;
+  companyName: string;
+  oldBasePrice: number;
+  newBasePrice: number;
+  oldSellingPrice: number;
+  newSellingPrice: number;
+  changeType: PriceAdjustmentType;
+  reason: string;
+  adjustedBy: string;
+  effectiveDate: string; // ISO format or date string
+  createdAt: string;
+}
+
+export interface CreatePriceAdjustmentInput {
+  productId: string;
+  variantId: string;
+  newBasePrice: number;
+  newSellingPrice: number;
+  reason: string;
+  adjustedBy?: string;
+  effectiveDate?: string;
+}
+
+export interface PriceHistoryTimelinePoint {
+  date: string;
+  displayDate: string;
+  timestamp: number;
+  avgSellingPrice: number;
+  avgBasePrice: number;
+  avgMargin: number;
+  marginPct: number;
+  [key: string]: string | number; // e.g. "DANA_selling", "EMZOR_selling", "DANA_base"
+}
+
+export interface ProductPriceHistorySummary {
+  currentAvgSelling: number;
+  currentAvgBase: number;
+  initialAvgSelling: number;
+  netChangeAmount: number;
+  netChangePercent: number;
+  highestSellingPrice: number;
+  lowestSellingPrice: number;
+  highestBasePrice: number;
+  lowestBasePrice: number;
+  currentGrossMargin: number;
+  currentMarginPercent: number;
+  totalAdjustmentsCount: number;
+  lastAdjustmentDate?: string;
+  lastAdjustmentReason?: string;
+}
+
+// ==========================================
 // 7. Inventory Module Types & Models
 // ==========================================
 

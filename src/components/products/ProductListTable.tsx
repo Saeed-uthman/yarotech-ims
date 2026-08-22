@@ -8,6 +8,7 @@ import {
   Pill,
   ChevronLeft,
   ChevronRight,
+  ClipboardCheck,
 } from 'lucide-react';
 import { Product, UserRole } from '../../types';
 import { 
@@ -39,6 +40,7 @@ interface ProductListTableProps {
   onDeactivateRequest: (product: Product) => void;
   onActivateProduct: (product: Product) => void;
   onAddVariantQuick: (product: Product) => void;
+  onOpenExportAudit?: () => void;
 }
 
 export const ProductListTable: React.FC<ProductListTableProps> = ({
@@ -59,6 +61,7 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
   onDeactivateRequest,
   onActivateProduct,
   onAddVariantQuick,
+  onOpenExportAudit,
 }) => {
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const isAdmin = currentRole === 'admin';
@@ -399,10 +402,23 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
 
       {/* Pagination Footer matching design */}
       <div className="mt-auto border-t border-slate-100 px-4 sm:px-6 py-3.5 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
-        <div>
-          Showing <span className="font-semibold text-slate-900">{totalProductsCount > 0 ? startRecord : 0}</span> -{' '}
-          <span className="font-semibold text-slate-900">{endRecord}</span> of{' '}
-          <span className="font-semibold text-slate-900">{formatNumber(totalProductsCount)}</span> products
+        <div className="flex items-center gap-3">
+          <div>
+            Showing <span className="font-semibold text-slate-900">{totalProductsCount > 0 ? startRecord : 0}</span> -{' '}
+            <span className="font-semibold text-slate-900">{endRecord}</span> of{' '}
+            <span className="font-semibold text-slate-900">{formatNumber(totalProductsCount)}</span> products
+          </div>
+          {onOpenExportAudit && (
+            <button
+              id="table-footer-export-audit-btn"
+              onClick={onOpenExportAudit}
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-100/70 hover:bg-emerald-100 rounded-md border border-emerald-200 transition-colors cursor-pointer"
+              title="Export filtered product list for physical audit (CSV / PDF)"
+            >
+              <ClipboardCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Stock Audit Export</span>
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4">

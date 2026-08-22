@@ -13,3 +13,4 @@ export * from './reportService';
 export * from './settingsService';
 export * from './dashboardService';
 export * from './authService';
+export * from './priceHistoryService';
