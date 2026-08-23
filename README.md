@@ -1,263 +1,208 @@
-# Stitch Pharmacy — Products & Master Catalogue Module
+# Al-Amaan Pharmacy Management & Financial Accountability System
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue.svg)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19.0-61dafb.svg)](https://react.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.0-38bdf8.svg)](https://tailwindcss.com/)
-[![License](https://img.shields.io/badge/License-Proprietary-red.svg)]()
+[![Planned Backend](https://img.shields.io/badge/Planned_Backend-Django_REST_Framework-092e20.svg)](https://www.djangoproject.com/)
+[![Database](https://img.shields.io/badge/Database-MySQL_8.x-4479A1.svg)](https://www.mysql.com/)
 
-Stitch Pharmacy is an enterprise-grade Pharmacy Management and Point of Sale (POS) application. This documentation focuses on the **Products Module (Master Catalogue)**, which serves as the single authoritative source of truth for all pharmaceutical formulations, dosage forms, manufacturer variants, barcodes, wholesale costs, and retail pricing throughout the entire ecosystem.
+**Al-Amaan Pharmacy Management & Financial Accountability System** is a streamlined, resilient, and audit-transparent pharmaceutical retail operations and business accountability platform. It is engineered specifically for pharmaceutical retailing, multi-manufacturer variant tracking, customer credit management, atomic inventory control, stock replenishment, and verifiable financial cashbook accounting.
 
 ---
 
 ## 📑 Table of Contents
 
-1. [Project Overview](#-project-overview)
-2. [Key Features of the Products Module](#-key-features-of-the-products-module)
-3. [Architecture Overview & Data Flow](#-architecture-overview--data-flow)
-4. [Module Boundaries & "One Owner, Many Consumers"](#-module-boundaries--one-owner-many-consumers)
-5. [Role-Based Access Control (RBAC)](#-role-based-access-control-rbac)
+1. [Executive Summary & Core Philosophy](#-executive-summary--core-philosophy)
+2. [Key System Modules](#-key-system-modules)
+3. [Architecture Overview & One Source of Truth (OSOT)](#-architecture-overview--one-source-of-truth-osot)
+4. [Role-Based Access Control (RBAC)](#-role-based-access-control-rbac)
+5. [Dual-Tier Pricing & Historical Price Integrity](#-dual-tier-pricing--historical-price-integrity)
 6. [Tech Stack](#-tech-stack)
-7. [Installation & Setup](#-installation--setup)
-8. [Available Scripts](#-available-scripts)
-9. [API Readiness & Backend Integration](#-api-readiness--backend-integration)
-10. [Folder Structure](#-folder-structure)
+7. [Folder Structure](#-folder-structure)
+8. [Installation & Setup](#-installation--setup)
+9. [Available Scripts](#-available-scripts)
+10. [Django REST Framework Backend Blueprint](#-django-rest-framework-backend-blueprint)
+11. [License & Proprietary Notice](#-license--proprietary-notice)
 
 ---
 
-## 🏥 Project Overview
+## 🏥 Executive Summary & Core Philosophy
 
-In a modern pharmaceutical retail environment, product management requires far more precision than standard e-commerce catalogues. A single active generic drug composition (e.g., *Paracetamol 500mg*) can exist across multiple pharmaceutical manufacturers (e.g., *Emzor*, *GlaxoSmithKline*, *M&B*), each having distinct:
-- Base wholesale procurement costs
-- Retail dispensing prices
-- Packaging variations (Blister packs, bottles, strips)
-- Specific manufacturer barcodes and SKU identifiers
-- Individual stock levels and reorder safety thresholds
+In a high-turnover pharmaceutical retail environment, operational accuracy and financial transparency are paramount. The Al-Amaan Pharmacy platform replaces ad-hoc spreadsheets and fragmented POS terminals with an integrated, single-source-of-truth application.
 
-The **Stitch Pharmacy Products Module** establishes a structured, two-tier data model:
-1. **Product Master Record**: Encapsulates clinical and regulatory attributes (Brand Name, Generic Formulation, Category, Dosage Form, Strength, Prescription Requirements).
-2. **Manufacturer Variants**: Encapsulates commercial, logistics, and inventory attributes (Manufacturer/Company, Base Cost, Selling Price, Barcode, Reorder Level, and Current Physical Stock).
+### Key Architectural Tenets:
+- **One Source of Truth (OSOT)**: Each business domain is owned by exactly one module (e.g. Products owns the catalogue, Inventory owns stock quantities, Accountability owns financial movements).
+- **Simple, Practical Scope**: Built specifically for retail dispensing, inventory, and cashbook accountability without ERP bloat (no unnecessary supplier CRM, batch-expiry routing, or clinical AI).
+- **Historical Price Immutability**: All sales transactions capture permanent price and cost snapshots at transaction time—preventing historical profit distortion when retail or wholesale prices change.
+- **Strict Role-Based Privacy**: Sensitive wholesale base procurement costs and profit margins are strictly redacted from Cashier accounts and visible only to Administrators.
+- **Traceable Financial Accountability**: Every cash inflow (`IN`) and outflow (`OUT`) is tracked in a centralized financial cashbook.
 
 ---
 
-## ✨ Key Features of the Products Module
-
-### 1. Two-Tier Hierarchical Drug Model
-- **Clinical Attributes**: Distinguishes between commercial Brand Names and Generic Chemical Formulations (e.g., Brand: *Amoxil*, Generic: *Amoxicillin Trihydrate*).
-- **Dosage Form & Strength Classification**: Standardized dosage forms (*Tablets*, *Capsules*, *Syrup*, *Suspension*, *Injections*, *Ointments*, *Drops*, *Inhalers*, *Suppositories*) with explicit strength metrics (*500mg*, *250mg/5ml*, *100IU*).
-- **Regulatory & Prescription Control**: Explicit flags for Prescription-Only Medications (POM), Over-The-Counter (OTC) drugs, and Controlled Substances.
-
-### 2. Multi-Manufacturer Variant & SKU Management
-- Maintain multiple manufacturer variants under a single product entry.
-- Unique barcode and SKU tracking per variant to support automated optical scanning at POS.
-- Independent pricing models per variant: Base Wholesale Cost, Suggested Retail Price, and Target Profit Margin percentage.
-- Configurable low-stock reorder thresholds.
-
-### 3. Guided Multi-Step Product Wizard (`ProductWizard.tsx`)
-- **Step 1: General Product Information**: Name, generic classification, category assignment, dosage form, strength, description, and prescription requirement.
-- **Step 2: Manufacturer Variants & Pricing**: Interactive variant builder with live profit margin calculation, base cost entry, retail price setup, and barcode generation.
-- **Step 3: Initial Stock & Confirmation**: Setup opening stock quantities with automated inventory movement logging.
-
-### 4. Advanced Search, Filtering & View Modes
-- Instant search across Brand Name, Generic Composition, Category, and Manufacturer.
-- Filter by Stock Status (*All*, *In Stock*, *Low Stock*, *Out of Stock*), Category, and Prescription requirements.
-- Dual-view toggle: High-density Data Table (`ProductListTable.tsx`) with variant rollups or visual Product Cards (`ProductCard.tsx`).
-- Responsive Mobile List view with touch-optimized variant accordions.
-
-### 5. Product & Variant Lifecycle Management
-- **In-depth Product Details View (`ProductDetailsView.tsx`)**: Deep-dive into product clinical information, manufacturer variants, linked active inventory counts, and price histories.
-- **Safe Soft Deactivation (`ConfirmDeactivationModal.tsx`)**: Prevent catastrophic cascade deletion by deactivating obsolete or discontinued products while maintaining historical sales and purchase audit records.
-
----
-
-## 🏛 Architecture Overview & Data Flow
-
-The Stitch Pharmacy system enforces a strict unidirectional data flow and an **Authoritative "One Owner, Many Consumers"** model:
+## ✨ Key System Modules
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          AUTHORITATIVE DATA OWNER                           │
-│                                                                             │
-│                        [ PRODUCTS MASTER MODULE ]                           │
-│     • Product Metadata (Name, Generic, Category, Form, Strength, POM)       │
-│     • Manufacturer Variants (Base Cost, Selling Price, SKU, Barcode)        │
-│     • Active / Inactive Status                                              │
-└──────────────────────────────────────┬──────────────────────────────────────┘
-                                       │
-                Consumes Catalog Data  │  (Read-Only / Entity Reference)
-                                       ▼
- ┌───────────────────────────────────────────────────────────────────────────┐
- │                            CONSUMER MODULES                               │
- │                                                                           │
- │  ┌───────────────────────┐  ┌───────────────────────┐  ┌───────────────┐  │
- │  │   INVENTORY MODULE    │  │   SALES / POS MODULE  │  │   PURCHASES   │  │
- │  │ • Tracks physical qty │  │ • Scans variant barcodes│ │ • Procurement │  │
- │  │ • Logs stock audits   │  │ • Billed at variant    │  │   restocking  │  │
- │  │ • Owns adjustments    │  │   selling price        │  │ • Updates     │  │
- │  │                       │  │ • Decrements variant   │  │   base costs  │  │
- │  │                       │  │   stock on checkout    │  │   on invoice  │  │
- │  └───────────────────────┘  └───────────────────────┘  └───────────────┘  │
- └───────────────────────────────────────────────────────────────────────────┘
+│                       AL-AMAAN PHARMACY MODULES                             │
+├───────────────────┬───────────────────┬───────────────────┬─────────────────┤
+│ 1. Authentication │ 2. Product Catalog│ 3. Inventory      │ 4. Customers    │
+│    & User Access  │    & Variants     │    & Movements    │    & Debt       │
+├───────────────────┼───────────────────┼───────────────────┼─────────────────┤
+│ 5. Sales & POS    │ 6. Customer Debt  │ 7. Stock Purchases│ 8. Central      │
+│    Checkout       │    & Settlements  │    & Restocking   │    Accountability│
+├───────────────────┼───────────────────┼───────────────────┼─────────────────┤
+│ 9. Financial & BI │ 10. System        │ 11. Executive     │                 │
+│    Reports        │     Settings      │     Dashboard     │                 │
+└───────────────────┴───────────────────┴───────────────────┴─────────────────┘
 ```
 
-### Data Flow Lifecycle Example:
-1. **Creation**: An administrator creates *Augmentin 625mg* in the **Products Module** with an *GSK* variant (Base Cost: ₦3,500, Selling Price: ₦4,500, Barcode: `5012345678901`).
-2. **Procurement**: The **Purchases Module** logs an invoice from a distributor, increasing the GSK variant's physical stock count.
-3. **Audit**: The **Inventory Module** monitors the aggregated stock count across all variants, triggering low-stock alerts when stock drops below the threshold set in the variant.
-4. **Dispensation**: At the **Sales (POS) Module**, the cashier scans the barcode `5012345678901`. The POS pulls the active selling price from the variant, completes the sale, and triggers a stock decrement event.
+### 1. Authentication & Staff Access Control (`/src/components/auth/` & `/src/components/users/`)
+- **Staff Registration & Admin Approval Workflow**: New staff members register with `PENDING` status.
+- **Admin Review**: Administrators can `APPROVE`, `REJECT` (with reason), `SUSPEND`, or `REACTIVATE` user accounts.
+- **Role Hierarchy**: Two distinct roles: `ADMIN` and `CASHIER`.
+- **Session Security**: JWT-ready authentication structure with role-aware navigation guards.
+
+### 2. Product Master Catalog & Company Variants (`/src/components/products/`)
+- **Two-Tier Hierarchical Model**:
+  - **Product Master**: Generic formulation, dosage form, strength, therapeutic category, and prescription flag (POM/OTC).
+  - **Company Variants**: Manufacturer-specific SKU (e.g. DANA, EMZOR, GSK, FIDSON), wholesale base price, retail selling price, reorder level, and stock quantity.
+- **Multi-Step Product Wizard**: Guided workflow for adding products, configuring manufacturer variants, setting prices, and assigning initial stock.
+- **Price Adjustment Audit**: Full history of price changes, capturing reasons, timestamps, and authorized staff.
+
+### 3. Inventory Tracking & Movement Ledger (`/src/components/inventory/`)
+- **Real-Time Stock Balances**: Live visibility of stock levels across all product-company variants.
+- **Stock Movement Ledger**: Immutable audit log of every stock alteration (`PURCHASE`, `SALE`, `MANUAL_ADJUSTMENT`).
+- **Inventory Valuation**: Accurate valuation calculated as `Current Stock × Base Price` (Wholesale Cost).
+- **Safety Alerts**: Filterable views for *In Stock*, *Low Stock* ($\le \text{reorder level}$), and *Out of Stock*.
+
+### 4. Customer Directory & Debt Management (`/src/components/customers/`)
+- **Registered Customer Accounts**: Persistent customer profiles with contact info, transaction history, and total credit balance.
+- **Anonymous Walk-In Support ("Walking Customer")**: Walk-in sales are executed without creating dummy database rows (`Sale.customer = NULL`).
+- **Debt Recovery & Settlement**: Supports partial payments, balance tracking, and auto-allocation across outstanding sales.
+
+### 5. Sales & Point of Sale (POS) (`/src/components/sales/`)
+- **Streamlined Checkout**: Rapid product/variant search, live price display, and dynamic cart management.
+- **Multi-Method Tender**: Cash, Bank Transfer, POS/Card, and Credit.
+- **Split & Partial Payments**: Automatically generates outstanding debt balances when sales are partially paid.
+- **Receipt Generation**: Printable and shareable sales receipts with business branding and cashier details.
+
+### 6. Stock Purchases & Procurement Restocking (`/src/components/purchases/`)
+- **Inbound Restock Invoices**: Record multi-item stock purchases directly into inventory.
+- **Single-Action Synchronization**: Restocking simultaneously increments product stock, logs stock movement records, and registers cash outflow (`OUT`) in the financial ledger.
+
+### 7. Financial Accountability & Cashbook Ledger (`/src/components/accountability/`)
+- **Centralized General Cashbook**: Unified transaction feed tracking every monetary inflow (`IN`) and outflow (`OUT`).
+- **Automated Entry Logging**: Sales, debt payments, and stock purchases automatically post entries.
+- **Manual Operational Expenses**: Log routine pharmacy expenses (Generator Fuel, Utilities, Transport, Stationery) with category tagging and notes.
+- **Reconciliation Metrics**: Live calculations of Total Money In, Total Money Out, and Net Cash Movement.
+
+### 8. Financial, Sales & Movement Reports (`/src/components/reports/`)
+- **Read-Only Business Intelligence**: Aggregates operational data across customizable date filters (*Today*, *This Week*, *This Month*, *Custom Range*, *Overall*).
+- **Dedicated Report Tabs**:
+  - Sales Summary & Volume
+  - Gross Profit & Margins
+  - Inventory Valuation & Movement Audits
+  - Stock Purchases Breakdown
+  - Customer Debt Outstanding
+  - Financial Cash Inflows vs. Outflows
+
+### 9. Executive Dashboard (`/src/components/dashboard/`)
+- **At-a-Glance Operational KPIs**: Today's Revenue, Today's Profit (Admin only), Transaction Count, Inventory Value, Low Stock Alerts, and Outstanding Debt.
+- **Actionable Widgets**: Quick links to low-stock reorders, pending staff approvals, and high-volume product summaries.
+
+### 10. System Preferences & Settings (`/src/components/settings/`)
+- **Pharmacy Identity**: Name, phone, email, address, logo, and receipt footer text.
+- **Operational Rules**: Currency symbol (₦ / NGN), low stock threshold defaults, and credit sales authorization toggles.
 
 ---
 
-## 🛡 Module Boundaries & "One Owner, Many Consumers"
+## 🏛 Architecture Overview & One Source of Truth (OSOT)
 
-To eliminate state duplication and prevent database inconsistencies, strict architectural boundaries are enforced:
-
-| Domain Concern | Authoritative Owner | Consumer Modules | Boundary Rule |
-| :--- | :--- | :--- | :--- |
-| **Product Metadata & Variants** | **Products Module** | Inventory, Sales, Purchases, Reports, Dashboard | Only Products Module can create, update, or deactivate products and variant pricing structures. |
-| **Stock Quantities & Adjustments** | **Inventory Module** | Products, Sales, Purchases, Dashboard | Stock counts are adjusted in Inventory or mutated via verified transactions (Sales/Purchases). Products module displays stock as a derived read-only metric. |
-| **Transaction Execution** | **Sales / POS Module** | Dashboard, Accountability, Reports | Sales snapshots the variant selling price at the exact moment of sale. |
-| **Supplier Procurement** | **Purchases Module** | Inventory, Accountability | Restock purchases link to existing product variants, updating variant base cost upon invoice approval. |
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          ONE SOURCE OF TRUTH (OSOT)                         │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+         ┌─────────────────────────────┼─────────────────────────────┐
+         ▼                             ▼                             ▼
+┌─────────────────┐           ┌─────────────────┐           ┌─────────────────┐
+│    accounts     │           │    products     │           │    customers    │
+│  Users / Roles  │           │ Catalog / SKUs  │           │ Profiles / Debt │
+└────────┬────────┘           └────────┬────────┘           └────────┬────────┘
+         │                             │                             │
+         │                             ▼                             │
+         │                    ┌─────────────────┐                    │
+         │                    │    inventory    │                    │
+         │                    │ Stock Movements │                    │
+         │                    └────────┬────────┘                    │
+         │                             │                             │
+         │            ┌────────────────┴────────────────┐            │
+         ▼            ▼                                 ▼            ▼
+┌───────────────────────────────┐             ┌───────────────────────────────┐
+│             sales             │             │           purchases           │
+│   POS Orders & Sale Items     │             │     Restock Procurement       │
+└───────────────┬───────────────┘             └───────────────┬───────────────┘
+                │                                             │
+                └──────────────────────┬──────────────────────┘
+                                       ▼
+                        ┌───────────────────────────────┐
+                        │        accountability         │
+                        │ Central Money IN/OUT Cashbook │
+                        └──────────────┬────────────────┘
+                                       │
+                        ┌──────────────┴──────────────┐
+                        ▼                             ▼
+         ┌─────────────────────────────┐┌─────────────────────────────┐
+         │           reports           ││          dashboard          │
+         │     Read-Only Analytics     ││     Executive KPI Views     │
+         └─────────────────────────────┘└─────────────────────────────┘
+```
 
 ---
 
 ## 🔐 Role-Based Access Control (RBAC)
 
-The application features role-based access control with granular permission checks across all product operations:
+| Feature / Action | Administrator (`ADMIN`) | Cashier / Dispenser (`CASHIER`) |
+| :--- | :---: | :---: |
+| **User Approvals & Account Suspension** | ✅ Full Access | ❌ Denied |
+| **Product Master Creation & Editing** | ✅ Full Access | ❌ Denied |
+| **Wholesale Base Cost & Profit Visibility** | ✅ Full Access | ❌ **Redacted / Hidden** |
+| **Retail Selling Price & Stock Lookup** | ✅ Full Access | ✅ Allowed |
+| **POS Sales & Dispensing** | ✅ Full Access | ✅ Allowed |
+| **Reprint Receipts & Customer Search** | ✅ Full Access | ✅ Allowed |
+| **Customer Debt Payment Recording** | ✅ Full Access | ✅ Allowed |
+| **Stock Purchases / Restocking** | ✅ Full Access | ❌ Denied |
+| **Manual Inventory Adjustments** | ✅ Full Access | ❌ Denied |
+| **Financial Ledger & Expense Logging** | ✅ Full Access | ❌ Denied |
+| **Financial & Profit Reports** | ✅ Full Access | ❌ Denied |
+| **System Settings Configuration** | ✅ Full Access | ❌ Read-Only |
 
-```
-                  ┌─────────────────────────────────────┐
-                  │      ACTIVE USER ROLE CONTEXT       │
-                  └──────────┬────────────────┬─────────┘
-                             │                │
-             ┌───────────────┴────┐      ┌────┴───────────────┐
-             │     ADMIN ROLE     │      │   CASHIER / STAFF  │
-             └───────────────┬────┘      └────┬───────────────┘
-                             │                │
- ┌───────────────────────────┴───┐ ┌──────────┴──────────────────────────┐
- │  FULL CATALOGUE & FINANCIALS  │ │       OPERATIONAL DISPENSING        │
- │ • Create / Edit Products      │ │ • Search Products & Check Stock     │
- │ • Configure Base Costs        │ │ • View Public Selling Prices        │
- │ • View Gross Profit Margins   │ │ • Scan Variant Barcodes at POS      │
- │ • Deactivate Products         │ │ ❌ Base Wholesale Costs Hidden      │
- │ • Manage Categories & Brands  │ │ ❌ Profit Margins Redacted          │
- │                               │ │ ❌ Cannot Modify Product Pricing    │
- └───────────────────────────────┘ └─────────────────────────────────────┘
-```
+---
 
-- **Admin Role**:
-  - Full permissions to create, edit, deactivate, and configure products and manufacturer variants.
-  - Full visibility into **Wholesale Base Costs**, **Markup Percentages**, and **Gross Profit Margins**.
-  - Access to bulk price updates and category/company management.
-- **Cashier / Staff Role**:
-  - Operational catalogue access: search products, verify active stock levels, scan barcodes at checkout.
-  - Sensitive financial metrics (Wholesale Base Cost, Profit Margins) are redacted from the UI.
-  - Price editing and product deactivation controls are disabled.
+## 💰 Dual-Tier Pricing & Historical Price Integrity
+
+1. **Wholesale Base Price (`base_price`)**: The cost price paid by the pharmacy per unit. Used exclusively for inventory valuation, profit calculation, and administrative audits.
+2. **Retail Selling Price (`selling_price`)**: The dispensing price charged to customers at the POS.
+3. **Historical Price Integrity**:
+   - Every `SaleItem` records a permanent snapshot of `unit_selling_price` and `unit_base_price` at the moment of sale.
+   - Subsequent price updates on a product variant **never** alter past sales records or historical profit reports.
+   - Profit is calculated strictly as:
+     $$\text{Profit} = (\text{Unit Selling Price} - \text{Unit Base Price}) \times \text{Quantity}$$
 
 ---
 
 ## 💻 Tech Stack
 
-| Layer | Technology | Purpose |
+| Layer | Technology | Description |
 | :--- | :--- | :--- |
 | **Frontend Framework** | **React 19** | Declarative component UI with modern hooks and state isolation |
 | **Language** | **TypeScript 5.6** | Strict static typing, comprehensive domain interfaces, and enums |
-| **Styling & Design System** | **Tailwind CSS v4** | Modern utility-first styling, responsive fluid layouts, and accessible contrast |
-| **Icons** | **Lucide React** | Consistent, lightweight vector iconography |
-| **Motion & Micro-interactions** | **Motion (`motion/react`)** | Fluid transitions, modal drawer animations, and layout physics |
-| **Service & Mock Engine** | **Async Service Layer** | Normalized in-memory reactive repository with event broadcasting |
-| **Build Tooling** | **Vite 6** | Ultra-fast HMR and production bundling |
-
----
-
-## ⚙️ Installation & Setup
-
-### Prerequisites
-- **Node.js**: v18.0.0 or higher
-- **Package Manager**: npm (v9+) or yarn (v1.22+)
-
-### Step-by-Step Installation
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/your-organization/stitch-pharmacy.git
-   cd stitch-pharmacy
-   ```
-
-2. **Install project dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Configure Environment Variables:**
-   Copy the example environment configuration:
-   ```bash
-   cp .env.example .env
-   ```
-
-4. **Launch the Development Server:**
-   ```bash
-   npm run dev
-   ```
-   The application will be accessible at `http://localhost:3000`.
-
----
-
-## 📜 Available Scripts
-
-| Command | Description |
-| :--- | :--- |
-| `npm run dev` | Boots the Vite development server on `http://0.0.0.0:3000`. |
-| `npm run build` | Compiles TypeScript and executes production build outputting to `/dist`. |
-| `npm run preview` | Spins up a local static server to preview the `/dist` production build. |
-| `npm run lint` | Executes TypeScript type-checking (`tsc --noEmit`) across the entire codebase. |
-
----
-
-## 🔌 API Readiness & Backend Integration
-
-The Products Module is architected with a clean separation of concerns. All UI components interact exclusively with the service layer (`/src/services/productService.ts` and `/src/services/productVariantService.ts`), ensuring seamless drop-in integration with RESTful or GraphQL backends (e.g., Django REST Framework, FastAPI, NestJS, Express).
-
-### Product Entity Interface (`src/types.ts`)
-```typescript
-export interface Product {
-  id: string;
-  name: string;                   // e.g. "Amoxil"
-  genericName: string;            // e.g. "Amoxicillin Trihydrate"
-  categoryId: string;             // References Category Entity
-  dosageForm: DosageForm;         // TABLET, CAPSULE, SYRUP, INJECTION, etc.
-  strength: string;               // e.g. "500mg"
-  prescriptionRequired: boolean;  // POM Flag
-  description?: string;
-  isActive: boolean;              // Soft delete status
-  variants?: ProductVariant[];    // Embedded or linked manufacturer variants
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ProductVariant {
-  id: string;
-  productId: string;
-  companyId: string;              // Manufacturer (e.g. "Emzor", "GSK")
-  sku: string;                    // Stock Keeping Unit
-  barcode?: string;               // Scannable UPC/EAN Code
-  baseCost: number;               // Wholesale Procurement Cost (₦)
-  sellingPrice: number;           // Retail Dispensing Price (₦)
-  minReorderLevel: number;        // Low stock trigger threshold
-  currentStock: number;           // Physical quantity available
-  isActive: boolean;
-}
-```
-
-### Connecting to a Live Backend API:
-To connect the Products Module to a live backend endpoint:
-1. Update `productService.ts` to call your REST endpoints:
-   - `GET /api/v1/products/` — Retrieve paginated product list with search and filter query parameters.
-   - `POST /api/v1/products/` — Create a new master product and its associated variants.
-   - `GET /api/v1/products/:id/` — Retrieve comprehensive product detail with historical price logs.
-   - `PUT /api/v1/products/:id/` — Update product clinical and regulatory details.
-   - `PATCH /api/v1/products/:id/deactivate/` — Soft-deactivate a product.
-   - `POST /api/v1/products/:id/variants/` — Add a new manufacturer variant.
-2. Update `.env` with `VITE_API_BASE_URL=https://api.yourpharmacy.com/api/v1`.
+| **Styling & Design System**| **Tailwind CSS v4** | Modern utility-first styling with responsive, accessible layouts |
+| **Iconography** | **Lucide React** | Consistent, lightweight vector icons |
+| **Transitions** | **Motion (`motion/react`)** | Fluid micro-interactions and layout transitions |
+| **Current Data Layer** | **Mock Service Repository** | In-memory reactive repository simulating REST API behavior |
+| **Target Backend** | **Django 5.x + DRF** | Python-based RESTful API with MySQL 8.x and JWT authentication |
+| **Build Tooling** | **Vite 6** | Fast development server and production bundler |
 
 ---
 
@@ -266,47 +211,90 @@ To connect the Products Module to a live backend endpoint:
 ```
 src/
 ├── components/
-│   ├── products/                     # Products & Catalogue Module Components
-│   │   ├── ConfirmDeactivationModal.tsx # Soft-deactivation confirmation modal
-│   │   ├── MetricCards.tsx             # Catalogue KPI widgets (Total, Low Stock, etc.)
-│   │   ├── PriceDisplay.tsx            # Role-aware price & margin component
-│   │   ├── ProductCard.tsx             # Grid card view component
-│   │   ├── ProductDetailsView.tsx      # Comprehensive product & variant deep dive
-│   │   ├── ProductEmptyState.tsx       # Zero-results & empty catalogue view
-│   │   ├── ProductFilters.tsx          # Search bar, category, and stock filters
-│   │   ├── ProductImage.tsx            # Fallback & dosage-aware drug visualizer
-│   │   ├── ProductListMobile.tsx       # Touch-optimized mobile list view
-│   │   ├── ProductListTable.tsx        # High-density desktop data table
-│   │   ├── ProductStatusBadge.tsx      # Active / Inactive status pills
-│   │   ├── ProductWizard.tsx           # Multi-step creation & pricing wizard
-│   │   └── StockStatusBadge.tsx        # In Stock / Low / Out of stock indicator
-│   ├── common/                         # Shared UI primitives (Toast, Scanner, etc.)
-│   ├── inventory/                      # Stock auditing & movement logs
-│   ├── sales/                          # Point of Sale (POS) checkout & receipts
-│   ├── purchases/                      # Restock procurement orders
-│   ├── customers/                      # Customer debt & profile ledgers
-│   ├── accountability/                 # Central financial cashbook (Money IN/OUT)
-│   ├── reports/                        # Analytics & CSV export views
-│   └── settings/                       # Pharmacy identity & global rules
-├── data/
-│   ├── mock/                           # Normalized mock seeds (categories, products, etc.)
-│   └── mockData.ts                     # Mock bundle export
-├── services/
-│   ├── productService.ts               # Product domain service
-│   ├── productVariantService.ts        # Variant domain service
-│   ├── mockRepository.ts               # In-memory reactive data layer
-│   └── ...
-├── utils/
-│   └── formatters.ts                   # Currency (₦/NGN), Date, and Metric formatters
-├── types.ts                            # Core TypeScript types, interfaces & enums
-├── App.tsx                             # Main Router & Role Context Provider
-└── main.tsx                            # React 19 Entrypoint
+│   ├── accountability/               # Financial cashbook & expense logging
+│   ├── auth/                         # Staff login, registration, and approval notice
+│   ├── common/                       # Shared UI components (Modals, Toasts, Badges)
+│   ├── customers/                    # Customer records, debt balances, and payment history
+│   ├── dashboard/                    # Executive KPI cards, trend charts, and alerts
+│   ├── inventory/                    # Stock tracking, valuations, and movement ledger
+│   ├── layout/                       # App layout, Sidebar, Header, and Navigation
+│   ├── products/                     # Product catalog, multi-company variants, and wizard
+│   ├── purchases/                    # Restock purchase orders and receiving
+│   ├── reports/                      # Multi-tab financial and operational BI reports
+│   ├── sales/                        # POS dispensing cart, checkout, and receipts
+│   ├── settings/                     # Pharmacy identity, rules, and preferences
+│   └── users/                        # Staff user management and admin approval console
+├── contexts/                         # React context providers
+├── data/                             # Initial mock data and seeds
+├── hooks/                            # Custom React hooks (Auth, Dashboard, Shortcuts, etc.)
+├── services/                         # Domain service layer (Product, Sales, Inventory, etc.)
+├── utils/                            # Date, currency (₦/NGN), and number formatting helpers
+├── types.ts                          # Comprehensive TypeScript domain interfaces & types
+├── App.tsx                           # Root application component with view routing
+└── main.tsx                          # React entry point
 ```
 
 ---
 
-## 📄 License & Distribution
+## ⚙️ Installation & Setup
 
-This software is proprietary and confidential. Unauthorized copying, distribution, or modification of this codebase, via any medium, is strictly prohibited.
+### Prerequisites
+- **Node.js**: v18.0.0 or higher
+- **npm**: v9.0.0 or higher
 
-**Stitch Pharmacy Management Systems** © 2026. All rights reserved.
+### Steps
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-organization/al-amaan-pharmacy.git
+   cd al-amaan-pharmacy
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Configure environment variables:**
+   ```bash
+   cp .env.example .env
+   ```
+
+4. **Start the development server:**
+   ```bash
+   npm run dev
+   ```
+   The application will be running at `http://localhost:3000`.
+
+---
+
+## 📜 Available Scripts
+
+| Command | Action |
+| :--- | :--- |
+| `npm run dev` | Starts the Vite development server on port 3000. |
+| `npm run build` | Compiles TypeScript and builds the production static assets in `dist/`. |
+| `npm run preview` | Serves the production build locally for verification. |
+| `npm run lint` | Runs TypeScript compiler checks (`tsc --noEmit`) to validate type safety. |
+
+---
+
+## 🔌 Django REST Framework Backend Blueprint
+
+A comprehensive, authoritative backend architecture blueprint has been authored for this project:
+
+📄 **[`DJANGO_BACKEND_DEVELOPMENT_BLUEPRINT.md`](./DJANGO_BACKEND_DEVELOPMENT_BLUEPRINT.md)**
+
+### Key Highlights of the Backend Blueprint:
+- **Project Structure**: Clean separation across Django apps (`accounts`, `products`, `inventory`, `customers`, `sales`, `purchases`, `accountability`, `reports`, `settings_app`, `dashboard`, `common`).
+- **Database Schema**: Full MySQL model specifications with explicit constraints, foreign key cascades, and check constraints (`current_stock >= 0`).
+- **Pessimistic Concurrency**: Prevents race conditions and overselling using `select_for_update()` inside `transaction.atomic` blocks.
+- **RESTful Endpoints (`/api/v1/`)**: Fully documented endpoints, serializers, permissions, and request/response contracts.
+- **15-Phase Implementation Roadmap**: Step-by-step development sequence from project foundation to production deployment.
+
+---
+
+## 📄 License & Proprietary Notice
+
+This software and its documentation are proprietary and confidential.  
+© 2026 **Al-Amaan Pharmacy Management Systems**. All rights reserved.
