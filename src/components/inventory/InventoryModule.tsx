@@ -34,6 +34,7 @@ import { InventoryInsightsView } from './InventoryInsightsView';
 import { StockAdjustmentModal } from './StockAdjustmentModal';
 import { InventoryDetailsModal } from './InventoryDetailsModal';
 import { InventoryLowStockAlertBanner } from './InventoryLowStockAlertBanner';
+import { exportTableToPDF } from '../../utils/pdfExport';
 
 interface InventoryModuleProps {
   currentRole: UserRole;
@@ -145,8 +146,8 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
     ]);
   };
 
-  // CSV Export
-  const handleExportCsv = () => {
+  // PDF Export
+  const handleExportPdf = () => {
     if (inventoryItems.length === 0) return;
 
     const isAdmin = currentRole === 'admin';
@@ -154,37 +155,35 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
       'Product Name',
       'Generic Name',
       'Dosage & Form',
-      'Company / Manufacturer',
+      'Manufacturer',
       'Category',
       'Barcode',
-      'Current Stock',
-      ...(isAdmin ? ['Reorder Level', 'Base Wholesale Price (NGN)', 'Inventory Value (NGN)'] : []),
-      'Retail Selling Price (NGN)',
-      'Stock Status',
+      'Stock',
+      ...(isAdmin ? ['Reorder', 'Base Cost (₦)', 'Value (₦)'] : []),
+      'Price (₦)',
+      'Status',
     ];
 
     const rows = inventoryItems.map((item) => [
-      `"${item.productName.replace(/"/g, '""')}"`,
-      `"${item.genericName.replace(/"/g, '""')}"`,
-      `"${item.dosage} ${item.form}"`,
-      `"${item.companyName.replace(/"/g, '""')}"`,
-      `"${item.category}"`,
-      `"${item.barcode}"`,
+      item.productName,
+      item.genericName,
+      `${item.dosage} ${item.form}`,
+      item.companyName,
+      item.category,
+      item.barcode,
       item.currentStock,
-      ...(isAdmin ? [item.reorderLevel, item.basePrice, item.inventoryValue] : []),
-      item.sellingPrice,
-      `"${item.stockStatus}"`,
+      ...(isAdmin ? [item.reorderLevel, item.basePrice.toLocaleString(), item.inventoryValue.toLocaleString()] : []),
+      item.sellingPrice.toLocaleString(),
+      item.stockStatus,
     ]);
 
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `inventory_export_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportTableToPDF('inventory_stock_report', headers, rows, {
+      title: 'Current Medicine Store Inventory & Stock Level Report',
+      subtitle: `Total Items: ${inventoryItems.length} | Exported on ${new Date().toLocaleDateString()}`,
+      orientation: 'landscape',
+      includeSignatures: true,
+      footerNote: 'Confidential - Al-Amaan Medicine Store Stock Register',
+    });
   };
 
   return (
@@ -308,7 +307,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
             currentRole={currentRole}
             kpis={kpis}
             isSearching={isSearching}
-            onExportCsv={handleExportCsv}
+            onExportPdf={handleExportPdf}
           />
 
           {/* Error Alert */}

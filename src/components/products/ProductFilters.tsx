@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, SlidersHorizontal, ChevronDown, X, RotateCcw, ClipboardCheck, FileSpreadsheet } from 'lucide-react';
 import { ProductCategory, Company, ProductFilterParams, UserRole } from '../../types';
+import { downloadProductCsvTemplate } from '../../utils/productCsvTemplate';
 
 interface ProductFiltersProps {
   filters: ProductFilterParams;
@@ -10,6 +11,7 @@ interface ProductFiltersProps {
   currentRole: UserRole;
   isSearching?: boolean;
   onOpenExportAudit?: () => void;
+  onDownloadCsvTemplate?: () => void;
 }
 
 export const ProductFilters: React.FC<ProductFiltersProps> = ({
@@ -20,6 +22,7 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
   currentRole,
   isSearching = false,
   onOpenExportAudit,
+  onDownloadCsvTemplate,
 }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const isAdmin = currentRole === 'admin';
@@ -130,6 +133,24 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
             {hasActiveAdvancedFilters && (
               <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
             )}
+          </button>
+
+          {/* Download CSV Template Button */}
+          <button
+            id="filters-download-csv-template-btn"
+            onClick={() => {
+              if (onDownloadCsvTemplate) {
+                onDownloadCsvTemplate();
+              } else {
+                downloadProductCsvTemplate('alamaan_product_bulk_import_template');
+              }
+            }}
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs sm:text-sm font-semibold shadow-xs transition-colors cursor-pointer"
+            title="Download CSV template with required fields for bulk product import"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600" />
+            <span className="hidden sm:inline">CSV Template</span>
+            <span className="sm:hidden">Template</span>
           </button>
 
           {/* Export Audit Sheet Trigger */}

@@ -38,7 +38,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     label: 'Admin (System Administrator)',
     roleDescription: 'Full access to costs, accounting, and user approval',
-    email: 'admin@brightcare.test',
+    email: 'admin@alamaan.test',
     password: 'Password123',
     status: 'ACTIVE',
     badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800',
@@ -46,7 +46,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     label: 'Cashier (Dispensary Staff)',
     roleDescription: 'Streamlined POS sales with wholesale costs masked',
-    email: 'cashier@brightcare.test',
+    email: 'cashier@alamaan.test',
     password: 'Password123',
     status: 'ACTIVE',
     badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
@@ -188,7 +188,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onGoToRegister }) => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="e.g. admin@brightcare.test"
+              placeholder="e.g. admin@alamaan.test"
               required
               className="w-full pl-9 pr-3 py-2.5 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
             />

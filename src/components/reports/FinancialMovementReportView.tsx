@@ -2,13 +2,13 @@ import React from 'react';
 import {
   ArrowDownRight,
   ArrowUpRight,
-  FileSpreadsheet,
+  FileText,
   TrendingUp,
   AlertCircle,
   Banknote,
 } from 'lucide-react';
 import { FinancialMovementReportData, UserRole } from '../../types';
-import { exportToCSV } from './exportUtils';
+import { exportToPDF } from './exportUtils';
 
 interface FinancialMovementReportViewProps {
   financialMovement: FinancialMovementReportData | null;
@@ -40,14 +40,17 @@ export const FinancialMovementReportView: React.FC<FinancialMovementReportViewPr
     1000
   );
 
-  const handleExportCSV = () => {
+  const handleExportPDF = () => {
     const headers = ['Category / Stream', 'Direction', 'Amount (₦)', 'Transactions Count', '% of Flow'];
     const rows: (string | number)[][] = [
       ...moneyInBreakdown.map((m) => [m.source, 'MONEY IN (Inflow)', m.amount, m.count, `${m.percentage}%`]),
       ...moneyOutBreakdown.map((m) => [m.category, 'MONEY OUT (Outflow)', m.amount, m.count, `${m.percentage}%`]),
       ['NET CASH MOVEMENT', isNetPositive ? 'POSITIVE' : 'NEGATIVE', summary.netMovement, '-', '100%'],
     ];
-    exportToCSV('financial-movement-report', headers, rows);
+    exportToPDF('financial-movement-report', headers, rows, {
+      title: 'Pharmacy Cash Flow & Financial Movement Report',
+      subtitle: `Money In: NGN ${summary.moneyIn.toLocaleString()} | Money Out: NGN ${summary.moneyOut.toLocaleString()} | Net: NGN ${summary.netMovement.toLocaleString()}`,
+    });
   };
 
   return (
@@ -255,11 +258,12 @@ export const FinancialMovementReportView: React.FC<FinancialMovementReportViewPr
 
         <button
           type="button"
-          onClick={handleExportCSV}
-          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 bg-white border border-emerald-300 rounded-lg hover:bg-emerald-50 transition-colors"
+          onClick={handleExportPDF}
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors"
+          title="Export cash flow statement to PDF"
         >
-          <FileSpreadsheet className="w-3.5 h-3.5" />
-          <span>Export Cash Flow Report (CSV)</span>
+          <FileText className="w-3.5 h-3.5" />
+          <span>Export Cash Flow Report (PDF)</span>
         </button>
       </div>
     </div>

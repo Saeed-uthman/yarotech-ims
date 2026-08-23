@@ -37,7 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNavChange,
   isMobileOpen = false,
   onCloseMobile,
-  pharmacyName = 'BrightCare Pharmacy',
+  pharmacyName = 'Al-Amaan Medicine Store',
   pharmacyLogo,
 }) => {
   const { user, logout, pendingCount } = useAuth();

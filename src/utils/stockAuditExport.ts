@@ -155,7 +155,7 @@ export function exportStockAuditCSV(
   products: Product[],
   options: StockAuditExportOptions,
   currentRole: UserRole,
-  filenamePrefix: string = 'brightcare_stock_audit'
+  filenamePrefix: string = 'alamaan_stock_audit'
 ) {
   const isAdmin = currentRole === 'admin' && options.includeFinancials;
   const items = flattenProductsForAudit(products, currentRole, options.granularity);
@@ -239,7 +239,7 @@ export function exportStockAuditCSV(
 
   // Prepend Metadata & Audit Header rows
   const metaRows: string[] = [
-    `"BRIGHTCARE PHARMACY - PHYSICAL INVENTORY AUDIT & STOCK COUNT SHEET"`,
+    `"AL-AMAAN MEDICINE STORE - PHYSICAL INVENTORY AUDIT & STOCK COUNT SHEET"`,
     `"Generated At:","${new Date().toLocaleString('en-GB')}"`,
     `"Auditor Name:","${(options.auditorName || 'Unassigned').replace(/"/g, '""')}"`,
     `"Audit Location / Store:","${(options.auditLocation || 'Main Pharmacy Dispensary').replace(/"/g, '""')}"`,
@@ -293,7 +293,7 @@ export function generateStockAuditPrintHTML(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BrightCare Pharmacy - Physical Stock Audit Sheet</title>
+  <title>Al-Amaan Medicine Store - Physical Stock Audit Sheet</title>
   <style>
     @page {
       size: A4 landscape;
@@ -466,7 +466,7 @@ export function generateStockAuditPrintHTML(
 
   <div class="header-box">
     <div>
-      <div class="pharmacy-title">BrightCare Pharmacy Ltd</div>
+      <div class="pharmacy-title">Al-Amaan Medicine Store</div>
       <div class="report-title">Physical Inventory Audit & Stock Verification Worksheet</div>
     </div>
     <div style="text-align: right; font-size: 9px; color: #475569;">
@@ -639,7 +639,7 @@ export function exportStockAuditPDF(
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `brightcare_stock_audit_sheet_${new Date().toISOString().split('T')[0]}.html`);
+    link.setAttribute('download', `alamaan_stock_audit_sheet_${new Date().toISOString().split('T')[0]}.html`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

@@ -79,7 +79,7 @@ export const SaleReceiptModal: React.FC<SaleReceiptModalProps> = ({
               </div>
             )}
             <h1 className="text-sm font-extrabold tracking-tight uppercase text-slate-900">
-              {settings.pharmacyName || 'BRIGHTCARE PHARMACY'}
+              {settings.pharmacyName || 'AL-AMAAN MEDICINE STORE'}
             </h1>
             {settings.businessDescription && (
               <p className="text-[9px] text-slate-500 font-sans">

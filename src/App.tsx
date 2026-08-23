@@ -46,6 +46,7 @@ import { DashboardModule } from './components/dashboard';
 import { UserManagementModule } from './components/users';
 import { WifiOff, Activity, RefreshCw, Loader2, HeartPulse } from 'lucide-react';
 import { productService } from './services/productService';
+import { downloadProductCsvTemplate } from './utils/productCsvTemplate';
 import { useSettings } from './hooks/useSettings';
 import { useInventoryKPIs } from './hooks/useInventory';
 
@@ -444,7 +445,7 @@ function MainPharmacyApp() {
           </div>
           <div className="space-y-1">
             <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              {settings?.pharmacyName || 'BrightCare Pharmacy'}
+              {settings?.pharmacyName || 'Al-Amaan Medicine Store'}
             </h2>
             <p className="text-xs text-slate-400">Loading authorized session...</p>
           </div>
@@ -458,7 +459,7 @@ function MainPharmacyApp() {
   if (!isAuthenticated || !user || user.status !== 'ACTIVE') {
     return (
       <AuthContainer
-        pharmacyName={settings?.pharmacyName || 'BrightCare Pharmacy'}
+        pharmacyName={settings?.pharmacyName || 'Al-Amaan Medicine Store'}
         pharmacyLogo={settings?.pharmacyLogo}
       />
     );
@@ -657,6 +658,14 @@ function MainPharmacyApp() {
                   currentRole={currentRole}
                   isSearching={isSearching}
                   onOpenExportAudit={() => setIsStockAuditModalOpen(true)}
+                  onDownloadCsvTemplate={() => {
+                    downloadProductCsvTemplate('alamaan_product_bulk_import_template');
+                    addToast({
+                      type: 'success',
+                      title: 'CSV Template Downloaded',
+                      message: 'Bulk import template downloaded with all required fields (Name, Generic, Category, Dosage, Form, Company, Pricing & Stock).',
+                    });
+                  }}
                 />
 
                 {/* Desktop Data Table */}
@@ -683,6 +692,14 @@ function MainPharmacyApp() {
                       setViewMode('details');
                     }}
                     onOpenExportAudit={() => setIsStockAuditModalOpen(true)}
+                    onDownloadCsvTemplate={() => {
+                      downloadProductCsvTemplate('alamaan_product_bulk_import_template');
+                      addToast({
+                        type: 'success',
+                        title: 'CSV Template Downloaded',
+                        message: 'Ready for bulk product import with all required fields (Name, Generic, Category, Dosage, Form, Company, Pricing & Stock).',
+                      });
+                    }}
                   />
                 </div>
 

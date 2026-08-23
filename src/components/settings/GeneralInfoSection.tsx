@@ -94,7 +94,7 @@ export const GeneralInfoSection: React.FC<GeneralInfoSectionProps> = ({
               disabled={isReadOnly}
               value={formData.pharmacyName}
               onChange={(e) => onChange('pharmacyName', e.target.value)}
-              placeholder="e.g. BrightCare Pharmacy & Stores"
+              placeholder="e.g. Al-Amaan Medicine Store"
               className={`w-full px-3.5 py-2.5 text-sm rounded-lg border bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-colors disabled:bg-slate-50 disabled:text-slate-500 ${
                 errors.pharmacyName ? 'border-rose-300 ring-2 ring-rose-500/10' : 'border-slate-300'
               }`}
@@ -139,7 +139,7 @@ export const GeneralInfoSection: React.FC<GeneralInfoSectionProps> = ({
               disabled={isReadOnly}
               value={formData.email}
               onChange={(e) => onChange('email', e.target.value)}
-              placeholder="e.g. info@brightcarepharmacy.ng"
+              placeholder="e.g. info@alamaanmedicine.ng"
               className="w-full pl-9 pr-3.5 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-colors disabled:bg-slate-50 disabled:text-slate-500"
             />
           </div>

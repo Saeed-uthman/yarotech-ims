@@ -35,7 +35,7 @@ export function exportTableToPDF(
     title = 'Pharmacy Report',
     subtitle,
     orientation = headers.length > 6 ? 'landscape' : 'portrait',
-    pharmacyName = 'BRIGHTCARE PHARMACY ERP',
+    pharmacyName = 'AL-AMAAN MEDICINE STORE',
     metadata = {},
     footerNote,
     includeSignatures = false,
@@ -136,7 +136,7 @@ export function exportTableToPDF(
       doc.setTextColor(148, 163, 184); // slate-400
 
       // Left footer
-      const leftFoot = footerNote ? sanitizeTextForPDF(footerNote) : 'Confidential - BrightCare Pharmacy Records';
+      const leftFoot = footerNote ? sanitizeTextForPDF(footerNote) : 'Confidential - Al-Amaan Medicine Store Records';
       doc.text(leftFoot, margin, pageHeight - 8);
 
       // Right footer

@@ -4,7 +4,7 @@ export const MOCK_USERS: UserAccount[] = [
   {
     id: 'usr-admin-001',
     fullName: 'System Administrator',
-    email: 'admin@brightcare.test',
+    email: 'admin@alamaan.test',
     phone: '+234 803 123 4567',
     role: 'admin',
     status: 'ACTIVE',
@@ -18,7 +18,7 @@ export const MOCK_USERS: UserAccount[] = [
   {
     id: 'usr-admin-002',
     fullName: 'Dr. Abdullahi Sanusi',
-    email: 'admin@brightcare.pharmacy',
+    email: 'admin@alamaan.pharmacy',
     phone: '+234 803 999 8877',
     role: 'admin',
     status: 'ACTIVE',
@@ -32,7 +32,7 @@ export const MOCK_USERS: UserAccount[] = [
   {
     id: 'usr-cashier-001',
     fullName: 'Cashier User',
-    email: 'cashier@brightcare.test',
+    email: 'cashier@alamaan.test',
     phone: '+234 802 987 6543',
     role: 'cashier',
     status: 'ACTIVE',
@@ -46,7 +46,7 @@ export const MOCK_USERS: UserAccount[] = [
   {
     id: 'usr-cashier-002',
     fullName: 'Amara Okafor',
-    email: 'cashier@brightcare.pharmacy',
+    email: 'cashier@alamaan.pharmacy',
     phone: '+234 802 111 4455',
     role: 'cashier',
     status: 'ACTIVE',

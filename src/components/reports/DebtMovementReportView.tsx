@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  FileSpreadsheet,
+  FileText,
   Search,
   Users,
   AlertCircle,
@@ -8,7 +8,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { DebtMovementReportData, UserRole } from '../../types';
-import { exportToCSV } from './exportUtils';
+import { exportToPDF } from './exportUtils';
 
 interface DebtMovementReportViewProps {
   debtReport: DebtMovementReportData | null;
@@ -54,15 +54,15 @@ export const DebtMovementReportView: React.FC<DebtMovementReportViewProps> = ({
     return true;
   });
 
-  const handleExportCSV = () => {
+  const handleExportPDF = () => {
     const headers = [
       'Customer Name',
       'Phone Number',
-      'Current Outstanding Balance (₦)',
-      'Debt Incurred in Period (₦)',
-      'Debt Repaid in Period (₦)',
+      'Balance (₦)',
+      'Incurred (₦)',
+      'Repaid (₦)',
       'Lifetime Purchases (₦)',
-      'Last Payment Date',
+      'Last Payment',
       'Status',
     ];
 
@@ -77,7 +77,11 @@ export const DebtMovementReportView: React.FC<DebtMovementReportViewProps> = ({
       d.currentDebtBalance > 0 ? 'ACTIVE DEBTOR' : 'CLEARED',
     ]);
 
-    exportToCSV('customer-debt-portfolio-report', headers, rows);
+    exportToPDF('customer-debt-portfolio-report', headers, rows, {
+      title: 'Customer Debt Portfolio & Credit Movement Report',
+      subtitle: `Total Customers: ${filteredDebtors.length} | Outstanding Debt: NGN ${summary.totalOutstandingDebt.toLocaleString()}`,
+      orientation: 'landscape',
+    });
   };
 
   return (
@@ -232,11 +236,12 @@ export const DebtMovementReportView: React.FC<DebtMovementReportViewProps> = ({
 
             <button
               type="button"
-              onClick={handleExportCSV}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-700 bg-white border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
+              onClick={handleExportPDF}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors"
+              title="Export customer debt ledger to PDF"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Export CSV</span>
+              <FileText className="w-3.5 h-3.5" />
+              <span>Export PDF</span>
             </button>
           </div>
         </div>

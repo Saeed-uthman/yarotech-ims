@@ -20,6 +20,7 @@ import {
 import { InventoryItem, UserRole } from '../../types';
 import { inventoryService } from '../../services';
 import { formatCompactNaira, formatNaira, formatNumber } from '../../utils/formatters';
+import { exportTableToPDF } from '../../utils/pdfExport';
 
 interface LowStockAlertModalProps {
   isOpen: boolean;
@@ -126,8 +127,8 @@ export const LowStockAlertModal: React.FC<LowStockAlertModalProps> = ({
     });
   }, [items, activeTab, selectedCategory, searchQuery]);
 
-  // CSV Export
-  const handleExportCSV = () => {
+  // PDF Export
+  const handleExportPDF = () => {
     setIsExporting(true);
     try {
       const headers = [
@@ -135,46 +136,39 @@ export const LowStockAlertModal: React.FC<LowStockAlertModalProps> = ({
         'Generic Name',
         'Manufacturer',
         'Category',
-        'Current Stock',
-        'Reorder Level',
-        'Stock Status',
-        'Shortfall (Units to Reorder)',
-        isAdmin ? 'Unit Cost (NGN)' : '',
-        'Selling Price (NGN)',
+        'Stock',
+        'Reorder',
+        'Status',
+        'Shortfall (To Reorder)',
+        ...(isAdmin ? ['Unit Cost (₦)'] : []),
+        'Price (₦)',
         'Barcode',
-      ].filter(Boolean);
+      ];
 
       const rows = filteredItems.map((item) => {
         const shortfall = Math.max(0, item.reorderLevel * 2 - item.currentStock);
         return [
-          `"${item.productName.replace(/"/g, '""')}"`,
-          `"${item.genericName.replace(/"/g, '""')}"`,
-          `"${item.companyName.replace(/"/g, '""')}"`,
-          `"${item.category.replace(/"/g, '""')}"`,
+          item.productName,
+          item.genericName,
+          item.companyName,
+          item.category,
           item.currentStock,
           item.reorderLevel,
-          `"${item.stockStatus}"`,
+          item.stockStatus,
           shortfall,
-          isAdmin ? item.basePrice : '',
-          item.sellingPrice,
-          `"${item.barcode}"`,
-        ].filter((val) => val !== '');
+          ...(isAdmin ? [item.basePrice.toLocaleString()] : []),
+          item.sellingPrice.toLocaleString(),
+          item.barcode,
+        ];
       });
 
-      const csvContent =
-        'data:text/csv;charset=utf-8,' +
-        [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement('a');
-      link.setAttribute('href', encodedUri);
-      link.setAttribute(
-        'download',
-        `brightcare_low_stock_alerts_${new Date().toISOString().split('T')[0]}.csv`
-      );
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      exportTableToPDF('alamaan_low_stock_requisition', headers, rows, {
+        title: 'Emergency Stock Requisition & Low Stock Alert List',
+        subtitle: `Total Depleted/Low Items: ${filteredItems.length} | Category: ${selectedCategory}`,
+        orientation: 'landscape',
+        includeSignatures: true,
+        footerNote: 'Confidential - Al-Amaan Medicine Store Requisition Sheet',
+      });
     } finally {
       setIsExporting(false);
     }
@@ -350,14 +344,15 @@ export const LowStockAlertModal: React.FC<LowStockAlertModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
-            {/* Export CSV */}
+            {/* Export PDF */}
             <button
-              onClick={handleExportCSV}
+              onClick={handleExportPDF}
               disabled={filteredItems.length === 0 || isExporting}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+              title="Export low stock items to PDF"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Export Requisition CSV</span>
+              <Download className="w-3.5 h-3.5 text-rose-600" />
+              <span>Export Requisition (PDF)</span>
             </button>
 
             {/* View Full Inventory */}

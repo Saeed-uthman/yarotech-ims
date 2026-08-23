@@ -9,6 +9,9 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
+  FileSpreadsheet,
+  CheckCircle2,
+  Download,
 } from 'lucide-react';
 import { Product, UserRole } from '../../types';
 import { 
@@ -18,6 +21,7 @@ import {
   getCompanyCount, 
   getProductStockStatus 
 } from '../../utils/formatters';
+import { downloadProductCsvTemplate } from '../../utils/productCsvTemplate';
 import { ProductImage } from './ProductImage';
 import { ProductStatusBadge } from './ProductStatusBadge';
 import { StockStatusBadge } from './StockStatusBadge';
@@ -42,6 +46,7 @@ interface ProductListTableProps {
   onActivateProduct: (product: Product) => void;
   onAddVariantQuick: (product: Product) => void;
   onOpenExportAudit?: () => void;
+  onDownloadCsvTemplate?: () => void;
 }
 
 export const ProductListTable: React.FC<ProductListTableProps> = ({
@@ -63,9 +68,23 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
   onActivateProduct,
   onAddVariantQuick,
   onOpenExportAudit,
+  onDownloadCsvTemplate,
 }) => {
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [isDownloadedRecently, setIsDownloadedRecently] = useState(false);
   const isAdmin = currentRole === 'admin';
+
+  const handleDownloadCsvTemplate = () => {
+    if (onDownloadCsvTemplate) {
+      onDownloadCsvTemplate();
+    } else {
+      downloadProductCsvTemplate('alamaan_product_import_template');
+    }
+    setIsDownloadedRecently(true);
+    setTimeout(() => {
+      setIsDownloadedRecently(false);
+    }, 3000);
+  };
 
   const startRecord = (currentPage - 1) * limit + 1;
   const endRecord = Math.min(currentPage * limit, totalProductsCount);
@@ -100,6 +119,58 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
+      {/* Product List Table Toolbar */}
+      <div className="px-4 sm:px-6 py-3 border-b border-slate-200 bg-slate-50/80 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <span className="text-xs font-bold text-slate-800 tracking-tight uppercase">Product Catalog</span>
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-200/80 text-slate-700">
+            {formatNumber(totalProductsCount)} products
+          </span>
+        </div>
+
+        {/* Toolbar Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Download CSV Template Button */}
+          <button
+            id="download-csv-template-btn"
+            type="button"
+            onClick={handleDownloadCsvTemplate}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border shadow-2xs transition-all cursor-pointer ${
+              isDownloadedRecently
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                : 'bg-white hover:bg-blue-50/80 active:bg-blue-100 text-blue-700 border-blue-200 hover:border-blue-300'
+            }`}
+            title="Download formatted CSV spreadsheet template with all required and optional fields for bulk product creation"
+          >
+            {isDownloadedRecently ? (
+              <>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 animate-in zoom-in-50 duration-200" />
+                <span>Template Downloaded!</span>
+              </>
+            ) : (
+              <>
+                <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600" />
+                <span>Download CSV Template</span>
+              </>
+            )}
+          </button>
+
+          {/* Stock Audit Export Button */}
+          {onOpenExportAudit && (
+            <button
+              id="product-list-stock-audit-export-btn"
+              type="button"
+              onClick={onOpenExportAudit}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-white hover:bg-emerald-50/80 active:bg-emerald-100 border border-emerald-200 hover:border-emerald-300 rounded-lg shadow-2xs transition-all cursor-pointer"
+              title="Export filtered product list for physical stock count audit (PDF / CSV)"
+            >
+              <ClipboardCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Stock Audit Export</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Table Container */}
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse" aria-label="Pharmaceutical Products Table">
@@ -411,12 +482,21 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
 
       {/* Pagination Footer matching design */}
       <div className="mt-auto border-t border-slate-100 px-4 sm:px-6 py-3.5 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <div>
             Showing <span className="font-semibold text-slate-900">{totalProductsCount > 0 ? startRecord : 0}</span> -{' '}
             <span className="font-semibold text-slate-900">{endRecord}</span> of{' '}
             <span className="font-semibold text-slate-900">{formatNumber(totalProductsCount)}</span> products
           </div>
+          <button
+            id="table-footer-download-csv-template-btn"
+            onClick={handleDownloadCsvTemplate}
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-blue-700 hover:text-blue-800 bg-blue-100/70 hover:bg-blue-100 rounded-md border border-blue-200 transition-colors cursor-pointer"
+            title="Download CSV Template with required fields for bulk product import"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600" />
+            <span>CSV Template</span>
+          </button>
           {onOpenExportAudit && (
             <button
               id="table-footer-export-audit-btn"

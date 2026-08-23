@@ -3,12 +3,12 @@ import { SystemSettings } from '../../types';
 export const DEFAULT_MOCK_SETTINGS: SystemSettings = {
   id: 'sys-settings-001',
   // 1. Pharmacy Identity & Info
-  pharmacyName: 'BrightCare Pharmacy',
+  pharmacyName: 'Al-Amaan Medicine Store',
   phone: '0803 456 7890',
-  email: 'info@brightcarepharmacy.ng',
+  email: 'info@alamaanmedicine.ng',
   address: 'Plot 14 Commercial Avenue, Sabon Gari, Kano, Nigeria',
   logo: '',
-  businessDescription: 'Licensed Community & Retail Pharmacy Dispensing Services (PCN Reg: KN-2041)',
+  businessDescription: 'Licensed Community Medicine Store & Pharmacy Dispensing Services (PCN Reg: KN-2041)',
 
   // 2. Currency & Number Formatting
   currency: 'NGN',

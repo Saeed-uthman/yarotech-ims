@@ -27,6 +27,7 @@ interface InventoryFiltersProps {
   currentRole: UserRole;
   kpis?: InventorySummaryKPIs | null;
   isSearching?: boolean;
+  onExportPdf?: () => void;
   onExportCsv?: () => void;
 }
 
@@ -38,8 +39,10 @@ export const InventoryFilters: React.FC<InventoryFiltersProps> = ({
   currentRole,
   kpis,
   isSearching = false,
+  onExportPdf,
   onExportCsv,
 }) => {
+  const handleExport = onExportPdf || onExportCsv;
   const [showAdvanced, setShowAdvanced] = useState(false);
   const isAdmin = currentRole === 'admin';
 
@@ -145,16 +148,16 @@ export const InventoryFilters: React.FC<InventoryFiltersProps> = ({
             <span className="hidden md:inline">Sort</span>
           </button>
 
-          {/* Export CSV */}
-          {onExportCsv && (
+          {/* Export PDF */}
+          {handleExport && (
             <button
-              id="inventory-export-csv-btn"
-              onClick={onExportCsv}
-              className="p-2 rounded-md border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 text-xs font-semibold flex items-center gap-1.5 transition-colors"
-              title="Export filtered inventory to CSV"
+              id="inventory-export-pdf-btn"
+              onClick={handleExport}
+              className="p-2 rounded-md border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              title="Export filtered inventory report to PDF"
             >
-              <Download className="w-4 h-4 text-slate-500" />
-              <span className="hidden md:inline">Export</span>
+              <Download className="w-4 h-4 text-rose-600" />
+              <span className="hidden md:inline">Export PDF</span>
             </button>
           )}
         </div>

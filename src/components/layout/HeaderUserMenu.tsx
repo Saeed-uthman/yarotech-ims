@@ -90,7 +90,7 @@ export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
   };
 
   const displayName = user?.fullName || (currentRole === 'admin' ? 'Dr. Abdullahi Sanusi' : 'Dispensary Cashier');
-  const displayEmail = user?.email || (currentRole === 'admin' ? 'admin@brightcare.test' : 'cashier@brightcare.test');
+  const displayEmail = user?.email || (currentRole === 'admin' ? 'admin@alamaan.test' : 'cashier@alamaan.test');
 
   return (
     <div className="relative">

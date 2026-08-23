@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import {
   TrendingUp,
-  FileSpreadsheet,
+  FileText,
   Layers,
   Building2,
   CreditCard,
   Search,
 } from 'lucide-react';
 import { SalesReportData, UserRole } from '../../types';
-import { exportToCSV } from './exportUtils';
+import { exportToPDF } from './exportUtils';
 
 interface SalesReportViewProps {
   salesReport: SalesReportData | null;
@@ -49,7 +49,7 @@ export const SalesReportView: React.FC<SalesReportViewProps> = ({
     c.companyName.toLowerCase().includes(searchFilter.toLowerCase())
   );
 
-  const handleExportSalesCSV = () => {
+  const handleExportSalesPDF = () => {
     if (activeSubTab === 'categories') {
       const headers = ['Category', 'Units Sold', 'Total Revenue (₦)', ...(isAdmin ? ['Gross Profit (₦)'] : [])];
       const rows = salesByCategory.map((c) => [
@@ -58,7 +58,10 @@ export const SalesReportView: React.FC<SalesReportViewProps> = ({
         c.revenue,
         ...(isAdmin ? [c.profit] : []),
       ]);
-      exportToCSV('sales-by-category-report', headers, rows);
+      exportToPDF('sales-by-category-report', headers, rows, {
+        title: 'Sales & Revenue Contribution by Category',
+        subtitle: `Total Categories: ${salesByCategory.length} | Revenue: NGN ${summary.totalSales.toLocaleString()}`,
+      });
     } else {
       const headers = ['Manufacturer / Company', 'Units Sold', 'Total Revenue (₦)', ...(isAdmin ? ['Gross Profit (₦)'] : [])];
       const rows = salesByCompany.map((c) => [
@@ -67,7 +70,10 @@ export const SalesReportView: React.FC<SalesReportViewProps> = ({
         c.revenue,
         ...(isAdmin ? [c.profit] : []),
       ]);
-      exportToCSV('sales-by-company-report', headers, rows);
+      exportToPDF('sales-by-company-report', headers, rows, {
+        title: 'Sales & Revenue Contribution by Manufacturer',
+        subtitle: `Total Manufacturers: ${salesByCompany.length} | Revenue: NGN ${summary.totalSales.toLocaleString()}`,
+      });
     }
   };
 
@@ -241,11 +247,12 @@ export const SalesReportView: React.FC<SalesReportViewProps> = ({
 
             <button
               type="button"
-              onClick={handleExportSalesCSV}
-              className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-emerald-700 bg-white border border-emerald-300 rounded-lg hover:bg-emerald-50 transition-colors"
+              onClick={handleExportSalesPDF}
+              className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors"
+              title="Export sales breakdown to PDF"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Export CSV</span>
+              <FileText className="w-3.5 h-3.5" />
+              <span>Export PDF</span>
             </button>
           </div>
         </div>

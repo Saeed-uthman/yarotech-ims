@@ -1,6 +1,6 @@
 {
-  "name": "Stitch Pharmacy - Products Module",
-  "description": "Production-ready Pharmacy Management System with Authentication, Staff Registration & Admin Approvals, Executive Dashboard, Products Core, Inventory Tracking, Stock Purchases, Customer & Debt Ledgers, Sales History & POS, Accountability Audit Feed, Financial & Movement Reports, and System Preferences & Configurations.",
+  "name": "Al-Amaan Medicine Store",
+  "description": "Production-ready Pharmacy & Medicine Store Management System with Authentication, Staff Registration & Admin Approvals, Executive Dashboard, Products Core, Inventory Tracking, Stock Purchases, Customer & Debt Ledgers, Sales History & POS, Accountability Audit Feed, Financial & Movement Reports, and System Preferences & Configurations.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -9,7 +9,7 @@ interface AuthContainerProps {
 }
 
 export const AuthContainer: React.FC<AuthContainerProps> = ({
-  pharmacyName = 'BrightCare Pharmacy',
+  pharmacyName = 'Al-Amaan Medicine Store',
   pharmacyLogo,
 }) => {
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
@@ -85,7 +85,7 @@ export const AuthContainer: React.FC<AuthContainerProps> = ({
             <span>Role-Based Access Control Active</span>
           </div>
           <p className="text-[10px] text-slate-400 dark:text-slate-600">
-            BrightCare Pharmacy Management System &bull; Offline & Cloud Ready
+            Al-Amaan Medicine Store Management System &bull; Offline & Cloud Ready
           </p>
         </div>
       </div>

@@ -23,7 +23,7 @@ import {
   ArrowDownRight,
   Clock,
   User,
-  FileSpreadsheet,
+  FileText,
   Layers,
   Sparkles,
   ShieldAlert,
@@ -43,6 +43,7 @@ import {
 } from '../../types';
 import { priceHistoryService } from '../../services/priceHistoryService';
 import { formatNaira, formatNumber } from '../../utils/formatters';
+import { exportTableToPDF } from '../../utils/pdfExport';
 
 interface ProductPriceHistoryTabProps {
   product: Product;
@@ -188,47 +189,46 @@ export const ProductPriceHistoryTab: React.FC<ProductPriceHistoryTabProps> = ({
     }
   };
 
-  // Export to CSV
-  const handleExportCSV = () => {
+  // Export to PDF
+  const handleExportPDF = () => {
     if (adjustments.length === 0) return;
 
     const headers = isAdmin
-      ? ['Date', 'Manufacturer', 'Old Cost (NGN)', 'New Cost (NGN)', 'Old Selling (NGN)', 'New Selling (NGN)', 'Change Type', 'Adjusted By', 'Reason']
-      : ['Date', 'Manufacturer', 'Old Selling (NGN)', 'New Selling (NGN)', 'Change Type', 'Adjusted By', 'Reason'];
+      ? ['Date', 'Manufacturer', 'Old Cost (₦)', 'New Cost (₦)', 'Old Selling (₦)', 'New Selling (₦)', 'Type', 'By', 'Reason']
+      : ['Date', 'Manufacturer', 'Old Selling (₦)', 'New Selling (₦)', 'Type', 'By', 'Reason'];
 
     const rows = adjustments.map((a) => {
       if (isAdmin) {
         return [
-          `"${a.effectiveDate}"`,
-          `"${a.companyName}"`,
-          a.oldBasePrice,
-          a.newBasePrice,
-          a.oldSellingPrice,
-          a.newSellingPrice,
-          `"${a.changeType}"`,
-          `"${a.adjustedBy}"`,
-          `"${a.reason.replace(/"/g, '""')}"`,
+          a.effectiveDate,
+          a.companyName,
+          a.oldBasePrice.toLocaleString(),
+          a.newBasePrice.toLocaleString(),
+          a.oldSellingPrice.toLocaleString(),
+          a.newSellingPrice.toLocaleString(),
+          a.changeType,
+          a.adjustedBy,
+          a.reason,
         ];
       }
       return [
-        `"${a.effectiveDate}"`,
-        `"${a.companyName}"`,
-        a.oldSellingPrice,
-        a.newSellingPrice,
-        `"${a.changeType}"`,
-        `"${a.adjustedBy}"`,
-        `"${a.reason.replace(/"/g, '""')}"`,
+        a.effectiveDate,
+        a.companyName,
+        a.oldSellingPrice.toLocaleString(),
+        a.newSellingPrice.toLocaleString(),
+        a.changeType,
+        a.adjustedBy,
+        a.reason,
       ];
     });
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `${product.name.replace(/\s+/g, '_')}_Price_History_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportTableToPDF(`${product.name.replace(/\s+/g, '_')}_Price_History`, headers, rows, {
+      title: `${product.name} - Pricing Adjustment & Margin History`,
+      subtitle: `Product: ${product.name} (${product.dosage} ${product.form}) | Category: ${product.category}`,
+      orientation: 'landscape',
+      includeSignatures: true,
+      footerNote: 'Confidential - Al-Amaan Medicine Store Pricing Ledger',
+    });
   };
 
   // Custom Chart Tooltip
@@ -354,13 +354,13 @@ export const ProductPriceHistoryTab: React.FC<ProductPriceHistoryTabProps> = ({
         <div className="flex items-center gap-2 flex-wrap">
           <button
             id="price-history-export-btn"
-            onClick={handleExportCSV}
+            onClick={handleExportPDF}
             disabled={adjustments.length === 0}
-            className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:bg-slate-50 active:bg-slate-100 rounded-md text-xs font-semibold text-slate-700 shadow-2xs transition-colors disabled:opacity-40"
-            title="Download pricing history ledger as CSV"
+            className="flex items-center gap-1.5 px-3 py-2 border border-rose-200 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 rounded-md text-xs font-semibold text-rose-700 shadow-2xs transition-colors disabled:opacity-40"
+            title="Download pricing history ledger as PDF report"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Export CSV</span>
+            <FileText className="w-3.5 h-3.5 text-rose-600" />
+            <span>Export PDF</span>
           </button>
 
           {isAdmin ? (

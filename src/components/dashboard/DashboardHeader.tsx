@@ -30,7 +30,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   isRefreshing,
   onRefresh,
   lastUpdated,
-  pharmacyName = 'BrightCare Pharmacy',
+  pharmacyName = 'Al-Amaan Medicine Store',
 }) => {
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [customStart, setCustomStart] = useState(filters.startDate || '2026-08-01');

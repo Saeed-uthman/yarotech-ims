@@ -217,6 +217,11 @@ export class MockDatabaseRepository {
     this.expenses = getStorage(DB_KEYS.EXPENSES, MOCK_MANUAL_EXPENSES);
     this.users = getStorage(DB_KEYS.USERS, MOCK_USERS);
     this.settings = getStorage(DB_KEYS.SETTINGS, { ...DEFAULT_MOCK_SETTINGS });
+    if (this.settings && (!this.settings.pharmacyName || this.settings.pharmacyName === 'BrightCare Pharmacy')) {
+      this.settings.pharmacyName = 'Al-Amaan Medicine Store';
+      this.settings.email = 'info@alamaanmedicine.ng';
+      setStorage(DB_KEYS.SETTINGS, this.settings);
+    }
     this.config = getStorage(DB_KEYS.CONFIG, DEFAULT_CONFIG);
   }
 
