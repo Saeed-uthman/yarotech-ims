@@ -1,23 +1,38 @@
 import React from 'react';
-import { LayoutDashboard, Package, Boxes, ShoppingBag, MoreHorizontal } from 'lucide-react';
+import { LayoutDashboard, Package, Boxes, ShoppingBag, Users, MoreHorizontal } from 'lucide-react';
+import { UserRole } from '../../types';
+import { usePermissions } from '../../hooks';
 
 interface BottomNavProps {
   activeNav: string;
   onNavChange: (nav: string) => void;
   onOpenMoreMenu: () => void;
+  role?: UserRole;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
   activeNav,
   onNavChange,
   onOpenMoreMenu,
+  role,
 }) => {
-  const items = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'products', label: 'Products', icon: Package },
-    { id: 'inventory', label: 'Inventory', icon: Boxes },
-    { id: 'sales', label: 'Sales/POS', icon: ShoppingBag },
-  ];
+  const permissions = usePermissions(role);
+
+  const items = permissions.isAdmin
+    ? [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'sales', label: 'Sales/POS', icon: ShoppingBag },
+        { id: 'products', label: 'Products', icon: Package },
+        { id: 'inventory', label: 'Inventory', icon: Boxes },
+        { id: 'customers', label: 'Customers', icon: Users },
+      ]
+    : [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'sales', label: 'Sales/POS', icon: ShoppingBag },
+        { id: 'products', label: 'Products', icon: Package },
+        { id: 'inventory', label: 'Inventory', icon: Boxes },
+        { id: 'customers', label: 'Customers', icon: Users },
+      ];
 
   return (
     <nav 

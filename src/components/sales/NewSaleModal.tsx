@@ -100,7 +100,17 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
     loadData();
   }, [role, isOpen]);
 
-  // Reset form when modal opens
+  // Filter customers based on search input
+  const filteredCustomers = allCustomers.filter((c) => {
+    if (!customerSearch.trim()) return true;
+    const q = customerSearch.toLowerCase().trim();
+    return (
+      c.name.toLowerCase().includes(q) ||
+      c.phone.toLowerCase().includes(q) ||
+      (c.email && c.email.toLowerCase().includes(q)) ||
+      (c.address && c.address.toLowerCase().includes(q))
+    );
+  });
   useEffect(() => {
     if (isOpen) {
       setCart([]);

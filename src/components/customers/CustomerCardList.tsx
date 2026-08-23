@@ -203,14 +203,16 @@ export const CustomerCardList: React.FC<CustomerCardListProps> = ({
                 </button>
               )}
 
-              <button
-                id={`btn-mobile-edit-${customer.id}`}
-                onClick={() => onEditCustomer(customer)}
-                className="min-h-[44px] min-w-[44px] p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg flex items-center justify-center transition-colors"
-                title="Edit Customer"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
+              {currentRole === 'admin' && (
+                <button
+                  id={`btn-mobile-edit-${customer.id}`}
+                  onClick={() => onEditCustomer(customer)}
+                  className="min-h-[44px] min-w-[44px] p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg flex items-center justify-center transition-colors"
+                  title="Edit Customer"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         );

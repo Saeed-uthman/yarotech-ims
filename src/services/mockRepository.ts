@@ -1475,17 +1475,40 @@ export class MockDatabaseRepository {
     const outstandingDebt = Math.max(0, totalDebt - amountPaid);
     const salesCount = customerSales.length;
 
-    // Find latest purchase date
+    // Find latest purchase date and evaluate 3-month inactivity auto-deactivation rule
     let lastPurchaseDate: string | undefined = undefined;
+    let lastActivityTime = new Date(entity.createdAt).getTime();
+
     if (customerSales.length > 0) {
       const sortedSales = [...customerSales].sort(
         (a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime()
       );
       lastPurchaseDate = sortedSales[0].date;
+      const latestSaleTime = new Date(sortedSales[0].rawDate || sortedSales[0].date).getTime();
+      if (!isNaN(latestSaleTime) && latestSaleTime > lastActivityTime) {
+        lastActivityTime = latestSaleTime;
+      }
+    }
+
+    if (customerPayments.length > 0) {
+      customerPayments.forEach((p) => {
+        const pTime = new Date(p.rawDate || p.paymentDate).getTime();
+        if (!isNaN(pTime) && pTime > lastActivityTime) {
+          lastActivityTime = pTime;
+        }
+      });
+    }
+
+    // 90 days (3 months) inactivity threshold
+    const THREE_MONTHS_MS = 90 * 24 * 60 * 60 * 1000;
+    let effectiveStatus = entity.status;
+    if (effectiveStatus === 'Active' && (Date.now() - lastActivityTime > THREE_MONTHS_MS)) {
+      effectiveStatus = 'Inactive';
     }
 
     return {
       ...entity,
+      status: effectiveStatus,
       totalPurchases,
       totalDebt,
       amountPaid,

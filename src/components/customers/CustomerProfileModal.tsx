@@ -281,34 +281,38 @@ export const CustomerProfileModal: React.FC<CustomerProfileModalProps> = ({
               </button>
             )}
 
-            <button
-              onClick={() => onEditCustomer(customer)}
-              className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium text-xs rounded-lg flex items-center gap-1.5 transition-colors"
-            >
-              <Edit2 className="w-3.5 h-3.5" />
-              Edit
-            </button>
+            {currentRole === 'admin' && (
+              <button
+                onClick={() => onEditCustomer(customer)}
+                className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium text-xs rounded-lg flex items-center gap-1.5 transition-colors"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+                Edit
+              </button>
+            )}
 
-            <button
-              onClick={() => onToggleStatus(customer)}
-              className={`px-3 py-1.5 border text-xs rounded-lg flex items-center gap-1.5 transition-colors ${
-                customer.status === 'Active'
-                  ? 'border-rose-200 text-rose-700 hover:bg-rose-50'
-                  : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
-              }`}
-            >
-              {customer.status === 'Active' ? (
-                <>
-                  <UserX className="w-3.5 h-3.5" />
-                  Deactivate
-                </>
-              ) : (
-                <>
-                  <UserCheck className="w-3.5 h-3.5" />
-                  Activate
-                </>
-              )}
-            </button>
+            {currentRole === 'admin' && (
+              <button
+                onClick={() => onToggleStatus(customer)}
+                className={`px-3 py-1.5 border text-xs rounded-lg flex items-center gap-1.5 transition-colors ${
+                  customer.status === 'Active'
+                    ? 'border-rose-200 text-rose-700 hover:bg-rose-50'
+                    : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                }`}
+              >
+                {customer.status === 'Active' ? (
+                  <>
+                    <UserX className="w-3.5 h-3.5" />
+                    Deactivate
+                  </>
+                ) : (
+                  <>
+                    <UserCheck className="w-3.5 h-3.5" />
+                    Activate
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
 

@@ -117,18 +117,20 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
         onNavigate={onNavigate}
       />
 
-      {/* 5. Visual Analytics Grid: Sales & Profit Trajectory + Money In/Out Trends */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" id="dashboard-charts-grid">
+      {/* 5. Visual Analytics Grid: Sales Trajectory & Money In/Out Trends */}
+      <div className={`grid grid-cols-1 ${role === 'admin' ? 'lg:grid-cols-2' : ''} gap-6`} id="dashboard-charts-grid">
         <SalesAndProfitTrends
           trends={data.salesTrends}
           role={role}
           onNavigate={onNavigate}
         />
-        <FinancialMovementTrends
-          trends={data.financialMovementTrends}
-          role={role}
-          onNavigate={onNavigate}
-        />
+        {role === 'admin' && (
+          <FinancialMovementTrends
+            trends={data.financialMovementTrends}
+            role={role}
+            onNavigate={onNavigate}
+          />
+        )}
       </div>
 
       {/* 6. High-Priority Operations: Top-Selling Medicines & Low-Stock Watchlist */}
@@ -147,17 +149,19 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
       </div>
 
       {/* 7. Real-Time Store Activity Feed: Recent Sales & Recent Stock Purchases */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" id="dashboard-activity-grid">
+      <div className={`grid grid-cols-1 ${role === 'admin' ? 'lg:grid-cols-2' : ''} gap-6`} id="dashboard-activity-grid">
         <RecentSalesCard
           recentSales={data.recentSales}
           role={role}
           onNavigate={onNavigate}
         />
-        <RecentPurchasesCard
-          recentPurchases={data.recentPurchases}
-          role={role}
-          onNavigate={onNavigate}
-        />
+        {role === 'admin' && (
+          <RecentPurchasesCard
+            recentPurchases={data.recentPurchases}
+            role={role}
+            onNavigate={onNavigate}
+          />
+        )}
       </div>
     </div>
   );

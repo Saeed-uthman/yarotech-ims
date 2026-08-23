@@ -34,6 +34,191 @@ export const ExecutiveSummaryCards: React.FC<ExecutiveSummaryCardsProps> = ({
       ? Math.round((summary.totalProfit / summary.totalSales) * 1000) / 10
       : 0;
 
+  if (!isAdmin) {
+    return (
+      <div className="space-y-3" id="cashier-summary-cards">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            Cashier Operational Overview
+          </h2>
+          <span className="text-[11px] text-slate-400 font-medium">
+            Amounts in Nigerian Naira (₦)
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* 1. Total Sales */}
+          <div 
+            id="card-total-sales"
+            className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors"
+          >
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Period Sales
+                </span>
+                <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <ShoppingBag className="w-4 h-4" />
+                </div>
+              </div>
+
+              <div className="space-y-0.5">
+                <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                  ₦{summary.totalSales.toLocaleString()}
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-bold text-[10px]">
+                    {summary.transactionCount} checkouts
+                  </span>
+                  <span>•</span>
+                  <span>Processed</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => onNavigate('sales')}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 inline-flex items-center gap-1 group"
+              >
+                <span>Point of Sale</span>
+                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+              <span className="text-[11px] text-slate-400">Live POS</span>
+            </div>
+          </div>
+
+          {/* 2. Items Sold */}
+          <div 
+            id="card-items-dispensed"
+            className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors"
+          >
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Units Dispensed
+                </span>
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <Receipt className="w-4 h-4" />
+                </div>
+              </div>
+
+              <div className="space-y-0.5">
+                <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                  {summary.itemsSold.toLocaleString()} units
+                </div>
+                <div className="text-xs text-slate-500 font-medium">
+                  Total medicines dispensed to patients
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => onNavigate('products')}
+                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 inline-flex items-center gap-1 group"
+              >
+                <span>View Catalog</span>
+                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+              <span className="text-[11px] text-slate-400">Inventory items</span>
+            </div>
+          </div>
+
+          {/* 3. Outstanding Debtors */}
+          <div 
+            id="card-outstanding-debt"
+            className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors"
+          >
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Active Debtors
+                </span>
+                <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <AlertCircle className="w-4 h-4" />
+                </div>
+              </div>
+
+              <div className="space-y-0.5">
+                <div className="text-xl sm:text-2xl font-bold text-amber-700 tracking-tight">
+                  {summary.debtorCount} customers
+                </div>
+                <div className="text-xs text-slate-500 font-medium">
+                  Patients with outstanding credit balances
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => onNavigate('customers')}
+                className="text-xs font-semibold text-amber-700 hover:text-amber-800 inline-flex items-center gap-1 group"
+              >
+                <span>Customer Ledger</span>
+                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+              <span className="text-[11px] text-slate-400">Debt Recovery</span>
+            </div>
+          </div>
+
+          {/* 4. Stock Alerts */}
+          <div 
+            id="card-stock-health"
+            className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors"
+          >
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Stock Alerts
+                </span>
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                  summary.outOfStockCount > 0
+                    ? 'bg-rose-50 text-rose-600'
+                    : summary.lowStockCount > 0
+                    ? 'bg-amber-50 text-amber-600'
+                    : 'bg-emerald-50 text-emerald-600'
+                }`}>
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+              </div>
+
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl sm:text-2xl font-bold text-slate-900">
+                    {summary.outOfStockCount + summary.lowStockCount}
+                  </span>
+                  <span className="text-xs font-semibold text-slate-500">alerts</span>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs font-medium">
+                  <span className="text-rose-600 font-bold">{summary.outOfStockCount} out of stock</span>
+                  <span>•</span>
+                  <span className="text-amber-600 font-bold">{summary.lowStockCount} low stock</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => onNavigate('inventory')}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 inline-flex items-center gap-1 group"
+              >
+                <span>Check Availability</span>
+                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+              <span className="text-[11px] text-slate-400">Live Inventory</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3" id="executive-summary-cards">
       <div className="flex items-center justify-between">

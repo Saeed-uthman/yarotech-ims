@@ -249,37 +249,41 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                         </button>
                       )}
 
-                      {/* Edit Customer */}
-                      <button
-                        id={`btn-edit-customer-${customer.id}`}
-                        onClick={() => onEditCustomer(customer)}
-                        className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors"
-                        title="Edit Customer"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
+                      {/* Edit Customer (Admin only) */}
+                      {currentRole === 'admin' && (
+                        <button
+                          id={`btn-edit-customer-${customer.id}`}
+                          onClick={() => onEditCustomer(customer)}
+                          className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded transition-colors"
+                          title="Edit Customer"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
 
-                      {/* Activate/Deactivate */}
-                      <button
-                        id={`btn-toggle-status-${customer.id}`}
-                        onClick={() => onToggleStatus(customer)}
-                        className={`p-1.5 rounded transition-colors ${
-                          customer.status === 'Active'
-                            ? 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
-                            : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
-                        }`}
-                        title={
-                          customer.status === 'Active'
-                            ? 'Deactivate Customer'
-                            : 'Activate Customer'
-                        }
-                      >
-                        {customer.status === 'Active' ? (
-                          <UserX className="w-3.5 h-3.5" />
-                        ) : (
-                          <UserCheck className="w-3.5 h-3.5" />
-                        )}
-                      </button>
+                      {/* Activate/Deactivate (Admin only) */}
+                      {currentRole === 'admin' && (
+                        <button
+                          id={`btn-toggle-status-${customer.id}`}
+                          onClick={() => onToggleStatus(customer)}
+                          className={`p-1.5 rounded transition-colors ${
+                            customer.status === 'Active'
+                              ? 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
+                              : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
+                          }`}
+                          title={
+                            customer.status === 'Active'
+                              ? 'Deactivate Customer'
+                              : 'Activate Customer'
+                          }
+                        >
+                          {customer.status === 'Active' ? (
+                            <UserX className="w-3.5 h-3.5" />
+                          ) : (
+                            <UserCheck className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

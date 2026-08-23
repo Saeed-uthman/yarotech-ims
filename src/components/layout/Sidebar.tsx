@@ -17,7 +17,7 @@ import {
   UserCog
 } from 'lucide-react';
 import { UserRole } from '../../types';
-import { useAuth } from '../../hooks';
+import { useAuth, usePermissions } from '../../hooks';
 
 export interface SidebarProps {
   currentRole: UserRole;
@@ -41,32 +41,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
   pharmacyLogo,
 }) => {
   const { user, logout, pendingCount } = useAuth();
+  const permissions = usePermissions(currentRole);
 
-  const mainNavItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'products', label: 'Products', icon: Package, badge: 'Core' },
-    { id: 'inventory', label: 'Inventory', icon: Boxes, badge: 'Live' },
-    { id: 'stock-purchase', label: 'Stock Purchase', icon: ShoppingCart, badge: 'Live' },
-    { id: 'customers', label: 'Customers', icon: Users, badge: 'Live' },
-    { id: 'sales', label: 'Sales & POS', icon: ShoppingBag, badge: 'Live' },
-    { id: 'reports', label: 'Reports', icon: FileText, badge: 'Live' },
-  ];
+  const mainNavItems = permissions.isAdmin
+    ? [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'products', label: 'Products', icon: Package, badge: 'Core' },
+        { id: 'inventory', label: 'Inventory', icon: Boxes, badge: 'Live' },
+        { id: 'stock-purchase', label: 'Stock Purchase', icon: ShoppingCart, badge: 'Live' },
+        { id: 'customers', label: 'Customers', icon: Users, badge: 'Live' },
+        { id: 'sales', label: 'Sales & POS', icon: ShoppingBag, badge: 'Live' },
+        { id: 'reports', label: 'Reports', icon: FileText, badge: 'Live' },
+      ]
+    : [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'sales', label: 'Sales & POS', icon: ShoppingBag, badge: 'Live' },
+        { id: 'products', label: 'Products', icon: Package, badge: 'Catalog' },
+        { id: 'inventory', label: 'Inventory', icon: Boxes, badge: 'Stock' },
+        { id: 'customers', label: 'Customers', icon: Users, badge: 'Registry' },
+      ];
 
-  const operationsNavItems = [
-    ...(currentRole === 'admin'
-      ? [
-          {
-            id: 'users',
-            label: 'User Approvals',
-            icon: UserCog,
-            badge: pendingCount > 0 ? `${pendingCount} Req` : 'Admin',
-            badgeColor: pendingCount > 0 ? 'bg-amber-500 text-white font-bold animate-pulse' : undefined,
-          },
-        ]
-      : []),
-    { id: 'accountability', label: 'Accountability', icon: ShieldCheck, badge: 'Audit' },
-    { id: 'settings', label: 'Settings', icon: Settings, badge: 'Config' },
-  ];
+  const operationsNavItems = permissions.isAdmin
+    ? [
+        {
+          id: 'users',
+          label: 'User Approvals',
+          icon: UserCog,
+          badge: pendingCount > 0 ? `${pendingCount} Req` : 'Admin',
+          badgeColor: pendingCount > 0 ? 'bg-amber-500 text-white font-bold animate-pulse' : undefined,
+        },
+        { id: 'accountability', label: 'Accountability', icon: ShieldCheck, badge: 'Audit' },
+        { id: 'settings', label: 'Settings', icon: Settings, badge: 'Config' },
+      ]
+    : [];
 
   // Prevent background scrolling when mobile drawer is open
   useEffect(() => {
@@ -176,45 +183,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </nav>
         </div>
 
-        <div>
-          <div className="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-            Administration & Audit
+        {operationsNavItems.length > 0 && (
+          <div>
+            <div className="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+              Administration & Audit
+            </div>
+            <nav className="space-y-1" aria-label="System operations and audit">
+              {operationsNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeNav === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    id={`nav-item-${item.id}`}
+                    onClick={() => handleNavClick(item.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors min-h-[44px] ${
+                      isActive
+                        ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 font-bold shadow-xs'
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`} />
+                      <span className="truncate">{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold shrink-0 ${
+                        item.badgeColor
+                          ? item.badgeColor
+                          : isActive 
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' 
+                          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                      }`}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
           </div>
-          <nav className="space-y-1" aria-label="System operations and audit">
-            {operationsNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeNav === item.id;
-              return (
-                <button
-                  key={item.id}
-                  id={`nav-item-${item.id}`}
-                  onClick={() => handleNavClick(item.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors min-h-[44px] ${
-                    isActive
-                      ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 font-bold shadow-xs'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`} />
-                    <span className="truncate">{item.label}</span>
-                  </div>
-                  {item.badge && (
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold shrink-0 ${
-                      item.badgeColor
-                        ? item.badgeColor
-                        : isActive 
-                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' 
-                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                    }`}>
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
+        )}
       </div>
 
       {/* User Role Card & Switcher in Sidebar Footer */}

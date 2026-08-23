@@ -14,4 +14,5 @@ export * from './useReports';
 export * from './useSettings';
 export * from './useDashboard';
 export * from './useAuth';
+export * from './usePermissions';
 export * from './useKeyboardShortcuts';
