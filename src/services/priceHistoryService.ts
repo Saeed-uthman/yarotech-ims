@@ -191,8 +191,11 @@ export class PriceHistoryService {
 
     const oldSelling = variant.sellingPrice;
     const oldBase = variant.basePrice;
-    const newSelling = Number(input.newSellingPrice);
+    const newDefaultSelling = input.newDefaultSellingPrice ? Number(input.newDefaultSellingPrice) : Number(input.newSellingPrice);
+    const newSelling = newDefaultSelling;
     const newBase = Number(input.newBasePrice);
+    const newMinSelling = input.newMinSellingPrice ? Number(input.newMinSellingPrice) : (variant.minSellingPrice || Math.round(newBase * 1.15));
+    const newMaxSelling = input.newMaxSellingPrice ? Number(input.newMaxSellingPrice) : (variant.maxSellingPrice || Math.round(newSelling * 1.25));
 
     let changeType: ProductPriceAdjustment['changeType'] = 'INCREASE';
     if (newSelling < oldSelling) {
@@ -211,6 +214,12 @@ export class PriceHistoryService {
       companyName: variant.companyName,
       oldBasePrice: oldBase,
       newBasePrice: newBase,
+      oldMinSellingPrice: variant.minSellingPrice,
+      newMinSellingPrice: newMinSelling,
+      oldDefaultSellingPrice: variant.defaultSellingPrice || variant.sellingPrice,
+      newDefaultSellingPrice: newDefaultSelling,
+      oldMaxSellingPrice: variant.maxSellingPrice,
+      newMaxSellingPrice: newMaxSelling,
       oldSellingPrice: oldSelling,
       newSellingPrice: newSelling,
       changeType,
@@ -231,6 +240,9 @@ export class PriceHistoryService {
       variant.id,
       {
         basePrice: newBase,
+        minSellingPrice: newMinSelling,
+        defaultSellingPrice: newDefaultSelling,
+        maxSellingPrice: newMaxSelling,
         sellingPrice: newSelling,
       },
       role

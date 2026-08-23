@@ -83,7 +83,29 @@ export function getPriceRange(variants: CompanyVariant[], useSellingPrice = true
   const activeVariants = variants.filter(v => v.status === 'Available');
   const targetVariants = activeVariants.length > 0 ? activeVariants : variants;
 
-  const prices = targetVariants.map(v => useSellingPrice ? Number(v.sellingPrice) || 0 : Number(v.basePrice) || 0);
+  if (useSellingPrice) {
+    const minPrices = targetVariants.map(v => {
+      if (v.minSellingPrice !== undefined && v.minSellingPrice > 0) return Number(v.minSellingPrice);
+      if (v.defaultSellingPrice !== undefined && v.defaultSellingPrice > 0) return Number(v.defaultSellingPrice);
+      return Number(v.sellingPrice) || 0;
+    });
+    const maxPrices = targetVariants.map(v => {
+      if (v.maxSellingPrice !== undefined && v.maxSellingPrice > 0) return Number(v.maxSellingPrice);
+      if (v.defaultSellingPrice !== undefined && v.defaultSellingPrice > 0) return Number(v.defaultSellingPrice);
+      return Number(v.sellingPrice) || 0;
+    });
+
+    const min = Math.min(...minPrices);
+    const max = Math.max(...maxPrices);
+
+    if (min === max) {
+      return formatNaira(min, false);
+    }
+
+    return `${formatNaira(min, false)} - ${formatNaira(max, false)}`;
+  }
+
+  const prices = targetVariants.map(v => Number(v.basePrice) || 0);
 
   if (prices.length === 0) return '₦0';
 

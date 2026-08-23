@@ -42,6 +42,10 @@ interface CartItem {
   genericName: string;
   companyName: string;
   sellingPrice: number;
+  actualSellingPrice: number;
+  minSellingPrice: number;
+  defaultSellingPrice: number;
+  maxSellingPrice: number;
   basePrice: number;
   availableStock: number;
   quantity: number;
@@ -113,7 +117,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   }, [isOpen]);
 
   // Calculations
-  const subtotal = cart.reduce((sum, item) => sum + item.sellingPrice * item.quantity, 0);
+  const subtotal = cart.reduce((sum, item) => sum + (item.actualSellingPrice || item.sellingPrice) * item.quantity, 0);
   const numericDiscount = Math.max(0, Number(discount) || 0);
   const grandTotal = Math.max(0, subtotal - numericDiscount);
 
@@ -152,6 +156,11 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   const handleAddToCart = (product: Product, variant: CompanyVariant) => {
     if (variant.currentStock <= 0) return;
 
+    const basePrice = Number(variant.basePrice) || 0;
+    const defaultSellingPrice = Number(variant.defaultSellingPrice) || Number(variant.sellingPrice) || 0;
+    const minSellingPrice = Number(variant.minSellingPrice) || (basePrice > 0 ? Math.max(basePrice + 10, Math.round(basePrice * 1.15)) : defaultSellingPrice);
+    const maxSellingPrice = Number(variant.maxSellingPrice) || Math.max(defaultSellingPrice, Math.round(defaultSellingPrice * 1.25));
+
     setCart((prev) => {
       const existing = prev.find((item) => item.variantId === variant.id);
       if (existing) {
@@ -173,8 +182,12 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
             productName: product.name,
             genericName: product.genericName,
             companyName: variant.companyName,
-            sellingPrice: variant.sellingPrice,
-            basePrice: variant.basePrice,
+            sellingPrice: defaultSellingPrice,
+            actualSellingPrice: defaultSellingPrice,
+            defaultSellingPrice,
+            minSellingPrice,
+            maxSellingPrice,
+            basePrice,
             availableStock: variant.currentStock,
             quantity: 1,
           },
@@ -207,6 +220,18 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
     );
   };
 
+  // Update item selling price
+  const handleUpdatePrice = (variantId: string, newPrice: number) => {
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.variantId === variantId) {
+          return { ...item, actualSellingPrice: newPrice, sellingPrice: newPrice };
+        }
+        return item;
+      })
+    );
+  };
+
   // Remove item from cart
   const handleRemoveItem = (variantId: string) => {
     setCart((prev) => prev.filter((item) => item.variantId !== variantId));
@@ -223,7 +248,24 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
       return;
     }
 
-    // 2. Validation: Customer selection & walking customer credit rule
+    // 2. Validation: Check each item's actualSellingPrice is within [minSellingPrice, maxSellingPrice]
+    for (const item of cart) {
+      const price = Number(item.actualSellingPrice);
+      if (isNaN(price) || price <= 0) {
+        setFormError(`Please enter a valid price for ${item.productName} (${item.companyName}).`);
+        return;
+      }
+      if (price < item.minSellingPrice) {
+        setFormError(`Selling price for ${item.productName} (${item.companyName}) cannot be less than ₦${item.minSellingPrice.toLocaleString()}.`);
+        return;
+      }
+      if (price > item.maxSellingPrice) {
+        setFormError(`Selling price for ${item.productName} (${item.companyName}) cannot exceed ₦${item.maxSellingPrice.toLocaleString()}.`);
+        return;
+      }
+    }
+
+    // 3. Validation: Customer selection & walking customer credit rule
     if (customerType === 'registered' && !selectedCustomerId) {
       setFormError('Please select a registered customer from the list.');
       return;
@@ -241,12 +283,14 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
       return;
     }
 
-    // 3. Prepare payload
+    // 4. Prepare payload
     const payload: CreateSaleInput = {
       customerId: customerType === 'registered' ? selectedCustomerId : null,
       items: cart.map((c) => ({
         productVariantId: c.variantId,
         quantity: c.quantity,
+        actualSellingPrice: c.actualSellingPrice,
+        unitPrice: c.actualSellingPrice,
       })),
       discount: numericDiscount,
       amountPaid: numericAmountPaid,
@@ -373,7 +417,10 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
 
                           <div className="text-right">
                             <div className="font-bold text-xs text-slate-900">
-                              {formatNaira(variant.sellingPrice)}
+                              {formatNaira(variant.defaultSellingPrice || variant.sellingPrice)}
+                            </div>
+                            <div className="text-[10px] text-amber-700 font-mono">
+                              Range: {formatNaira(variant.minSellingPrice || (variant.basePrice > 0 ? Math.max(variant.basePrice + 10, Math.round(variant.basePrice * 1.15)) : variant.sellingPrice))} - {formatNaira(variant.maxSellingPrice || Math.max(variant.sellingPrice, Math.round(variant.sellingPrice * 1.25)))}
                             </div>
                             <div
                               className={`text-[10px] font-semibold ${
@@ -406,62 +453,99 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                       <th className="py-2.5 px-3">Item</th>
                       <th className="py-2.5 px-3">Company</th>
                       <th className="py-2.5 px-3 text-center">Quantity</th>
-                      <th className="py-2.5 px-3 text-right">Unit Price</th>
+                      <th className="py-2.5 px-3 text-right">Selling Price (₦)</th>
                       <th className="py-2.5 px-3 text-right">Subtotal</th>
                       <th className="py-2.5 px-3 text-center">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {cart.map((item) => (
-                      <tr key={item.variantId} className="hover:bg-slate-50/50">
-                        <td className="py-2.5 px-3">
-                          <div className="font-bold text-slate-900">{item.productName}</div>
-                          <div className="text-[10px] text-slate-400">{item.genericName}</div>
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span className="px-1.5 py-0.5 rounded-sm bg-slate-100 text-[10px] font-semibold text-slate-700">
-                            {item.companyName}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-center">
-                          <div className="inline-flex items-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateQuantity(item.variantId, item.quantity - 1)}
-                              className="font-bold text-slate-600 hover:text-slate-900 px-1"
-                            >
-                              -
-                            </button>
-                            <span className="font-bold text-slate-900 w-6 text-center">
-                              {item.quantity}
+                    {cart.map((item) => {
+                      const isPriceOutOfRange =
+                        item.actualSellingPrice < item.minSellingPrice ||
+                        item.actualSellingPrice > item.maxSellingPrice;
+
+                      return (
+                        <tr key={item.variantId} className="hover:bg-slate-50/50">
+                          <td className="py-2.5 px-3">
+                            <div className="font-bold text-slate-900">{item.productName}</div>
+                            <div className="text-[10px] text-slate-400">{item.genericName}</div>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="px-1.5 py-0.5 rounded-sm bg-slate-100 text-[10px] font-semibold text-slate-700">
+                              {item.companyName}
                             </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <div className="inline-flex items-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateQuantity(item.variantId, item.quantity - 1)}
+                                className="font-bold text-slate-600 hover:text-slate-900 px-1"
+                              >
+                                -
+                              </button>
+                              <span className="font-bold text-slate-900 w-6 text-center">
+                                {item.quantity}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateQuantity(item.variantId, item.quantity + 1)}
+                                className="font-bold text-slate-600 hover:text-slate-900 px-1"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            <div className="inline-flex flex-col items-end">
+                              <div className="flex items-center gap-1">
+                                <span className="text-[11px] text-slate-400 font-mono">₦</span>
+                                <input
+                                  type="number"
+                                  min={item.minSellingPrice}
+                                  max={item.maxSellingPrice}
+                                  step="1"
+                                  value={item.actualSellingPrice}
+                                  onChange={(e) =>
+                                    handleUpdatePrice(
+                                      item.variantId,
+                                      parseFloat(e.target.value) || 0
+                                    )
+                                  }
+                                  className={`w-24 px-2 py-1 text-right font-mono font-bold text-xs rounded border transition-colors ${
+                                    isPriceOutOfRange
+                                      ? 'border-rose-500 bg-rose-50 text-rose-700 focus:ring-rose-500'
+                                      : 'border-slate-200 bg-slate-50 text-slate-900 focus:bg-white focus:border-blue-500'
+                                  }`}
+                                />
+                              </div>
+                              <span
+                                className={`text-[10px] font-mono mt-0.5 ${
+                                  isPriceOutOfRange
+                                    ? 'text-rose-600 font-bold'
+                                    : 'text-slate-400'
+                                }`}
+                              >
+                                Range: {formatNaira(item.minSellingPrice)} - {formatNaira(item.maxSellingPrice)}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-bold text-slate-900">
+                            {formatNaira(item.actualSellingPrice * item.quantity)}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
                             <button
                               type="button"
-                              onClick={() => handleUpdateQuantity(item.variantId, item.quantity + 1)}
-                              className="font-bold text-slate-600 hover:text-slate-900 px-1"
+                              onClick={() => handleRemoveItem(item.variantId)}
+                              className="p-1 text-slate-400 hover:text-rose-600 rounded-md transition-colors"
+                              title="Remove Item"
                             >
-                              +
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
-                          </div>
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-medium text-slate-700">
-                          {formatNaira(item.sellingPrice)}
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-bold text-slate-900">
-                          {formatNaira(item.sellingPrice * item.quantity)}
-                        </td>
-                        <td className="py-2.5 px-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem(item.variantId)}
-                            className="p-1 text-slate-400 hover:text-rose-600 rounded-md transition-colors"
-                            title="Remove Item"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

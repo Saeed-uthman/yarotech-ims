@@ -7,6 +7,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-001',
     companyId: 'comp-1', // DANA
     basePrice: 350.00,
+    minSellingPrice: 400.00,
+    defaultSellingPrice: 500.00,
+    maxSellingPrice: 570.00,
     sellingPrice: 500.00,
     currentStock: 450,
     reorderLevel: 100,
@@ -19,6 +22,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-001',
     companyId: 'comp-2', // EMZOR
     basePrice: 420.00,
+    minSellingPrice: 480.00,
+    defaultSellingPrice: 600.00,
+    maxSellingPrice: 680.00,
     sellingPrice: 600.00,
     currentStock: 300,
     reorderLevel: 100,
@@ -31,6 +37,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-001',
     companyId: 'comp-3', // LOTEMP
     basePrice: 380.00,
+    minSellingPrice: 440.00,
+    defaultSellingPrice: 550.00,
+    maxSellingPrice: 630.00,
     sellingPrice: 550.00,
     currentStock: 250,
     reorderLevel: 100,
@@ -43,6 +52,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-001',
     companyId: 'comp-4', // EMBASSY
     basePrice: 400.00,
+    minSellingPrice: 460.00,
+    defaultSellingPrice: 580.00,
+    maxSellingPrice: 660.00,
     sellingPrice: 580.00,
     currentStock: 250,
     reorderLevel: 100,
@@ -57,6 +69,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-002',
     companyId: 'comp-2', // EMZOR
     basePrice: 450.00,
+    minSellingPrice: 520.00,
+    defaultSellingPrice: 650.00,
+    maxSellingPrice: 740.00,
     sellingPrice: 650.00,
     currentStock: 350,
     reorderLevel: 80,
@@ -69,6 +84,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-002',
     companyId: 'comp-5', // FIDSON
     basePrice: 520.00,
+    minSellingPrice: 600.00,
+    defaultSellingPrice: 750.00,
+    maxSellingPrice: 850.00,
     sellingPrice: 750.00,
     currentStock: 280,
     reorderLevel: 60,
@@ -81,6 +99,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-002',
     companyId: 'comp-7', // MAY & BAKER
     basePrice: 580.00,
+    minSellingPrice: 660.00,
+    defaultSellingPrice: 800.00,
+    maxSellingPrice: 900.00,
     sellingPrice: 800.00,
     currentStock: 25, // Low stock demo (< reorderLevel 75)
     reorderLevel: 75,
@@ -95,6 +116,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-003',
     companyId: 'comp-6', // SWIPHA (Coartem)
     basePrice: 1850.00,
+    minSellingPrice: 2040.00,
+    defaultSellingPrice: 2400.00,
+    maxSellingPrice: 2650.00,
     sellingPrice: 2400.00,
     currentStock: 180,
     reorderLevel: 40,
@@ -107,6 +131,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-003',
     companyId: 'comp-2', // EMZOR (Lokmal)
     basePrice: 1400.00,
+    minSellingPrice: 1580.00,
+    defaultSellingPrice: 1900.00,
+    maxSellingPrice: 2130.00,
     sellingPrice: 1900.00,
     currentStock: 220,
     reorderLevel: 50,
@@ -119,6 +146,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-003',
     companyId: 'comp-9', // CHI PHARMA
     basePrice: 1550.00,
+    minSellingPrice: 1740.00,
+    defaultSellingPrice: 2100.00,
+    maxSellingPrice: 2350.00,
     sellingPrice: 2100.00,
     currentStock: 140,
     reorderLevel: 30,
@@ -133,6 +163,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-004',
     companyId: 'comp-2', // EMZOR
     basePrice: 1100.00,
+    minSellingPrice: 1280.00,
+    defaultSellingPrice: 1600.00,
+    maxSellingPrice: 1830.00,
     sellingPrice: 1600.00,
     currentStock: 340,
     reorderLevel: 80,
@@ -145,6 +178,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-004',
     companyId: 'comp-5', // FIDSON
     basePrice: 1250.00,
+    minSellingPrice: 1440.00,
+    defaultSellingPrice: 1800.00,
+    maxSellingPrice: 2050.00,
     sellingPrice: 1800.00,
     currentStock: 190,
     reorderLevel: 60,
@@ -157,6 +193,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-004',
     companyId: 'comp-8', // JUHEL
     basePrice: 980.00,
+    minSellingPrice: 1140.00,
+    defaultSellingPrice: 1450.00,
+    maxSellingPrice: 1660.00,
     sellingPrice: 1450.00,
     currentStock: 260,
     reorderLevel: 50,
@@ -171,6 +210,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-005',
     companyId: 'comp-1', // DANA
     basePrice: 280.00,
+    minSellingPrice: 340.00,
+    defaultSellingPrice: 450.00,
+    maxSellingPrice: 530.00,
     sellingPrice: 450.00,
     currentStock: 310,
     reorderLevel: 80,
@@ -183,6 +225,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-005',
     companyId: 'comp-2', // EMZOR
     basePrice: 320.00,
+    minSellingPrice: 380.00,
+    defaultSellingPrice: 500.00,
+    maxSellingPrice: 580.00,
     sellingPrice: 500.00,
     currentStock: 0, // Out of stock demo
     reorderLevel: 60,
@@ -195,6 +240,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-005',
     companyId: 'comp-10', // AFRAB-CHEM
     basePrice: 300.00,
+    minSellingPrice: 360.00,
+    defaultSellingPrice: 480.00,
+    maxSellingPrice: 560.00,
     sellingPrice: 480.00,
     currentStock: 180,
     reorderLevel: 50,
@@ -209,6 +257,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-006',
     companyId: 'comp-5', // FIDSON (Ciprotab)
     basePrice: 950.00,
+    minSellingPrice: 1110.00,
+    defaultSellingPrice: 1400.00,
+    maxSellingPrice: 1600.00,
     sellingPrice: 1400.00,
     currentStock: 210,
     reorderLevel: 50,
@@ -221,6 +272,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-006',
     companyId: 'comp-6', // SWIPHA
     basePrice: 1100.00,
+    minSellingPrice: 1290.00,
+    defaultSellingPrice: 1650.00,
+    maxSellingPrice: 1900.00,
     sellingPrice: 1650.00,
     currentStock: 140,
     reorderLevel: 40,
@@ -233,6 +287,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-006',
     companyId: 'comp-8', // JUHEL
     basePrice: 820.00,
+    minSellingPrice: 970.00,
+    defaultSellingPrice: 1250.00,
+    maxSellingPrice: 1440.00,
     sellingPrice: 1250.00,
     currentStock: 195,
     reorderLevel: 45,
@@ -247,6 +304,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-007',
     companyId: 'comp-7', // MAY & BAKER
     basePrice: 650.00,
+    minSellingPrice: 760.00,
+    defaultSellingPrice: 950.00,
+    maxSellingPrice: 1090.00,
     sellingPrice: 950.00,
     currentStock: 340,
     reorderLevel: 80,
@@ -259,6 +319,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-007',
     companyId: 'comp-11', // NEIMETH
     basePrice: 600.00,
+    minSellingPrice: 710.00,
+    defaultSellingPrice: 900.00,
+    maxSellingPrice: 1040.00,
     sellingPrice: 900.00,
     currentStock: 280,
     reorderLevel: 60,
@@ -273,6 +336,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-008',
     companyId: 'comp-5', // FIDSON
     basePrice: 850.00,
+    minSellingPrice: 990.00,
+    defaultSellingPrice: 1250.00,
+    maxSellingPrice: 1430.00,
     sellingPrice: 1250.00,
     currentStock: 260,
     reorderLevel: 50,
@@ -285,6 +351,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-008',
     companyId: 'comp-6', // SWIPHA
     basePrice: 950.00,
+    minSellingPrice: 1110.00,
+    defaultSellingPrice: 1400.00,
+    maxSellingPrice: 1600.00,
     sellingPrice: 1400.00,
     currentStock: 190,
     reorderLevel: 45,
@@ -299,6 +368,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-009',
     companyId: 'comp-2', // EMZOR
     basePrice: 700.00,
+    minSellingPrice: 840.00,
+    defaultSellingPrice: 1100.00,
+    maxSellingPrice: 1280.00,
     sellingPrice: 1100.00,
     currentStock: 420,
     reorderLevel: 80,
@@ -311,6 +383,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-009',
     companyId: 'comp-4', // EMBASSY
     basePrice: 650.00,
+    minSellingPrice: 770.00,
+    defaultSellingPrice: 1000.00,
+    maxSellingPrice: 1160.00,
     sellingPrice: 1000.00,
     currentStock: 310,
     reorderLevel: 70,
@@ -323,6 +398,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-009',
     companyId: 'comp-9', // CHI PHARMA
     basePrice: 750.00,
+    minSellingPrice: 910.00,
+    defaultSellingPrice: 1200.00,
+    maxSellingPrice: 1400.00,
     sellingPrice: 1200.00,
     currentStock: 180,
     reorderLevel: 50,
@@ -337,6 +415,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-010',
     companyId: 'comp-5', // FIDSON
     basePrice: 1800.00,
+    minSellingPrice: 2080.00,
+    defaultSellingPrice: 2600.00,
+    maxSellingPrice: 2960.00,
     sellingPrice: 2600.00,
     currentStock: 160,
     reorderLevel: 40,
@@ -349,6 +430,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-010',
     companyId: 'comp-6', // SWIPHA
     basePrice: 2200.00,
+    minSellingPrice: 2520.00,
+    defaultSellingPrice: 3100.00,
+    maxSellingPrice: 3510.00,
     sellingPrice: 3100.00,
     currentStock: 95,
     reorderLevel: 30,
@@ -363,6 +447,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-011',
     companyId: 'comp-1', // DANA
     basePrice: 380.00,
+    minSellingPrice: 460.00,
+    defaultSellingPrice: 600.00,
+    maxSellingPrice: 700.00,
     sellingPrice: 600.00,
     currentStock: 290,
     reorderLevel: 60,
@@ -375,6 +462,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-011',
     companyId: 'comp-2', // EMZOR
     basePrice: 420.00,
+    minSellingPrice: 500.00,
+    defaultSellingPrice: 650.00,
+    maxSellingPrice: 750.00,
     sellingPrice: 650.00,
     currentStock: 350,
     reorderLevel: 75,
@@ -389,6 +479,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-012',
     companyId: 'comp-12', // GSK
     basePrice: 1900.00,
+    minSellingPrice: 2180.00,
+    defaultSellingPrice: 2700.00,
+    maxSellingPrice: 3060.00,
     sellingPrice: 2700.00,
     currentStock: 140,
     reorderLevel: 35,
@@ -403,6 +496,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-013',
     companyId: 'comp-2', // EMZOR
     basePrice: 450.00,
+    minSellingPrice: 560.00,
+    defaultSellingPrice: 750.00,
+    maxSellingPrice: 890.00,
     sellingPrice: 750.00,
     currentStock: 180,
     reorderLevel: 40,
@@ -415,6 +511,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-013',
     companyId: 'comp-10', // AFRAB-CHEM
     basePrice: 480.00,
+    minSellingPrice: 590.00,
+    defaultSellingPrice: 800.00,
+    maxSellingPrice: 940.00,
     sellingPrice: 800.00,
     currentStock: 130,
     reorderLevel: 35,
@@ -429,6 +528,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-014',
     companyId: 'comp-5', // FIDSON
     basePrice: 1100.00,
+    minSellingPrice: 1290.00,
+    defaultSellingPrice: 1650.00,
+    maxSellingPrice: 1900.00,
     sellingPrice: 1650.00,
     currentStock: 175,
     reorderLevel: 40,
@@ -441,6 +543,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-014',
     companyId: 'comp-7', // MAY & BAKER
     basePrice: 1250.00,
+    minSellingPrice: 1460.00,
+    defaultSellingPrice: 1850.00,
+    maxSellingPrice: 2120.00,
     sellingPrice: 1850.00,
     currentStock: 110,
     reorderLevel: 30,
@@ -455,6 +560,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-015',
     companyId: 'comp-2', // EMZOR
     basePrice: 300.00,
+    minSellingPrice: 370.00,
+    defaultSellingPrice: 500.00,
+    maxSellingPrice: 590.00,
     sellingPrice: 500.00,
     currentStock: 410,
     reorderLevel: 80,
@@ -467,6 +575,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-015',
     companyId: 'comp-4', // EMBASSY
     basePrice: 320.00,
+    minSellingPrice: 400.00,
+    defaultSellingPrice: 550.00,
+    maxSellingPrice: 650.00,
     sellingPrice: 550.00,
     currentStock: 290,
     reorderLevel: 60,
@@ -481,6 +592,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-016',
     companyId: 'comp-1', // DANA
     basePrice: 150.00,
+    minSellingPrice: 190.00,
+    defaultSellingPrice: 250.00,
+    maxSellingPrice: 300.00,
     sellingPrice: 250.00,
     currentStock: 650,
     reorderLevel: 100,
@@ -493,6 +607,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-016',
     companyId: 'comp-2', // EMZOR
     basePrice: 180.00,
+    minSellingPrice: 220.00,
+    defaultSellingPrice: 300.00,
+    maxSellingPrice: 350.00,
     sellingPrice: 300.00,
     currentStock: 520,
     reorderLevel: 100,
@@ -507,6 +624,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-017',
     companyId: 'comp-2', // EMZOR (Emzolyn)
     basePrice: 650.00,
+    minSellingPrice: 770.00,
+    defaultSellingPrice: 1000.00,
+    maxSellingPrice: 1160.00,
     sellingPrice: 1000.00,
     currentStock: 280,
     reorderLevel: 60,
@@ -519,6 +639,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-017',
     companyId: 'comp-10', // AFRAB-CHEM (Sedalyn)
     basePrice: 700.00,
+    minSellingPrice: 840.00,
+    defaultSellingPrice: 1100.00,
+    maxSellingPrice: 1280.00,
     sellingPrice: 1100.00,
     currentStock: 190,
     reorderLevel: 50,
@@ -533,6 +656,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-018',
     companyId: 'comp-12', // GSK (Ventolin)
     basePrice: 3800.00,
+    minSellingPrice: 4290.00,
+    defaultSellingPrice: 5200.00,
+    maxSellingPrice: 5830.00,
     sellingPrice: 5200.00,
     currentStock: 65,
     reorderLevel: 25,
@@ -545,6 +671,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-018',
     companyId: 'comp-9', // CHI PHARMA (Asthalin)
     basePrice: 2800.00,
+    minSellingPrice: 3190.00,
+    defaultSellingPrice: 3900.00,
+    maxSellingPrice: 4400.00,
     sellingPrice: 3900.00,
     currentStock: 80,
     reorderLevel: 20,
@@ -559,6 +688,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-019',
     companyId: 'comp-1', // DANA
     basePrice: 200.00,
+    minSellingPrice: 240.00,
+    defaultSellingPrice: 320.00,
+    maxSellingPrice: 370.00,
     sellingPrice: 320.00,
     currentStock: 620,
     reorderLevel: 120,
@@ -571,6 +703,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-019',
     companyId: 'comp-8', // JUHEL
     basePrice: 220.00,
+    minSellingPrice: 270.00,
+    defaultSellingPrice: 350.00,
+    maxSellingPrice: 410.00,
     sellingPrice: 350.00,
     currentStock: 480,
     reorderLevel: 100,
@@ -585,6 +720,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-020',
     companyId: 'comp-2', // EMZOR
     basePrice: 220.00,
+    minSellingPrice: 270.00,
+    defaultSellingPrice: 350.00,
+    maxSellingPrice: 410.00,
     sellingPrice: 350.00,
     currentStock: 820,
     reorderLevel: 150,
@@ -597,6 +735,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-020',
     companyId: 'comp-10', // AFRAB-CHEM
     basePrice: 250.00,
+    minSellingPrice: 300.00,
+    defaultSellingPrice: 380.00,
+    maxSellingPrice: 440.00,
     sellingPrice: 380.00,
     currentStock: 650,
     reorderLevel: 120,
@@ -609,6 +750,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-020',
     companyId: 'comp-9', // CHI PHARMA
     basePrice: 240.00,
+    minSellingPrice: 290.00,
+    defaultSellingPrice: 370.00,
+    maxSellingPrice: 430.00,
     sellingPrice: 370.00,
     currentStock: 410,
     reorderLevel: 100,
@@ -623,6 +767,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-021',
     companyId: 'comp-1', // DANA
     basePrice: 300.00,
+    minSellingPrice: 360.00,
+    defaultSellingPrice: 480.00,
+    maxSellingPrice: 560.00,
     sellingPrice: 480.00,
     currentStock: 430,
     reorderLevel: 90,
@@ -635,6 +782,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-021',
     companyId: 'comp-8', // JUHEL
     basePrice: 320.00,
+    minSellingPrice: 380.00,
+    defaultSellingPrice: 500.00,
+    maxSellingPrice: 580.00,
     sellingPrice: 500.00,
     currentStock: 350,
     reorderLevel: 80,
@@ -649,6 +799,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-022',
     companyId: 'comp-5', // FIDSON
     basePrice: 400.00,
+    minSellingPrice: 490.00,
+    defaultSellingPrice: 650.00,
+    maxSellingPrice: 760.00,
     sellingPrice: 650.00,
     currentStock: 220,
     reorderLevel: 50,
@@ -663,6 +816,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-023',
     companyId: 'comp-7', // MAY & BAKER
     basePrice: 450.00,
+    minSellingPrice: 540.00,
+    defaultSellingPrice: 700.00,
+    maxSellingPrice: 810.00,
     sellingPrice: 700.00,
     currentStock: 260,
     reorderLevel: 60,
@@ -675,6 +831,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-023',
     companyId: 'comp-11', // NEIMETH
     basePrice: 480.00,
+    minSellingPrice: 570.00,
+    defaultSellingPrice: 750.00,
+    maxSellingPrice: 870.00,
     sellingPrice: 750.00,
     currentStock: 190,
     reorderLevel: 45,
@@ -689,6 +848,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-024',
     companyId: 'comp-2', // EMZOR (Emtrisil)
     basePrice: 850.00,
+    minSellingPrice: 1010.00,
+    defaultSellingPrice: 1300.00,
+    maxSellingPrice: 1500.00,
     sellingPrice: 1300.00,
     currentStock: 240,
     reorderLevel: 50,
@@ -701,6 +863,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-024',
     companyId: 'comp-10', // AFRAB-CHEM (Gastracon)
     basePrice: 900.00,
+    minSellingPrice: 1080.00,
+    defaultSellingPrice: 1400.00,
+    maxSellingPrice: 1630.00,
     sellingPrice: 1400.00,
     currentStock: 180,
     reorderLevel: 40,
@@ -715,6 +880,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-025',
     companyId: 'comp-6', // SWIPHA (Diflucan generic)
     basePrice: 700.00,
+    minSellingPrice: 840.00,
+    defaultSellingPrice: 1100.00,
+    maxSellingPrice: 1280.00,
     sellingPrice: 1100.00,
     currentStock: 150,
     reorderLevel: 30,
@@ -727,6 +895,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-025',
     companyId: 'comp-4', // EMBASSY
     basePrice: 600.00,
+    minSellingPrice: 720.00,
+    defaultSellingPrice: 950.00,
+    maxSellingPrice: 1110.00,
     sellingPrice: 950.00,
     currentStock: 210,
     reorderLevel: 40,
@@ -741,6 +912,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-026',
     companyId: 'comp-2', // EMZOR
     basePrice: 400.00,
+    minSellingPrice: 490.00,
+    defaultSellingPrice: 650.00,
+    maxSellingPrice: 760.00,
     sellingPrice: 650.00,
     currentStock: 170,
     reorderLevel: 40,
@@ -753,6 +927,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-026',
     companyId: 'comp-8', // JUHEL
     basePrice: 380.00,
+    minSellingPrice: 460.00,
+    defaultSellingPrice: 600.00,
+    maxSellingPrice: 700.00,
     sellingPrice: 600.00,
     currentStock: 140,
     reorderLevel: 30,
@@ -767,6 +944,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-027',
     companyId: 'comp-2', // EMZOR
     basePrice: 500.00,
+    minSellingPrice: 610.00,
+    defaultSellingPrice: 800.00,
+    maxSellingPrice: 940.00,
     sellingPrice: 800.00,
     currentStock: 190,
     reorderLevel: 40,
@@ -779,6 +959,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-027',
     companyId: 'comp-10', // AFRAB-CHEM
     basePrice: 550.00,
+    minSellingPrice: 660.00,
+    defaultSellingPrice: 850.00,
+    maxSellingPrice: 990.00,
     sellingPrice: 850.00,
     currentStock: 120,
     reorderLevel: 30,
@@ -793,6 +976,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-028',
     companyId: 'comp-1', // DANA
     basePrice: 120.00,
+    minSellingPrice: 150.00,
+    defaultSellingPrice: 200.00,
+    maxSellingPrice: 240.00,
     sellingPrice: 200.00,
     currentStock: 900,
     reorderLevel: 200,
@@ -805,6 +991,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-028',
     companyId: 'comp-8', // JUHEL
     basePrice: 110.00,
+    minSellingPrice: 130.00,
+    defaultSellingPrice: 180.00,
+    maxSellingPrice: 210.00,
     sellingPrice: 180.00,
     currentStock: 820,
     reorderLevel: 180,
@@ -819,6 +1008,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-029',
     companyId: 'comp-2', // EMZOR
     basePrice: 350.00,
+    minSellingPrice: 420.00,
+    defaultSellingPrice: 550.00,
+    maxSellingPrice: 640.00,
     sellingPrice: 550.00,
     currentStock: 480,
     reorderLevel: 100,
@@ -831,6 +1023,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-029',
     companyId: 'comp-5', // FIDSON
     basePrice: 400.00,
+    minSellingPrice: 490.00,
+    defaultSellingPrice: 650.00,
+    maxSellingPrice: 760.00,
     sellingPrice: 650.00,
     currentStock: 360,
     reorderLevel: 80,
@@ -845,6 +1040,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-030',
     companyId: 'comp-4', // EMBASSY
     basePrice: 600.00,
+    minSellingPrice: 740.00,
+    defaultSellingPrice: 1000.00,
+    maxSellingPrice: 1180.00,
     sellingPrice: 1000.00,
     currentStock: 0,
     reorderLevel: 0,
@@ -859,6 +1057,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-031',
     companyId: 'comp-11', // NEIMETH
     basePrice: 500.00,
+    minSellingPrice: 620.00,
+    defaultSellingPrice: 850.00,
+    maxSellingPrice: 1010.00,
     sellingPrice: 850.00,
     currentStock: 0,
     reorderLevel: 0,
@@ -873,6 +1074,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-032',
     companyId: 'comp-5', // FIDSON
     basePrice: 1400.00,
+    minSellingPrice: 1610.00,
+    defaultSellingPrice: 2000.00,
+    maxSellingPrice: 2270.00,
     sellingPrice: 2000.00,
     currentStock: 180,
     reorderLevel: 40,
@@ -885,6 +1089,9 @@ export const MOCK_PRODUCT_VARIANTS: ProductVariantEntity[] = [
     productId: 'prod-032',
     companyId: 'comp-7', // MAY & BAKER
     basePrice: 1550.00,
+    minSellingPrice: 1780.00,
+    defaultSellingPrice: 2200.00,
+    maxSellingPrice: 2490.00,
     sellingPrice: 2200.00,
     currentStock: 140,
     reorderLevel: 35,

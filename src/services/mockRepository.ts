@@ -288,12 +288,32 @@ export class MockDatabaseRepository {
     const comp = map.get(v.companyId);
     const companyName = comp ? comp.name : 'Unknown Manufacturer';
 
+    const basePrice = Number(v.basePrice) || 0;
+    const defaultSellingPrice = v.defaultSellingPrice !== undefined && Number(v.defaultSellingPrice) > 0
+      ? Number(v.defaultSellingPrice)
+      : (Number(v.sellingPrice) || (basePrice > 0 ? Math.round(basePrice * 1.3) : 0));
+    
+    const minSellingPrice = v.minSellingPrice !== undefined && Number(v.minSellingPrice) > 0
+      ? Number(v.minSellingPrice)
+      : (basePrice > 0 ? Math.max(basePrice + 10, Math.round((basePrice + (defaultSellingPrice - basePrice) * 0.4) / 10) * 10) : defaultSellingPrice);
+    
+    const maxSellingPrice = v.maxSellingPrice !== undefined && Number(v.maxSellingPrice) > 0
+      ? Number(v.maxSellingPrice)
+      : Math.max(defaultSellingPrice, Math.round((defaultSellingPrice * 1.2) / 10) * 10);
+
+    const sellingPrice = defaultSellingPrice;
+
     if (role === 'cashier') {
       // Safe redaction of wholesale base price and reorder levels for cashier
+      // Note: minSellingPrice, defaultSellingPrice, maxSellingPrice remain visible for Cashier POS price selection
       return {
         ...v,
         companyName,
         basePrice: 0,
+        minSellingPrice,
+        defaultSellingPrice,
+        maxSellingPrice,
+        sellingPrice,
         reorderLevel: 0,
       };
     }
@@ -301,6 +321,11 @@ export class MockDatabaseRepository {
     return {
       ...v,
       companyName,
+      basePrice,
+      minSellingPrice,
+      defaultSellingPrice,
+      maxSellingPrice,
+      sellingPrice,
     };
   }
 
@@ -566,12 +591,27 @@ export class MockDatabaseRepository {
         }
       }
 
+      const basePrice = Number(v.basePrice) || 0;
+      const defaultSellingPrice = v.defaultSellingPrice !== undefined && Number(v.defaultSellingPrice) > 0
+        ? Number(v.defaultSellingPrice)
+        : (Number(v.sellingPrice) || (basePrice > 0 ? Math.round(basePrice * 1.3) : 0));
+      const minSellingPrice = v.minSellingPrice !== undefined && Number(v.minSellingPrice) > 0
+        ? Number(v.minSellingPrice)
+        : (basePrice > 0 ? Math.max(basePrice + 10, Math.round((basePrice + (defaultSellingPrice - basePrice) * 0.4) / 10) * 10) : defaultSellingPrice);
+      const maxSellingPrice = v.maxSellingPrice !== undefined && Number(v.maxSellingPrice) > 0
+        ? Number(v.maxSellingPrice)
+        : Math.max(defaultSellingPrice, Math.round((defaultSellingPrice * 1.2) / 10) * 10);
+      const sellingPrice = defaultSellingPrice;
+
       return {
         id: `var-${productId}-${i + 1}`,
         productId,
         companyId,
-        basePrice: Number(v.basePrice) || 0,
-        sellingPrice: Number(v.sellingPrice) || 0,
+        basePrice,
+        minSellingPrice,
+        defaultSellingPrice,
+        maxSellingPrice,
+        sellingPrice,
         currentStock: Number(v.currentStock) || 0,
         reorderLevel: Number(v.reorderLevel) || 50,
         status: v.status || 'Available',
@@ -659,12 +699,27 @@ export class MockDatabaseRepository {
           }
         }
 
+        const basePrice = Number(v.basePrice) || 0;
+        const defaultSellingPrice = v.defaultSellingPrice !== undefined && Number(v.defaultSellingPrice) > 0
+          ? Number(v.defaultSellingPrice)
+          : (Number(v.sellingPrice) || (basePrice > 0 ? Math.round(basePrice * 1.3) : 0));
+        const minSellingPrice = v.minSellingPrice !== undefined && Number(v.minSellingPrice) > 0
+          ? Number(v.minSellingPrice)
+          : (basePrice > 0 ? Math.max(basePrice + 10, Math.round((basePrice + (defaultSellingPrice - basePrice) * 0.4) / 10) * 10) : defaultSellingPrice);
+        const maxSellingPrice = v.maxSellingPrice !== undefined && Number(v.maxSellingPrice) > 0
+          ? Number(v.maxSellingPrice)
+          : Math.max(defaultSellingPrice, Math.round((defaultSellingPrice * 1.2) / 10) * 10);
+        const sellingPrice = defaultSellingPrice;
+
         return {
           id: `var-${id}-${i + 1}`,
           productId: id,
           companyId,
-          basePrice: Number(v.basePrice) || 0,
-          sellingPrice: Number(v.sellingPrice) || 0,
+          basePrice,
+          minSellingPrice,
+          defaultSellingPrice,
+          maxSellingPrice,
+          sellingPrice,
           currentStock: Number(v.currentStock) || 0,
           reorderLevel: Number(v.reorderLevel) || 50,
           status: v.status || 'Available',
@@ -747,12 +802,27 @@ export class MockDatabaseRepository {
       }
     }
 
+    const basePrice = Number(input.basePrice) || 0;
+    const defaultSellingPrice = input.defaultSellingPrice !== undefined && Number(input.defaultSellingPrice) > 0
+      ? Number(input.defaultSellingPrice)
+      : (Number(input.sellingPrice) || (basePrice > 0 ? Math.round(basePrice * 1.3) : 0));
+    const minSellingPrice = input.minSellingPrice !== undefined && Number(input.minSellingPrice) > 0
+      ? Number(input.minSellingPrice)
+      : (basePrice > 0 ? Math.max(basePrice + 10, Math.round((basePrice + (defaultSellingPrice - basePrice) * 0.4) / 10) * 10) : defaultSellingPrice);
+    const maxSellingPrice = input.maxSellingPrice !== undefined && Number(input.maxSellingPrice) > 0
+      ? Number(input.maxSellingPrice)
+      : Math.max(defaultSellingPrice, Math.round((defaultSellingPrice * 1.2) / 10) * 10);
+    const sellingPrice = defaultSellingPrice;
+
     const newVariant: ProductVariantEntity = {
       id: `var-${productId}-${Date.now()}`,
       productId,
       companyId,
-      basePrice: Number(input.basePrice) || 0,
-      sellingPrice: Number(input.sellingPrice) || 0,
+      basePrice,
+      minSellingPrice,
+      defaultSellingPrice,
+      maxSellingPrice,
+      sellingPrice,
       currentStock: Number(input.currentStock) || 0,
       reorderLevel: Number(input.reorderLevel) || 50,
       status: input.status || 'Available',
@@ -1871,19 +1941,21 @@ export class MockDatabaseRepository {
     const isCashier = role === 'cashier';
 
     const items: SaleItem[] = sale.items.map((item) => {
-      const sellingPrice = item.sellingPrice ?? item.unitPrice ?? 0;
+      const actualSellingPrice = item.actualSellingPrice ?? item.sellingPrice ?? item.unitPrice ?? 0;
       const quantity = item.quantity;
-      const subtotal = item.subtotal ?? item.totalPrice ?? (sellingPrice * quantity);
-      const basePrice = item.basePrice ?? 0;
-      const itemProfit = item.profit ?? Math.max(0, (sellingPrice - basePrice) * quantity);
+      const subtotal = item.subtotal ?? item.totalPrice ?? (actualSellingPrice * quantity);
+      const historicalBasePrice = item.historicalBasePrice ?? item.basePrice ?? 0;
+      const itemProfit = item.profit !== undefined ? item.profit : Math.max(0, (actualSellingPrice - historicalBasePrice) * quantity);
 
       return {
         ...item,
-        sellingPrice,
-        unitPrice: sellingPrice,
+        actualSellingPrice,
+        sellingPrice: actualSellingPrice,
+        unitPrice: actualSellingPrice,
         subtotal,
         totalPrice: subtotal,
-        basePrice: isCashier ? undefined : basePrice,
+        historicalBasePrice: isCashier ? undefined : historicalBasePrice,
+        basePrice: isCashier ? undefined : historicalBasePrice,
         profit: isCashier ? undefined : itemProfit,
       };
     });
@@ -2293,14 +2365,41 @@ export class MockDatabaseRepository {
         );
       }
 
-      // Snapshot prices
-      const sellingPrice = variant.sellingPrice;
-      const basePrice = variant.basePrice;
-      const itemSubtotal = sellingPrice * itemInput.quantity;
-      const itemProfit = (sellingPrice - basePrice) * itemInput.quantity;
+      // Determine allowable price range
+      const basePrice = Number(variant.basePrice) || 0;
+      const defaultPrice = variant.defaultSellingPrice !== undefined && Number(variant.defaultSellingPrice) > 0
+        ? Number(variant.defaultSellingPrice)
+        : (Number(variant.sellingPrice) || (basePrice > 0 ? Math.round(basePrice * 1.3) : 0));
+      const minPrice = variant.minSellingPrice !== undefined && Number(variant.minSellingPrice) > 0
+        ? Number(variant.minSellingPrice)
+        : (basePrice > 0 ? Math.max(basePrice + 10, Math.round((basePrice + (defaultPrice - basePrice) * 0.4) / 10) * 10) : defaultPrice);
+      const maxPrice = variant.maxSellingPrice !== undefined && Number(variant.maxSellingPrice) > 0
+        ? Number(variant.maxSellingPrice)
+        : Math.max(defaultPrice, Math.round((defaultPrice * 1.2) / 10) * 10);
+
+      // Determine requested unit selling price (supports unitPrice or actualSellingPrice input)
+      let chosenSellingPrice = defaultPrice;
+      if (itemInput.actualSellingPrice !== undefined && itemInput.actualSellingPrice !== null) {
+        chosenSellingPrice = Number(itemInput.actualSellingPrice);
+      } else if (itemInput.unitPrice !== undefined && itemInput.unitPrice !== null) {
+        chosenSellingPrice = Number(itemInput.unitPrice);
+      }
+
+      // Strict price range boundary validation
+      if (chosenSellingPrice < minPrice || chosenSellingPrice > maxPrice) {
+        throw new Error(
+          `Selling price for "${productName} (${companyName})" must be between ₦${minPrice.toLocaleString()} and ₦${maxPrice.toLocaleString()}. (Attempted: ₦${chosenSellingPrice.toLocaleString()})`
+        );
+      }
+
+      // Snapshot prices for historical accuracy and immutable reporting
+      const historicalBasePrice = basePrice;
+      const actualSellingPrice = chosenSellingPrice;
+      const itemSubtotal = actualSellingPrice * itemInput.quantity;
+      const itemProfit = Math.max(0, (actualSellingPrice - historicalBasePrice) * itemInput.quantity);
 
       subtotal += itemSubtotal;
-      totalCost += basePrice * itemInput.quantity;
+      totalCost += historicalBasePrice * itemInput.quantity;
 
       saleItems.push({
         id: `si-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -2313,9 +2412,14 @@ export class MockDatabaseRepository {
         dosage: product ? product.dosage : undefined,
         form: product ? product.form : undefined,
         quantity: itemInput.quantity,
-        sellingPrice,
-        unitPrice: sellingPrice,
-        basePrice,
+        actualSellingPrice,
+        sellingPrice: actualSellingPrice,
+        unitPrice: actualSellingPrice,
+        historicalBasePrice,
+        basePrice: historicalBasePrice,
+        minSellingPrice: minPrice,
+        defaultSellingPrice: defaultPrice,
+        maxSellingPrice: maxPrice,
         subtotal: itemSubtotal,
         totalPrice: itemSubtotal,
         profit: itemProfit,

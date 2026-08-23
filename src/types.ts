@@ -136,7 +136,10 @@ export interface ProductVariantEntity {
   productId: string; // Foreign key to ProductEntity
   companyId: string; // Foreign key to CompanyEntity (Manufacturer)
   basePrice: number; // Wholesale / Base purchase cost in NGN (Admin only)
-  sellingPrice: number; // Retail selling price in NGN
+  minSellingPrice: number; // Minimum allowable selling price in NGN
+  defaultSellingPrice: number; // Default recommended selling price in NGN
+  maxSellingPrice: number; // Maximum allowable selling price in NGN
+  sellingPrice: number; // Retail selling price in NGN (default/current selling price)
   currentStock: number; // Inventory units in stock
   reorderLevel: number; // Low stock threshold (Admin only)
   status: CompanyVariantStatus;
@@ -170,7 +173,10 @@ export interface ProductVariantInput {
   companyId?: string;
   companyName: string;
   basePrice: number;
-  sellingPrice: number;
+  minSellingPrice: number;
+  defaultSellingPrice: number;
+  maxSellingPrice: number;
+  sellingPrice?: number;
   currentStock: number;
   reorderLevel: number;
   status?: CompanyVariantStatus;
@@ -256,6 +262,12 @@ export interface ProductPriceAdjustment {
   companyName: string;
   oldBasePrice: number;
   newBasePrice: number;
+  oldMinSellingPrice?: number;
+  newMinSellingPrice?: number;
+  oldDefaultSellingPrice?: number;
+  newDefaultSellingPrice?: number;
+  oldMaxSellingPrice?: number;
+  newMaxSellingPrice?: number;
   oldSellingPrice: number;
   newSellingPrice: number;
   changeType: PriceAdjustmentType;
@@ -269,6 +281,9 @@ export interface CreatePriceAdjustmentInput {
   productId: string;
   variantId: string;
   newBasePrice: number;
+  newMinSellingPrice?: number;
+  newDefaultSellingPrice?: number;
+  newMaxSellingPrice?: number;
   newSellingPrice: number;
   reason: string;
   adjustedBy?: string;
@@ -484,12 +499,17 @@ export interface SaleItem {
   dosage?: string;
   form?: string;
   quantity: number;
-  sellingPrice: number; // Snapshot of selling price at time of sale
+  actualSellingPrice?: number; // Actual negotiated/selected selling price at time of sale
+  sellingPrice: number; // Snapshot of actual selling price (alias for backward compatibility)
   unitPrice?: number; // Alias for backward compatibility
-  basePrice?: number; // Snapshot of wholesale base price at time of sale (Admin only)
-  subtotal: number; // sellingPrice * quantity
+  historicalBasePrice?: number; // Snapshot of wholesale base price at time of sale (Admin only)
+  basePrice?: number; // Snapshot of wholesale base price at time of sale (Admin only, alias)
+  minSellingPrice?: number; // Minimum allowable selling price at time of sale
+  defaultSellingPrice?: number; // Default selling price at time of sale
+  maxSellingPrice?: number; // Maximum allowable selling price at time of sale
+  subtotal: number; // actualSellingPrice * quantity
   totalPrice?: number; // Alias for backward compatibility
-  profit?: number; // (sellingPrice - basePrice) * quantity (Admin only)
+  profit?: number; // (actualSellingPrice - historicalBasePrice) * quantity (Admin only)
 }
 
 export interface Sale {
@@ -558,6 +578,8 @@ export interface SalesChartDataPoint {
 export interface CreateSaleItemInput {
   productVariantId: string;
   quantity: number;
+  unitPrice?: number; // Actual negotiated/selected selling price within [minSellingPrice, maxSellingPrice]
+  actualSellingPrice?: number; // Alias for unitPrice
 }
 
 export interface CreateSaleInput {

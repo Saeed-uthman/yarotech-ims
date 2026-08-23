@@ -50,7 +50,7 @@ This document establishes the **authoritative technical blueprint** for developi
 ### 2.1 Approved In-Scope Business Domains
 1. **User Authentication & Staff Access Control:** Role-based registration with manual Admin approval workflow, JWT tokens, account suspension/reactivation.
 2. **Product Catalog:** Categories, dosage forms, manufacturer brands (companies), product-to-company variants, and product images.
-3. **Dual-Tier Pricing:** Wholesale base cost (restricted to Admin) vs. retail selling price, with full price adjustment audit history.
+3. **Controlled Selling-Price Range Architecture (4-Tier Pricing Model):** Wholesale base cost (restricted to Admin for inventory valuation and profit accountability) alongside a controlled selling-price range per Product + Company variant (`min_selling_price`, `default_selling_price`, `max_selling_price`), with complete price adjustment audit history.
 4. **Inventory & Stock Movements:** Multi-variant inventory levels, threshold alerts, auditable stock ledger (purchases, sales, manual adjustments).
 5. **Customer Management:** Registered customer database with live credit/debt tracking, alongside anonymous Walk-in ("Walking Customer") support.
 6. **Sales & Point of Sale (POS):** Multi-item cart checkout, immediate stock deduction, cash/transfer/POS/credit splits, transaction-time price snapshotting.
@@ -257,31 +257,38 @@ alamaan_backend/
 - **Deletion Strategy:** Soft deactivation (`status = 'Inactive'`).
 
 #### Model: `ProductVariant` (Inherits `AuditableModel`)
-- **Purpose:** Resolves the `Product` + `Company` relationship. Represents the sellable SKU.
+- **Purpose:** Resolves the `Product` + `Company` relationship. Represents the sellable SKU with controlled selling-price boundaries.
 - **Fields:**
   - `id`: `BigAutoField(primary_key=True)`
   - `product`: `ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')`
   - `company`: `ForeignKey(Company, on_delete=models.PROTECT, related_name='product_variants')`
-  - `base_price`: `DecimalField(max_digits=12, decimal_places=2)` (Wholesale cost; Admin only)
-  - `selling_price`: `DecimalField(max_digits=12, decimal_places=2)` (Retail price)
+  - `base_price`: `DecimalField(max_digits=12, decimal_places=2)` (Wholesale cost / inventory valuation base; Admin visibility only)
+  - `min_selling_price`: `DecimalField(max_digits=12, decimal_places=2)` (Strict floor price for retail checkout)
+  - `default_selling_price`: `DecimalField(max_digits=12, decimal_places=2)` (Standard recommended selling price)
+  - `max_selling_price`: `DecimalField(max_digits=12, decimal_places=2)` (Strict ceiling price for retail checkout)
   - `current_stock`: `IntegerField(default=0)` (Denormalized current balance; maintained strictly by atomic services)
   - `reorder_level`: `IntegerField(default=10)` (Threshold for low-stock alerts)
   - `status`: `CharField(max_length=20, choices=[('Available', 'Available'), ('Inactive', 'Inactive')], default='Available', db_index=True)`
 - **Constraints & Indexes:**
   - `UniqueConstraint(fields=['product', 'company'], name='unique_product_company_variant')`
   - Check constraint: `current_stock >= 0` (Enforced at DB level to prevent overselling)
-  - Check constraint: `base_price >= 0` and `selling_price >= 0`
+  - Check constraint: `base_price >= 0 AND min_selling_price >= 0 AND default_selling_price >= min_selling_price AND max_selling_price >= default_selling_price`
+  - Business Rule Validation: If `base_price > 0`, `min_selling_price` must exceed `base_price` (`min_selling_price > base_price`) to prevent negative-margin retail configurations.
 - **Deletion Strategy:** Soft deactivation (`status = 'Inactive'`).
 
 #### Model: `PriceAdjustmentHistory` (Inherits `TimeStampedModel`)
-- **Purpose:** Audit log of all price changes on product variants.
+- **Purpose:** Audit log of all 4-tier price changes on product variants.
 - **Fields:**
   - `id`: `BigAutoField(primary_key=True)`
   - `variant`: `ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name='price_history')`
   - `old_base_price`: `DecimalField(max_digits=12, decimal_places=2)`
   - `new_base_price`: `DecimalField(max_digits=12, decimal_places=2)`
-  - `old_selling_price`: `DecimalField(max_digits=12, decimal_places=2)`
-  - `new_selling_price`: `DecimalField(max_digits=12, decimal_places=2)`
+  - `old_min_selling_price`: `DecimalField(max_digits=12, decimal_places=2)`
+  - `new_min_selling_price`: `DecimalField(max_digits=12, decimal_places=2)`
+  - `old_default_selling_price`: `DecimalField(max_digits=12, decimal_places=2)`
+  - `new_default_selling_price`: `DecimalField(max_digits=12, decimal_places=2)`
+  - `old_max_selling_price`: `DecimalField(max_digits=12, decimal_places=2)`
+  - `new_max_selling_price`: `DecimalField(max_digits=12, decimal_places=2)`
   - `change_type`: `CharField(max_length=30, choices=[('INCREASE', 'Price Increase'), ('DECREASE', 'Price Decrease'), ('INITIAL', 'Initial Setup'), ('CORRECTION', 'Correction')])`
   - `reason`: `TextField()`
   - `adjusted_by`: `ForeignKey('accounts.User', on_delete=models.PROTECT, related_name='price_adjustments')`
@@ -356,18 +363,23 @@ alamaan_backend/
 - **Deletion Strategy:** Soft cancellation via `status = 'CANCELLED'`. Reverses inventory and financial entries via atomic service.
 
 #### Model: `SaleItem` (Inherits `TimeStampedModel`)
-- **Purpose:** Line-item record within a sale. **Crucial for historical price integrity.**
+- **Purpose:** Line-item record within a sale. **Crucial for historical price integrity under the controlled selling-price range architecture.**
 - **Fields:**
   - `id`: `BigAutoField(primary_key=True)`
   - `sale`: `ForeignKey(Sale, on_delete=models.CASCADE, related_name='items')`
   - `variant`: `ForeignKey('products.ProductVariant', on_delete=models.PROTECT, related_name='sale_items')`
   - `quantity`: `IntegerField()` (Must be > 0)
-  - `unit_selling_price`: `DecimalField(max_digits=12, decimal_places=2)` (Price snapshot at moment of sale)
-  - `unit_base_price`: `DecimalField(max_digits=12, decimal_places=2)` (Cost snapshot at moment of sale; Admin visibility only)
-  - `subtotal`: `DecimalField(max_digits=12, decimal_places=2)` (`quantity * unit_selling_price`)
-  - `profit`: `DecimalField(max_digits=12, decimal_places=2)` (`(unit_selling_price - unit_base_price) * quantity`)
+  - `actual_selling_price`: `DecimalField(max_digits=12, decimal_places=2)` (The actual agreed/selected price at checkout within [min_selling_price, max_selling_price])
+  - `unit_selling_price`: `DecimalField(max_digits=12, decimal_places=2)` (Alias snapshot of actual_selling_price for backward compatibility)
+  - `historical_base_price`: `DecimalField(max_digits=12, decimal_places=2)` (Snapshot of wholesale cost at moment of sale; Admin visibility only)
+  - `unit_base_price`: `DecimalField(max_digits=12, decimal_places=2)` (Alias snapshot of historical_base_price; Admin visibility only)
+  - `min_selling_price`: `DecimalField(max_digits=12, decimal_places=2)` (Snapshot of allowable minimum price at moment of sale)
+  - `default_selling_price`: `DecimalField(max_digits=12, decimal_places=2)` (Snapshot of default price at moment of sale)
+  - `max_selling_price`: `DecimalField(max_digits=12, decimal_places=2)` (Snapshot of allowable maximum price at moment of sale)
+  - `subtotal`: `DecimalField(max_digits=12, decimal_places=2)` (`quantity * actual_selling_price`)
+  - `profit`: `DecimalField(max_digits=12, decimal_places=2)` (`(actual_selling_price - historical_base_price) * quantity`; Admin visibility only)
 - **Historical Price Rule:**
-  - Storing `unit_selling_price` and `unit_base_price` directly on `SaleItem` guarantees that subsequent product price modifications do not alter past financial audits or historical profit figures.
+  - Storing `actual_selling_price`, `historical_base_price`, and price bounds directly on `SaleItem` guarantees that subsequent product price modifications do not alter past financial audits, receipts, or historical profit figures. Profit is strictly calculated using the `actual_selling_price` minus the `historical_base_price`.
 
 ---
 
@@ -495,15 +507,15 @@ alamaan_backend/
 | **Accounts** | `UserRegistrationSerializer` | Input | `email`, `password`, `full_name`, `phone` |
 | | `UserSummarySerializer` | Output | `id`, `email`, `full_name`, `phone`, `role`, `status`, `created_at` |
 | | `UserDetailSerializer` | Output | Full audit timestamps, approval info, permissions |
-| **Products** | `ProductVariantInputSerializer` | Input | `company_id`, `base_price`, `selling_price`, `current_stock`, `reorder_level` |
+| **Products** | `ProductVariantInputSerializer` | Input | `company_id`, `base_price`, `min_selling_price`, `default_selling_price`, `max_selling_price`, `current_stock`, `reorder_level` |
 | | `ProductCreateUpdateSerializer` | Input | `name`, `generic_name`, `category_id`, `dosage`, `dosage_form`, `barcode`, `description`, `variants` (nested) |
-| | `ProductListSerializer` | Output | Product card with company variants list, formatted prices, category name |
-| | `ProductDetailSerializer` | Output | Full catalog entity, price history timeline, movement logs |
+| | `ProductListSerializer` | Output | Product card with company variants list, formatted price ranges, category name |
+| | `ProductDetailSerializer` | Output | Full catalog entity, 4-tier price history timeline, movement logs |
 | **Inventory** | `StockAdjustmentInputSerializer`| Input | `variant_id`, `adjustment_type` (`SET_EXACT`/`INCREMENT`/`DECREMENT`), `quantity`, `reason`, `notes` |
 | | `InventoryItemSerializer` | Output | Variant detail + product info, stock status tag, inventory valuation |
 | **Customers** | `CustomerCreateUpdateSerializer`| Input | `name`, `phone`, `email`, `address`, `notes` |
 | | `CustomerDetailSerializer` | Output | Profile + calculated `outstanding_debt`, `total_purchases`, `amount_paid` |
-| **Sales** | `CreateSaleItemInputSerializer` | Input | `product_variant_id`, `quantity` |
+| **Sales** | `CreateSaleItemInputSerializer` | Input | `product_variant_id`, `quantity`, `actual_selling_price` (validated within `[min_selling_price, max_selling_price]`) |
 | | `CreateSaleInputSerializer` | Input | `customer_id` (nullable), `items` (list), `discount`, `amount_paid`, `payment_method`, `notes` |
 | | `SaleReceiptSerializer` | Output | Complete formatted receipt structure with line items and cashier name |
 | **Purchases** | `CreatePurchaseInputSerializer` | Input | `payment_method`, `purchase_date`, `note`, `items` (list of variant_id, quantity, unit_purchase_price) |
@@ -523,9 +535,12 @@ All state-mutating operations spanning multiple tables or financial balances **M
 ```
 1. Begin atomic transaction (transaction.atomic)
 2. Lock ProductVariant rows using select_for_update() for all item variant IDs in cart.
-3. Validate current stock >= requested quantity for every item.
-   -> If insufficient, raise ValidationError("Insufficient stock for {product_name} ({company})").
-4. Calculate subtotal, discount, total_amount, amount_paid, outstanding_amount.
+3. Validate inventory and pricing boundaries for every item:
+   a. Current stock >= requested quantity. If insufficient, raise ValidationError("Insufficient stock for {product_name} ({company})").
+   b. Actual selling price falls within the variant's allowed bounds:
+      variant.min_selling_price <= item.actual_selling_price <= variant.max_selling_price.
+      If violated, raise ValidationError("Selling price for {product_name} must be between {min} and {max}.").
+4. Calculate subtotal (SUM(item.actual_selling_price * item.quantity)), discount, total_amount, amount_paid, outstanding_amount.
 5. Determine payment_status:
    - If outstanding_amount == 0 -> 'PAID'
    - If amount_paid > 0 and outstanding_amount > 0 -> 'PARTIAL'
@@ -535,9 +550,9 @@ All state-mutating operations spanning multiple tables or financial balances **M
 7. Generate unique invoice_number (e.g. SAL-YYYYMMDD-XXXXXX).
 8. Create Sale instance.
 9. For each item in cart:
-   a. Capture snapshot of variant.selling_price and variant.base_price.
-   b. Calculate item subtotal and profit: (selling_price - base_price) * quantity.
-   c. Create SaleItem record.
+   a. Capture permanent snapshots: actual_selling_price, historical_base_price = variant.base_price, min_selling_price, default_selling_price, max_selling_price.
+   b. Calculate item subtotal (actual_selling_price * quantity) and profit: (actual_selling_price - historical_base_price) * quantity.
+   c. Create SaleItem record with all historical price snapshots.
    d. Decrement ProductVariant.current_stock by quantity.
    e. Save ProductVariant.
    f. Create InventoryMovement record (type='STOCK_OUT', reference_type='SALE', reference_id=sale.id).
@@ -760,9 +775,9 @@ All API routes are prefixed with `/api/v1/`. Responses return standard JSON.
 | `POST` | `/products/` | Create product + company variants | `AdminOnly` | Multi-part Form `{ name, generic_name, category_id, dosage, form, image, variants: [...] }` | `201 Created` |
 | `GET` | `/products/{id}/` | Get full product detail | `IsAuth` | *None* | `200 OK` |
 | `PUT/PATCH`| `/products/{id}/`| Update product catalog info | `AdminOnly` | `{ name, generic_name, category_id, description, status }` | `200 OK` |
-| `POST` | `/products/{id}/variants/`| Add company variant to product | `AdminOnly` | `{ company_id, base_price, selling_price, current_stock, reorder_level }` | `201 Created` |
-| `PUT/PATCH`| `/products/variants/{variant_id}/`| Update variant prices/status | `AdminOnly` | `{ selling_price, base_price, reorder_level, status }` | `200 OK` |
-| `POST` | `/products/variants/{variant_id}/price-adjustment/`| Log price adjustment | `AdminOnly` | `{ new_base_price, new_selling_price, reason }` | `200 OK` |
+| `POST` | `/products/{id}/variants/`| Add company variant to product | `AdminOnly` | `{ company_id, base_price, min_selling_price, default_selling_price, max_selling_price, current_stock, reorder_level }` | `201 Created` |
+| `PUT/PATCH`| `/products/variants/{variant_id}/`| Update variant prices/status | `AdminOnly` | `{ base_price, min_selling_price, default_selling_price, max_selling_price, reorder_level, status }` | `200 OK` |
+| `POST` | `/products/variants/{variant_id}/price-adjustment/`| Log 4-tier price adjustment | `AdminOnly` | `{ new_base_price, new_min_selling_price, new_default_selling_price, new_max_selling_price, reason }` | `200 OK` |
 | `GET` | `/products/kpi-stats/`| Catalog KPI summary | `IsAuth` | *None* (Cost values redacted for cashier) | `200 OK` |
 
 ---
@@ -798,7 +813,7 @@ All API routes are prefixed with `/api/v1/`. Responses return standard JSON.
 | Method | Endpoint | Purpose | Access | Key Payload / Query Params | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `GET` | `/sales/` | Paginated sales transactions | `IsAuth` | `?search=&date_range=&payment_status=&customer_type=&page=` | `200 OK` |
-| `POST` | `/sales/` | Checkout POS Cart (Create Sale)| `IsAuth` | `{ customer_id: null, items: [{ product_variant_id, quantity }], discount, amount_paid, payment_method, notes }` | `201 Created` |
+| `POST` | `/sales/` | Checkout POS Cart (Create Sale)| `IsAuth` | `{ customer_id: null, items: [{ product_variant_id, quantity, actual_selling_price }], discount, amount_paid, payment_method, notes }` | `201 Created` |
 | `GET` | `/sales/{id}/` | Get sale detail & line items | `IsAuth` | *None* | `200 OK` |
 | `GET` | `/sales/{id}/receipt/` | Formatted receipt printing payload | `IsAuth` | *None* | `200 OK` |
 | `POST` | `/sales/{id}/cancel/` | Void / Cancel sale | `AdminOnly` | `{ reason: "Customer return" }` | `200 OK` |
@@ -972,11 +987,13 @@ alamaan_backend/tests/
    - Product variant current stock = 2.
    - Two concurrent threads attempt to purchase 2 units each.
    - Exactly one thread must succeed; second thread must fail with `400 Bad Request` ("Insufficient stock"). Current stock must equal 0 (never -2).
-4. **Historical Price Integrity Verification:**
-   - Product variant selling price = ₦500, base price = ₦350.
-   - Sale #1 completed for 2 units (Recorded revenue = ₦1,000, profit = ₦300).
-   - Admin updates variant selling price to ₦600 and base price to ₦400.
-   - Re-fetch Sale #1 -> Line item selling price MUST remain ₦500 and base price MUST remain ₦350. Profit report for Sale #1 date MUST remain ₦300.
+4. **Historical Price Integrity & 4-Tier Pricing Validation:**
+   - Product variant: `base_price` = ₦1,500, `min_selling_price` = ₦1,700, `default_selling_price` = ₦1,800, `max_selling_price` = ₦2,000.
+   - Cashier attempts sale with `actual_selling_price` = ₦1,650 -> Must fail with `400 Bad Request` ("Selling price cannot be less than minimum allowable price ₦1,700").
+   - Cashier attempts sale with `actual_selling_price` = ₦2,100 -> Must fail with `400 Bad Request` ("Selling price cannot exceed maximum allowable price ₦2,000").
+   - Sale #1 completed with negotiated `actual_selling_price` = ₦1,750 for 2 units (Revenue = ₦3,500, Profit = (₦1,750 - ₦1,500) * 2 = ₦500).
+   - Admin later updates variant: `base_price` = ₦1,600, `min_selling_price` = ₦1,800, `default_selling_price` = ₦1,900, `max_selling_price` = ₦2,200.
+   - Re-fetch Sale #1 -> Line item `actual_selling_price` MUST remain ₦1,750 and `historical_base_price` MUST remain ₦1,500. Profit report for Sale #1 MUST remain ₦500.
 5. **Credit Sale Validation:**
    - POS checkout with `amount_paid < total_amount` and `customer_id = null` -> Must fail with `400 Bad Request` ("Credit sales require a registered customer").
 6. **FIFO Debt Allocation:**
@@ -1122,7 +1139,7 @@ PHASE 15: Security Hardening & Production Deployment
 | Architectural Risk | Potential Impact | Built-in Mitigation Strategy |
 | :--- | :--- | :--- |
 | **Race Conditions in Multi-Cashier POS Checkout** | Negative inventory, overselling products | Pessimistic locking via `select_for_update()` in `process_pos_sale()` service + DB level `CHECK (current_stock >= 0)` constraint. |
-| **Historical Financial Audit Distortion** | Changing product prices alters past profit reports | `SaleItem` captures permanent snapshots of `unit_selling_price` and `unit_base_price` at the instant of sale. Historical sales are never recalculated with modern prices. |
+| **Historical Financial Audit Distortion** | Changing product prices alters past profit reports | `SaleItem` captures permanent snapshots of `actual_selling_price`, `historical_base_price`, `min_selling_price`, `default_selling_price`, and `max_selling_price` at the instant of sale. Historical sales are never recalculated with modern prices. |
 | **Silent Financial Ledger Drift** | Inconsistent cash balances between sales and cashbook | Single atomic service creates `Sale` and `AccountabilityTransaction` together. If either fails, the entire transaction rolls back. |
 | **Slow Dashboard & Reports on Large Datasets** | API timeouts, sluggish UI experience | Elimination of Python-level loops; use of targeted MySQL composite indexes and database-level SQL aggregations in `selectors.py`. |
 | **Privilege Escalation by Malicious Client** | Cashier views wholesale cost or approves users | Enforcement of permissions at DRF view level (`IsAdminUserRole`) and field-level serializer redaction. Frontend security is treated as cosmetic only. |

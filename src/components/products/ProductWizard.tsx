@@ -74,6 +74,9 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
   const [variants, setVariants] = useState<Array<{
     companyName: string;
     basePrice: number;
+    minSellingPrice: number;
+    defaultSellingPrice: number;
+    maxSellingPrice: number;
     sellingPrice: number;
     currentStock: number;
     reorderLevel: number;
@@ -82,6 +85,9 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
     {
       companyName: 'DANA',
       basePrice: 350,
+      minSellingPrice: 400,
+      defaultSellingPrice: 500,
+      maxSellingPrice: 570,
       sellingPrice: 500,
       currentStock: 100,
       reorderLevel: 50,
@@ -107,14 +113,23 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
 
       if (initialProduct.variants && initialProduct.variants.length > 0) {
         setVariants(
-          initialProduct.variants.map((v) => ({
-            companyName: v.companyName,
-            basePrice: v.basePrice,
-            sellingPrice: v.sellingPrice,
-            currentStock: v.currentStock,
-            reorderLevel: v.reorderLevel,
-            status: v.status,
-          }))
+          initialProduct.variants.map((v) => {
+            const basePrice = Number(v.basePrice) || 0;
+            const defaultSellingPrice = Number(v.defaultSellingPrice) || Number(v.sellingPrice) || 0;
+            const minSellingPrice = Number(v.minSellingPrice) || (basePrice > 0 ? Math.max(basePrice + 10, Math.round((basePrice + (defaultSellingPrice - basePrice) * 0.4) / 10) * 10) : defaultSellingPrice);
+            const maxSellingPrice = Number(v.maxSellingPrice) || Math.max(defaultSellingPrice, Math.round((defaultSellingPrice * 1.2) / 10) * 10);
+            return {
+              companyName: v.companyName,
+              basePrice,
+              minSellingPrice,
+              defaultSellingPrice,
+              maxSellingPrice,
+              sellingPrice: defaultSellingPrice,
+              currentStock: v.currentStock,
+              reorderLevel: v.reorderLevel,
+              status: v.status,
+            };
+          })
         );
       }
     } else {
@@ -156,6 +171,9 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
       {
         companyName: availableCompany,
         basePrice: 400,
+        minSellingPrice: 480,
+        defaultSellingPrice: 600,
+        maxSellingPrice: 680,
         sellingPrice: 600,
         currentStock: 100,
         reorderLevel: 50,
@@ -174,7 +192,11 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
 
   const updateVariantRow = (index: number, field: string, value: any) => {
     const updated = [...variants];
-    updated[index] = { ...updated[index], [field]: value };
+    const current = { ...updated[index], [field]: value };
+    if (field === 'defaultSellingPrice') {
+      current.sellingPrice = value;
+    }
+    updated[index] = current;
     setVariants(updated);
   };
 
@@ -201,6 +223,8 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
 
     variants.forEach((v, i) => {
       const cleanCompany = v.companyName.trim();
+      const variantLabel = `Variant #${i + 1} (${v.companyName || 'Unnamed'})`;
+
       if (!cleanCompany) {
         errors.push(`Variant #${i + 1} requires a company name.`);
       } else if (companySet.has(cleanCompany.toLowerCase())) {
@@ -209,17 +233,23 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
         companySet.add(cleanCompany.toLowerCase());
       }
 
-      if (v.sellingPrice <= 0) {
-        errors.push(`Variant #${i + 1} (${v.companyName || 'Unnamed'}) Selling Price must be greater than 0.`);
-      }
       if (v.basePrice < 0) {
-        errors.push(`Variant #${i + 1} (${v.companyName || 'Unnamed'}) Base Price cannot be negative.`);
+        errors.push(`${variantLabel} Base Price cannot be negative.`);
+      }
+      if (v.minSellingPrice <= v.basePrice && v.basePrice > 0) {
+        errors.push(`${variantLabel} Minimum Selling Price (₦${v.minSellingPrice}) must be greater than Base Price (₦${v.basePrice}).`);
+      }
+      if (v.defaultSellingPrice < v.minSellingPrice) {
+        errors.push(`${variantLabel} Default Selling Price (₦${v.defaultSellingPrice}) cannot be less than Minimum Selling Price (₦${v.minSellingPrice}).`);
+      }
+      if (v.maxSellingPrice < v.defaultSellingPrice) {
+        errors.push(`${variantLabel} Maximum Selling Price (₦${v.maxSellingPrice}) cannot be less than Default Selling Price (₦${v.defaultSellingPrice}).`);
       }
       if (v.currentStock < 0) {
-        errors.push(`Variant #${i + 1} (${v.companyName || 'Unnamed'}) Current Stock cannot be negative.`);
+        errors.push(`${variantLabel} Current Stock cannot be negative.`);
       }
       if (v.reorderLevel < 0) {
-        errors.push(`Variant #${i + 1} (${v.companyName || 'Unnamed'}) Reorder Level cannot be negative.`);
+        errors.push(`${variantLabel} Reorder Level cannot be negative.`);
       }
     });
 
@@ -620,9 +650,9 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
           <div className="space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Company Variants</h3>
+                <h3 className="text-sm font-bold text-slate-900">Company Variants & Price Ranges</h3>
                 <p className="text-xs text-slate-500">
-                  Configure manufacturers, wholesale cost (Base Price), and retail Selling Price
+                  Configure manufacturers, wholesale cost (Base Price), and controlled selling price ranges (Min, Default, Max)
                 </p>
               </div>
 
@@ -644,12 +674,14 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                       <th className="py-2.5 px-3 font-semibold min-w-[140px]">Company *</th>
-                      <th className="py-2.5 px-3 font-semibold min-w-[110px]">Base Price (₦) *</th>
-                      <th className="py-2.5 px-3 font-semibold min-w-[110px]">Selling Price (₦) *</th>
-                      <th className="py-2.5 px-3 font-semibold min-w-[90px]">Current Stock *</th>
-                      <th className="py-2.5 px-3 font-semibold min-w-[90px]">Reorder Level *</th>
-                      <th className="py-2.5 px-3 font-semibold text-center min-w-[70px]">Status</th>
-                      <th className="py-2.5 px-3 font-semibold text-center w-12">Action</th>
+                      <th className="py-2.5 px-3 font-semibold min-w-[105px]">Base Price (₦) *</th>
+                      <th className="py-2.5 px-3 font-semibold min-w-[105px]">Min Selling (₦) *</th>
+                      <th className="py-2.5 px-3 font-semibold min-w-[110px]">Default Price (₦) *</th>
+                      <th className="py-2.5 px-3 font-semibold min-w-[105px]">Max Selling (₦) *</th>
+                      <th className="py-2.5 px-3 font-semibold min-w-[85px]">Stock *</th>
+                      <th className="py-2.5 px-3 font-semibold min-w-[85px]">Reorder *</th>
+                      <th className="py-2.5 px-3 font-semibold text-center min-w-[65px]">Status</th>
+                      <th className="py-2.5 px-3 font-semibold text-center w-10">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
@@ -678,19 +710,46 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
                             step="0.01"
                             value={v.basePrice}
                             onChange={(e) => updateVariantRow(index, 'basePrice', parseFloat(e.target.value) || 0)}
-                            className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-mono font-medium focus:ring-1 focus:ring-blue-500"
+                            className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-mono font-medium focus:ring-1 focus:ring-blue-500"
                           />
                         </td>
 
-                        {/* Selling Price */}
+                        {/* Min Selling Price */}
                         <td className="py-2 px-3">
                           <input
                             type="number"
                             min="0"
                             step="0.01"
-                            value={v.sellingPrice}
-                            onChange={(e) => updateVariantRow(index, 'sellingPrice', parseFloat(e.target.value) || 0)}
-                            className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-mono font-bold text-blue-900 focus:ring-1 focus:ring-blue-500"
+                            value={v.minSellingPrice}
+                            onChange={(e) => updateVariantRow(index, 'minSellingPrice', parseFloat(e.target.value) || 0)}
+                            className="w-full px-2 py-1.5 bg-slate-50 border border-amber-200 rounded-md text-xs font-mono font-semibold text-amber-900 focus:ring-1 focus:ring-amber-500"
+                          />
+                        </td>
+
+                        {/* Default Selling Price */}
+                        <td className="py-2 px-3">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={v.defaultSellingPrice}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              updateVariantRow(index, 'defaultSellingPrice', val);
+                            }}
+                            className="w-full px-2 py-1.5 bg-slate-50 border border-blue-200 rounded-md text-xs font-mono font-bold text-blue-900 focus:ring-1 focus:ring-blue-500"
+                          />
+                        </td>
+
+                        {/* Max Selling Price */}
+                        <td className="py-2 px-3">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={v.maxSellingPrice}
+                            onChange={(e) => updateVariantRow(index, 'maxSellingPrice', parseFloat(e.target.value) || 0)}
+                            className="w-full px-2 py-1.5 bg-slate-50 border border-emerald-200 rounded-md text-xs font-mono font-semibold text-emerald-900 focus:ring-1 focus:ring-emerald-500"
                           />
                         </td>
 
@@ -701,7 +760,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
                             min="0"
                             value={v.currentStock}
                             onChange={(e) => updateVariantRow(index, 'currentStock', parseInt(e.target.value) || 0)}
-                            className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-mono font-medium focus:ring-1 focus:ring-blue-500"
+                            className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-mono font-medium focus:ring-1 focus:ring-blue-500"
                           />
                         </td>
 
@@ -712,7 +771,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
                             min="0"
                             value={v.reorderLevel}
                             onChange={(e) => updateVariantRow(index, 'reorderLevel', parseInt(e.target.value) || 0)}
-                            className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-mono font-medium focus:ring-1 focus:ring-blue-500"
+                            className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-mono font-medium focus:ring-1 focus:ring-blue-500"
                           />
                         </td>
 
@@ -784,11 +843,11 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
                   <span className="text-sm font-bold font-mono text-slate-900">{formatNumber(totalStock)} Units</span>
                 </div>
                 <div className="bg-white p-3 rounded-md border border-slate-200">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Inventory Cost</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Inventory Cost (Base)</span>
                   <span className="text-sm font-bold font-mono text-slate-900">{formatNaira(totalCostValue)}</span>
                 </div>
                 <div className="bg-white p-3 rounded-md border border-slate-200">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Retail Value</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Retail Value (Default)</span>
                   <span className="text-sm font-bold font-mono text-emerald-700">{formatNaira(totalSellingValue)}</span>
                 </div>
               </div>
@@ -797,18 +856,21 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
             {/* List of configured variants */}
             <div>
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-                Configured Variants ({variants.length})
+                Configured Variants & Price Ranges ({variants.length})
               </h4>
               <div className="space-y-2">
                 {variants.map((v, i) => (
-                  <div key={i} className="p-3 bg-white border border-slate-200 rounded-md flex items-center justify-between text-xs">
+                  <div key={i} className="p-3 bg-white border border-slate-200 rounded-md flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                     <div className="flex items-center gap-2">
                       <Building2 className="w-4 h-4 text-blue-600" />
                       <span className="font-bold text-slate-900">{v.companyName}</span>
                     </div>
-                    <div className="flex items-center gap-4 font-mono">
+                    <div className="flex flex-wrap items-center gap-3 font-mono text-[11px]">
                       <span>Base: <strong>{formatNaira(v.basePrice)}</strong></span>
-                      <span>Selling: <strong className="text-blue-600">{formatNaira(v.sellingPrice)}</strong></span>
+                      <span className="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                        Range: <strong>{formatNaira(v.minSellingPrice)} - {formatNaira(v.maxSellingPrice)}</strong>
+                      </span>
+                      <span>Default: <strong className="text-blue-600">{formatNaira(v.defaultSellingPrice)}</strong></span>
                       <span>Stock: <strong>{v.currentStock}</strong></span>
                     </div>
                   </div>

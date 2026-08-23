@@ -76,6 +76,9 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   const [variantForm, setVariantForm] = useState({
     companyName: '',
     basePrice: 0,
+    minSellingPrice: 0,
+    defaultSellingPrice: 0,
+    maxSellingPrice: 0,
     sellingPrice: 0,
     currentStock: 100,
     reorderLevel: 50,
@@ -88,18 +91,29 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
     e.preventDefault();
     if (!variantForm.companyName.trim()) return;
 
+    const basePrice = Number(variantForm.basePrice);
+    const defaultSellingPrice = Number(variantForm.defaultSellingPrice) || Number(variantForm.sellingPrice);
+    const minSellingPrice = Number(variantForm.minSellingPrice) || (basePrice > 0 ? Math.max(basePrice + 10, Math.round(basePrice * 1.15)) : defaultSellingPrice);
+    const maxSellingPrice = Number(variantForm.maxSellingPrice) || Math.max(defaultSellingPrice, Math.round(defaultSellingPrice * 1.25));
+
     onAddVariant(product.id, {
       companyName: variantForm.companyName.trim().toUpperCase(),
-      basePrice: Number(variantForm.basePrice),
-      sellingPrice: Number(variantForm.sellingPrice),
+      basePrice,
+      minSellingPrice,
+      defaultSellingPrice,
+      maxSellingPrice,
+      sellingPrice: defaultSellingPrice,
       currentStock: Number(variantForm.currentStock),
       reorderLevel: Number(variantForm.reorderLevel),
       status: variantForm.status,
-    });
+    } as any);
 
     setVariantForm({
       companyName: '',
       basePrice: 0,
+      minSellingPrice: 0,
+      defaultSellingPrice: 0,
+      maxSellingPrice: 0,
       sellingPrice: 0,
       currentStock: 100,
       reorderLevel: 50,
@@ -112,10 +126,18 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
     e.preventDefault();
     if (!editingVariant) return;
 
+    const basePrice = Number(editingVariant.basePrice);
+    const defaultSellingPrice = Number(editingVariant.defaultSellingPrice) || Number(editingVariant.sellingPrice);
+    const minSellingPrice = Number(editingVariant.minSellingPrice) || (basePrice > 0 ? Math.max(basePrice + 10, Math.round(basePrice * 1.15)) : defaultSellingPrice);
+    const maxSellingPrice = Number(editingVariant.maxSellingPrice) || Math.max(defaultSellingPrice, Math.round(defaultSellingPrice * 1.25));
+
     onUpdateVariant(product.id, editingVariant.id, {
       companyName: editingVariant.companyName,
-      basePrice: Number(editingVariant.basePrice),
-      sellingPrice: Number(editingVariant.sellingPrice),
+      basePrice,
+      minSellingPrice,
+      defaultSellingPrice,
+      maxSellingPrice,
+      sellingPrice: defaultSellingPrice,
       currentStock: Number(editingVariant.currentStock),
       reorderLevel: Number(editingVariant.reorderLevel),
       status: editingVariant.status,
@@ -491,8 +513,9 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                         <th className="py-3 px-4 font-semibold">Company</th>
-                        {isAdmin && <th className="py-3 px-4 font-semibold text-right">Base Price (₦)</th>}
-                        <th className="py-3 px-4 font-semibold text-right">Selling Price (₦)</th>
+                        {isAdmin && <th className="py-3 px-4 font-semibold text-right">Base Cost (₦)</th>}
+                        <th className="py-3 px-4 font-semibold text-right">Price Range (₦)</th>
+                        <th className="py-3 px-4 font-semibold text-right">Default Price (₦)</th>
                         <th className="py-3 px-4 font-semibold text-right">Current Stock</th>
                         {isAdmin && <th className="py-3 px-4 font-semibold text-right">Reorder Level</th>}
                         <th className="py-3 px-4 font-semibold text-center">Status</th>
@@ -502,6 +525,10 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                     <tbody className="divide-y divide-slate-100 text-sm">
                       {product.variants.map((v) => {
                         const isLow = v.currentStock <= v.reorderLevel;
+                        const minP = v.minSellingPrice !== undefined && v.minSellingPrice > 0 ? v.minSellingPrice : (v.basePrice > 0 ? Math.max(v.basePrice + 10, Math.round(v.basePrice * 1.15)) : v.sellingPrice);
+                        const maxP = v.maxSellingPrice !== undefined && v.maxSellingPrice > 0 ? v.maxSellingPrice : Math.max(v.sellingPrice, Math.round(v.sellingPrice * 1.25));
+                        const defP = v.defaultSellingPrice !== undefined && v.defaultSellingPrice > 0 ? v.defaultSellingPrice : v.sellingPrice;
+
                         return (
                           <tr key={v.id} className="hover:bg-slate-50 transition-colors">
                             <td className="py-3.5 px-4 font-bold text-slate-900 flex items-center gap-2">
@@ -515,8 +542,14 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                               </td>
                             )}
 
-                            <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900">
-                              {formatNaira(v.sellingPrice)}
+                            <td className="py-3.5 px-4 text-right font-mono font-semibold text-amber-900">
+                              <span className="bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-xs">
+                                {formatNaira(minP)} – {formatNaira(maxP)}
+                              </span>
+                            </td>
+
+                            <td className="py-3.5 px-4 text-right font-mono font-bold text-blue-900">
+                              {formatNaira(defP)}
                             </td>
 
                             <td className="py-3.5 px-4 text-right font-mono font-semibold text-slate-800">
@@ -557,7 +590,12 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                                     <QrCode className="w-3.5 h-3.5" />
                                   </button>
                                   <button
-                                    onClick={() => setEditingVariant(v)}
+                                    onClick={() => setEditingVariant({
+                                      ...v,
+                                      minSellingPrice: minP,
+                                      defaultSellingPrice: defP,
+                                      maxSellingPrice: maxP,
+                                    })}
                                     title="Edit Variant"
                                     className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors"
                                   >
@@ -725,15 +763,45 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Selling Price (₦) *</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Default Selling (₦) *</label>
                   <input
                     type="number"
                     min="0"
                     step="0.01"
                     required
-                    value={variantForm.sellingPrice}
-                    onChange={(e) => setVariantForm({ ...variantForm, sellingPrice: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-slate-900 font-medium"
+                    value={variantForm.defaultSellingPrice || variantForm.sellingPrice}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value) || 0;
+                      setVariantForm({ ...variantForm, defaultSellingPrice: val, sellingPrice: val });
+                    }}
+                    className="w-full px-3 py-2 bg-slate-50 border border-blue-200 rounded-md text-slate-900 font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Min Selling Price (₦)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Auto (Margin protected)"
+                    value={variantForm.minSellingPrice || ''}
+                    onChange={(e) => setVariantForm({ ...variantForm, minSellingPrice: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-amber-200 rounded-md text-amber-900 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Max Selling Price (₦)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Auto (Ceiling price)"
+                    value={variantForm.maxSellingPrice || ''}
+                    onChange={(e) => setVariantForm({ ...variantForm, maxSellingPrice: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-emerald-200 rounded-md text-emerald-900 font-medium"
                   />
                 </div>
               </div>
@@ -838,15 +906,43 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Selling Price (₦) *</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Default Selling (₦) *</label>
                   <input
                     type="number"
                     min="0"
                     step="0.01"
                     required
-                    value={editingVariant.sellingPrice}
-                    onChange={(e) => setEditingVariant({ ...editingVariant, sellingPrice: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-slate-900 font-medium"
+                    value={editingVariant.defaultSellingPrice || editingVariant.sellingPrice}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value) || 0;
+                      setEditingVariant({ ...editingVariant, defaultSellingPrice: val, sellingPrice: val });
+                    }}
+                    className="w-full px-3 py-2 bg-slate-50 border border-blue-200 rounded-md text-slate-900 font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Min Selling Price (₦)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editingVariant.minSellingPrice || ''}
+                    onChange={(e) => setEditingVariant({ ...editingVariant, minSellingPrice: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-amber-200 rounded-md text-amber-900 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Max Selling Price (₦)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editingVariant.maxSellingPrice || ''}
+                    onChange={(e) => setEditingVariant({ ...editingVariant, maxSellingPrice: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-emerald-200 rounded-md text-emerald-900 font-medium"
                   />
                 </div>
               </div>
