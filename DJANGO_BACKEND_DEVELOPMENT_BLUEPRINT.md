@@ -52,14 +52,14 @@ This document establishes the **authoritative technical blueprint** for developi
 2. **Product Catalog:** Categories, dosage forms, manufacturer brands (companies), product-to-company variants, and product images.
 3. **Controlled Selling-Price Range Architecture (4-Tier Pricing Model):** Wholesale base cost (restricted to Admin for inventory valuation and profit accountability) alongside a controlled selling-price range per Product + Company variant (`min_selling_price`, `default_selling_price`, `max_selling_price`), with complete price adjustment audit history.
 4. **Inventory & Stock Movements:** Multi-variant inventory levels, threshold alerts, auditable stock ledger (purchases, sales, manual adjustments).
-5. **Customer Management:** Registered customer database with live credit/debt tracking, alongside anonymous Walk-in ("Walking Customer") support.
+5. **Customer Management & 90-Day Inactivity Rules:** Registered customer database with live credit/debt tracking, alongside anonymous Walk-in ("Walking Customer") support. Automatic 90-day (3-month) inactivity evaluation to distinguish active and dormant customer accounts. Granular permissions where Cashiers register customers and take payments, while account editing and status changes are Admin-controlled.
 6. **Sales & Point of Sale (POS):** Multi-item cart checkout, immediate stock deduction, cash/transfer/POS/credit splits, transaction-time price snapshotting.
 7. **Customer Debt & Credit Recovery:** Partial payments, debt settlement records, receipt generation, and customer account ledger updates.
-8. **Stock Purchasing & Restocking:** Multi-item purchase orders that simultaneously increment stock, record unit purchase costs, and post financial disbursements.
-9. **Financial Accountability (Cashbook / General Ledger):** Centralized ledger recording all cash inflows (`IN`) and outflows (`OUT`), operational expense tracking, and cash reconciliation.
-10. **Business Intelligence & Reporting:** Read-only aggregate endpoints for sales, profit, inventory movements, purchases, customer debt, and financial flows.
-11. **System Preferences & Global Settings:** Singleton settings for pharmacy identity, receipt formats, POS rules, and inventory thresholds.
-12. **Executive Dashboard:** High-level operational summary KPIs, trend data, and actionable low-stock alerts.
+8. **Stock Purchasing & Restocking:** Multi-item purchase orders that simultaneously increment stock, record unit purchase costs, and post financial disbursements (Admin restricted).
+9. **Financial Accountability (Cashbook / General Ledger):** Centralized ledger recording all cash inflows (`IN`) and outflows (`OUT`), operational expense tracking, and cash reconciliation (Admin restricted).
+10. **Business Intelligence & Reporting:** Read-only aggregate endpoints for sales, profit, inventory movements, purchases, customer debt, and financial flows (Admin restricted).
+11. **System Preferences & Global Settings:** Singleton settings for pharmacy identity, receipt formats, POS rules, and inventory thresholds (Admin restricted).
+12. **Role-Aware Dashboard:** High-level operational summary KPIs for Cashiers (checkouts, dispensed units, active debtors, stock health) and executive financial KPIs for Administrators (margins, gross profit, inventory valuation, cashflow).
 
 ### 2.2 Explicitly Out-of-Scope (Strictly Forbidden)
 To prevent architectural bloat and maintain the "Simple & Practical" charter, the backend **MUST NOT** implement:
@@ -330,10 +330,16 @@ alamaan_backend/
   - `address`: `TextField(blank=True, default='')`
   - `notes`: `TextField(blank=True, default='')`
   - `status`: `CharField(max_length=20, choices=[('Active', 'Active'), ('Inactive', 'Inactive')], default='Active', db_index=True)`
+- **90-Day (3-Month) Inactivity Auto-Evaluation Rule:**
+  - In addition to manual status overrides, customer activity is dynamically evaluated in selectors/serializers based on the latest transaction timestamp (the most recent `Sale.created_at` or `CustomerDebtPayment.created_at`, fallback to `Customer.created_at`).
+  - If `status == 'Active'` but no transactions or debt payments have occurred within the past 90 days (`now() - last_activity > 90 days`), the customer is calculated and flagged as `Inactive` (Dormant) in customer lists and KPIs.
+- **Role-Based Operation Boundaries:**
+  - **Cashiers:** Can search/list customers, register new customers, and process debt recovery payments (`POST /api/v1/payments/debt-payment/`).
+  - **Administrators:** Hold exclusive authority to modify customer master profiles (`PUT/PATCH /api/v1/customers/{id}/`) and toggle account status (`Active`/`Inactive`).
 - **Walking Customer Architectural Rule:**
   - Anonymous or walk-in customers are **NEVER** created as rows in this table.
   - When a POS transaction occurs for a walk-in patron, `Sale.customer = NULL`.
-- **Deletion Strategy:** Soft delete (`status = 'Inactive'`).
+- **Deletion Strategy:** Soft delete (`status = 'Inactive'`). Hard deletion is forbidden to preserve historical sales debt ledgers.
 
 ---
 
@@ -642,8 +648,8 @@ For financial mutating operations (`POST /api/v1/sales/`, `POST /api/v1/payments
 ## 9. Role-Based Access Control (RBAC) & Security Architecture
 
 ### 9.1 User Role Hierarchy
-- **`ADMIN` (Administrator / Supervising Pharmacist):** Full access across all modules, sensitive base-price cost data, profit reports, user approval/management, system settings, manual stock adjustments, and expense entries.
-- **`CASHIER` (Dispensing Cashier / Sales Staff):** Restricted access focused on POS checkout, customer search, retail price viewing, sales receipt reprinting, and viewing their own sales history. Redacted access for wholesale base prices, item profits, system settings, and user administration.
+- **`ADMIN` (Administrator / Supervising Pharmacist):** Full access across all modules, sensitive base-price cost data, profit reports, user approval/management, system settings, manual stock adjustments, customer profile editing/deactivation, procurement orders, shift logs, and expense entries.
+- **`CASHIER` (Dispensing Cashier / Sales Staff):** Restricted operational access focused on POS checkout, customer search, customer registration, debt payment collection, retail price viewing, sales receipt printing, and viewing their operational dashboard summary. Redacted access for wholesale base prices, item profits, system settings, accountability/shift logs, staff administration, and procurement.
 
 ### 9.2 Complete RBAC Permission Matrix
 
@@ -651,6 +657,7 @@ For financial mutating operations (`POST /api/v1/sales/`, `POST /api/v1/payments
 | :--- | :--- | :--- | :--- |
 | **Auth: Register Staff** | Allow (Public) | Allow (Public) | `AllowAny` |
 | **Auth: Approve / Reject / Suspend Staff** | Allow | **DENIED (403)** | `IsAdminUserRole` |
+| **Users: View Staff Directory & Approvals** | Allow | **DENIED (403)** | `IsAdminUserRole` (Hidden from UI) |
 | **Products: View Catalog & Selling Price** | Allow | Allow | `IsAuthenticated` |
 | **Products: View Base Cost Price** | Allow | **REDACTED (Hidden)** | `Serializer Field Redaction` |
 | **Products: Create / Edit Product & Variant**| Allow | **DENIED (403)** | `IsAdminUserRole` |
@@ -658,19 +665,27 @@ For financial mutating operations (`POST /api/v1/sales/`, `POST /api/v1/payments
 | **Inventory: View Stock Levels** | Allow | Allow | `IsAuthenticated` |
 | **Inventory: View Inventory Valuation Cost**| Allow | **REDACTED (Hidden)** | `Serializer Field Redaction` |
 | **Inventory: Perform Stock Adjustment** | Allow | **DENIED (403)** | `IsAdminUserRole` |
-| **Customers: List / Search / Create** | Allow | Allow | `IsAuthenticated` |
+| **Customers: List / Search Customers** | Allow | Allow | `IsAuthenticated` |
+| **Customers: Register New Customer** | Allow | Allow | `IsAuthenticated` |
 | **Customers: View Outstanding Debt** | Allow | Allow | `IsAuthenticated` |
+| **Customers: Edit Profile / Toggle Status** | Allow | **DENIED (403)** | `IsAdminUserRole` |
 | **Sales: Process POS Sale** | Allow | Allow | `IsAuthenticated` |
 | **Sales: View Sale Profit** | Allow | **REDACTED (Hidden)** | `Serializer Field Redaction` |
 | **Sales: Cancel Completed Sale** | Allow | **DENIED (403)** | `IsAdminUserRole` |
 | **Payments: Record Customer Debt Payment** | Allow | Allow | `IsAuthenticated` |
-| **Purchases: View & Create Stock Purchases**| Allow | **DENIED (403)** | `IsAdminUserRole` |
-| **Accountability: Record Expenses** | Allow | **DENIED (403)** | `IsAdminUserRole` |
-| **Accountability: View Cashbook Ledger** | Allow | **DENIED (403)** | `IsAdminUserRole` |
-| **Reports: Sales / Profit / Inventory BI** | Allow | **DENIED (403)** | `IsAdminUserRole` |
-| **Settings: View System Settings** | Allow | Allow (Read-Only) | `IsAuthenticated` |
+| **Purchases: View & Create Stock Purchases**| Allow | **DENIED (403)** | `IsAdminUserRole` (Hidden from UI) |
+| **Accountability: Record Expenses** | Allow | **DENIED (403)** | `IsAdminUserRole` (Hidden from UI) |
+| **Accountability: View Cashbook & Shift Logs**| Allow | **DENIED (403)** | `IsAdminUserRole` (Hidden from UI) |
+| **Reports: Sales / Profit / Inventory BI** | Allow | **DENIED (403)** | `IsAdminUserRole` (Hidden from UI) |
+| **Settings: View System Preferences** | Allow | **Read-Only / Redacted** | `IsAuthenticated` (Hidden from Cashier Header UI) |
 | **Settings: Update Configuration** | Allow | **DENIED (403)** | `IsAdminUserRole` |
-| **Dashboard: Executive Analytics & Profit** | Allow | **DENIED / Redacted** | `IsAdminUserRole` |
+| **Dashboard: Operational Summary (Dispensed, Debtors, Stock Health)** | Allow | **Allow (Role-Tailored)**| `IsAuthenticated` |
+| **Dashboard: Executive Financials (Profit, Margin, Valuation, Cashflow)** | Allow | **REDACTED (Hidden)** | `IsAdminUserRole` |
+
+### 9.3 Header & Navigation Role-Isolation Rules
+1. **Header User Dropdown Menu:** "System Preferences & Settings", "Accountability & Shift Logs", and "Staff Accounts & Approvals" are strictly rendered for `ADMIN` users only. For `CASHIER` accounts, these navigation items are excluded from the header menu.
+2. **Header Notification Feeds:** System-level procurement notices, audit alerts, and user registration approvals are filtered out for cashiers, ensuring notifications focus strictly on inventory alerts and customer transactions.
+3. **Frontend Route Guards:** Direct client navigation to administrative views (`/settings`, `/accountability`, `/stock-purchase`, `/reports`, `/users`) by cashiers is intercepted by role-guard boundary cards, redirecting back to `/sales`. Backend API endpoints enforce 403 Forbidden responses independently of frontend state.
 
 ---
 
@@ -798,10 +813,11 @@ All API routes are prefixed with `/api/v1/`. Responses return standard JSON.
 
 | Method | Endpoint | Purpose | Access | Key Payload / Query Params | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/customers/` | Paginated customer list with debt | `IsAuth` | `?search=&debt_status=&status=&page=` | `200 OK` |
+| `GET` | `/customers/` | Paginated customer list with debt & 90-day inactivity status | `IsAuth` | `?search=&debt_status=&status=&page=` | `200 OK` |
 | `POST` | `/customers/` | Register new customer | `IsAuth` | `{ name, phone, email, address, notes }` | `201 Created` |
 | `GET` | `/customers/{id}/` | Get customer profile & balance | `IsAuth` | *None* | `200 OK` |
-| `PUT/PATCH`| `/customers/{id}/` | Update customer contact info | `IsAuth` | `{ name, phone, email, address, notes, status }` | `200 OK` |
+| `PUT/PATCH`| `/customers/{id}/` | Update customer contact info | `AdminOnly` | `{ name, phone, email, address, notes, status }` | `200 OK` |
+| `POST` | `/customers/{id}/toggle-status/`| Activate/Deactivate customer | `AdminOnly` | *None* | `200 OK` |
 | `GET` | `/customers/{id}/sales/`| Customer sales history | `IsAuth` | `?page=` | `200 OK` |
 | `GET` | `/customers/{id}/payments/`| Customer debt payment history | `IsAuth` | `?page=` | `200 OK` |
 | `GET` | `/customers/summary-kpis/`| Customer summary metrics | `IsAuth` | *None* | `200 OK` |
@@ -859,13 +875,14 @@ All API routes are prefixed with `/api/v1/`. Responses return standard JSON.
 
 ---
 
-### 13.9 Executive Dashboard & System Settings (`/api/v1/dashboard/` & `/settings/`)
+### 13.9 Role-Aware Dashboard & System Settings (`/api/v1/dashboard/` & `/settings/`)
 
 | Method | Endpoint | Purpose | Access | Key Payload / Query Params | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/dashboard/` | Full executive dashboard payload| `AdminOnly` | `?period=today` | `200 OK` |
-| `GET` | `/settings/` | Get pharmacy identity & rules | `IsAuth` | *None* | `200 OK` |
-| `PUT/PATCH`| `/settings/` | Update system configuration | `AdminOnly` | Multipart Form / JSON with config keys | `200 OK` |
+| `GET` | `/dashboard/` | Role-aware dashboard (Executive KPIs for Admin; Operational KPIs for Cashier)| `IsAuth` | `?period=today` | `200 OK` |
+| `GET` | `/dashboard/cashier-summary/` | Dedicated Cashier operational KPIs (Sales, checkouts, units dispensed, active debtors, stock alerts) | `IsAuth` | `?period=today` | `200 OK` |
+| `GET` | `/settings/` | Get pharmacy branding, contact info & receipt config | `IsAuth` | *None* | `200 OK` |
+| `PUT/PATCH`| `/settings/` | Update system configuration & pharmacy settings | `AdminOnly` | Multipart Form / JSON with config keys | `200 OK` |
 
 ---
 
@@ -921,15 +938,18 @@ All API routes are prefixed with `/api/v1/`. Responses return standard JSON.
 | `AuthContainer.tsx` | Staff Register Form Submit | `POST /api/v1/auth/register/` | `accounts` | Account created in `PENDING` status. Cannot login until Admin approval. |
 | `AuthContainer.tsx` | Staff Login Submit | `POST /api/v1/auth/login/` | `accounts` | Only `ACTIVE` accounts receive JWT pair. `PENDING`/`SUSPENDED` return 403. |
 | `UserManagementModule.tsx` | Admin clicks "Approve" | `POST /api/v1/users/{id}/approve/` | `accounts` | Admin only. Sets `status='ACTIVE'`, `is_active=True`, records `approved_by`. |
+| `HeaderUserMenu.tsx` | Staff Navigation shortcuts | Conditional client menu rendering | `accounts` | "Staff Accounts & Approvals", "System Preferences & Settings", and "Accountability & Shift Logs" are rendered exclusively for `admin` role. |
 | `ProductWizard.tsx` | Create Product Form | `POST /api/v1/products/` | `products` | Admin only. Creates `Product` + `ProductVariant` SKUs in one atomic transaction. |
 | `ProductListTable.tsx` | Table search & filter | `GET /api/v1/products/` | `products` | Base price hidden from Cashier role. Filter by category, company, stock status. |
 | `InventoryModule.tsx` | Quick Stock Adjustment Modal | `POST /api/v1/inventory/adjust/` | `inventory` | Admin only. Updates variant stock, appends `InventoryMovement` log. Stock >= 0. |
 | `SalesModule.tsx` (POS) | "Complete Sale" Button | `POST /api/v1/sales/` | `sales` | Locks stock (`select_for_update`), creates `Sale` + `SaleItem`, decrements stock, posts to `AccountabilityTransaction`. Walk-in allowed only if paid in full. |
+| `CustomerModule.tsx` | "Register Customer" Submit | `POST /api/v1/customers/` | `customers` | Permitted for all authenticated roles. Initial status defaults to `Active`. |
+| `CustomerModule.tsx` | "Edit Customer" / "Toggle Status"| `PUT/PATCH /api/v1/customers/{id}/` or `POST /api/v1/customers/{id}/toggle-status/` | `customers` | Admin only (403 for cashiers). Updates customer profile and active state. |
 | `CustomerModule.tsx` | "Record Payment" Modal | `POST /api/v1/payments/debt-payment/` | `payments` | Allocates payment FIFO to customer's oldest unpaid sales, reduces debt, posts `IN` to `AccountabilityTransaction`. |
 | `PurchasesModule.tsx` | "New Purchase Order" Submit | `POST /api/v1/purchases/` | `purchases` | Admin only. Increments variant stock, logs stock movement, posts `OUT` to `AccountabilityTransaction`. |
 | `AccountabilityModule.tsx`| "Add Expense" Modal | `POST /api/v1/accountability/expenses/` | `accountability`| Admin only. Creates `ManualExpense` and posts `OUT` movement to Cashbook ledger. |
-| `ReportsModule.tsx` | Tab & Date filter change | `GET /api/v1/reports/{tab}/` | `reports` | Read-only SQL aggregation across existing sales, purchases, and cashbook data. |
-| `DashboardModule.tsx` | Period selector (Today/Month)| `GET /api/v1/dashboard/` | `dashboard` | Read-only executive aggregation. Cashier sees zeroed/redacted profit values. |
+| `ReportsModule.tsx` | Tab & Date filter change | `GET /api/v1/reports/{tab}/` | `reports` | Admin only. Read-only SQL aggregation across existing sales, purchases, and cashbook data. |
+| `DashboardModule.tsx` | Period selector (Today/Month)| `GET /api/v1/dashboard/` | `dashboard` | Role-aware aggregation. Cashier receives operational summary (units, debtors, checkouts, stock health) with redacted gross profits. |
 | `SettingsModule.tsx` | Save Pharmacy Settings Form| `PUT /api/v1/settings/` | `settings_app` | Admin only. Updates singleton configuration row. |
 
 ---
@@ -1107,20 +1127,20 @@ PHASE 15: Security Hardening & Production Deployment
 | Phase | Core Objective | Dependencies | Key Models Involved | Completion Criteria |
 | :--- | :--- | :--- | :--- | :--- |
 | **Phase 1** | Django 5.x project scaffolding, MySQL connection, Base Models | None | `TimeStampedModel`, `AuditableModel` | `python manage.py check` passes, DB connected |
-| **Phase 2** | Custom User model, PENDING/ACTIVE workflow, JWT endpoints | Phase 1 | `accounts.User` | Registration -> Admin approval -> Login test green |
-| **Phase 3** | Product catalog, Category, Company, ProductVariant | Phase 2 | `Category`, `Company`, `Product`, `ProductVariant` | Admin creates product with 2 company variants |
-| **Phase 4** | Inventory ledger, stock audit trail, manual adjustments | Phase 3 | `InventoryMovement` | Adjust stock updates balance and logs movement |
-| **Phase 5** | Customer directory, debt calculation selectors | Phase 2 | `customers.Customer` | Customer registered, walk-in NULL rule verified |
-| **Phase 6** | POS checkout service, atomic stock deduction, price snapshots | Phases 3,4,5 | `Sale`, `SaleItem` | Cart checkout locks stock, records sale and movements |
-| **Phase 7** | Debt payment service, FIFO debt settlement, receipt generation| Phase 6 | `CustomerDebtPayment` | Payment settles oldest sales, reduces customer balance |
-| **Phase 8** | Inbound stock purchases, automatic stock increment | Phases 3,4 | `StockPurchase`, `PurchaseItem` | Purchase order restocks inventory in one atomic step |
-| **Phase 9** | Central financial cashbook, In/Out tracking, expenses | Phases 6,7,8 | `AccountabilityTransaction`, `ManualExpense`| All sales, payments, purchases post to ledger |
-| **Phase 10**| BI reporting endpoints (Sales, Profit, Inventory, Cashflow)| Phases 6,8,9 | *None (Read-Only)* | SQL aggregations match expected test numbers |
-| **Phase 11**| System preferences singleton, custom receipt template | Phase 1 | `settings_app.SystemSettings`| Singleton row persists branding and rules |
-| **Phase 12**| Executive dashboard summary KPIs and trend graphs | Phases 6,9,10| *None (Read-Only)* | Single API call supplies full dashboard cards |
-| **Phase 13**| React frontend integration (Replace mock services with Axios)| All APIs | Frontend Services | Frontend features interact live with Django backend |
-| **Phase 14**| Automated test suite execution & concurrency validation | Phase 13 | All Apps | 100% critical test suite passes under pytest |
-| **Phase 15**| NGINX configuration, Gunicorn setup, HTTPS certificates | Phase 14 | Infrastructure | Live production environment accessible and secure |
+| **Phase 2** | Custom User model, PENDING/ACTIVE workflow, JWT endpoints, RBAC | Phase 1 | `accounts.User` | Registration -> Admin approval -> Login test green. Cashier permission checks active. |
+| **Phase 3** | Product catalog, Category, Company, ProductVariant | Phase 2 | `Category`, `Company`, `Product`, `ProductVariant` | Admin creates product with 2 company variants. Wholesale base costs redacted for cashiers. |
+| **Phase 4** | Inventory ledger, stock audit trail, manual adjustments | Phase 3 | `InventoryMovement` | Adjust stock updates balance and logs movement (Admin-only adjustment). |
+| **Phase 5** | Customer directory, 90-day inactivity evaluation, debt calculation selectors | Phase 2 | `customers.Customer` | Customer registered, walk-in NULL rule verified, 90-day inactivity auto-flagged. Customer editing/deactivation restricted to Admins. |
+| **Phase 6** | POS checkout service, atomic stock deduction, price snapshots | Phases 3,4,5 | `Sale`, `SaleItem` | Cart checkout locks stock, records sale and movements across cashiers. |
+| **Phase 7** | Debt payment service, FIFO debt settlement, receipt generation| Phase 6 | `CustomerDebtPayment` | Payment settles oldest sales, reduces customer balance (Cashiers & Admins permitted). |
+| **Phase 8** | Inbound stock purchases, automatic stock increment (Admin restricted) | Phases 3,4 | `StockPurchase`, `PurchaseItem` | Purchase order restocks inventory in one atomic step (403 for cashiers). |
+| **Phase 9** | Central financial cashbook, In/Out tracking, expenses (Admin restricted) | Phases 6,7,8 | `AccountabilityTransaction`, `ManualExpense`| All sales, payments, purchases post to ledger (403 for cashiers). |
+| **Phase 10**| BI reporting endpoints (Sales, Profit, Inventory, Cashflow)| Phases 6,8,9 | *None (Read-Only)* | SQL aggregations match expected test numbers (Admin only). |
+| **Phase 11**| System preferences singleton, custom receipt template | Phase 1 | `settings_app.SystemSettings`| Singleton row persists branding and rules (Admin-only write). |
+| **Phase 12**| Role-aware dashboard (Executive KPIs for Admin; Operational KPIs for Cashier) | Phases 6,9,10| *None (Read-Only)* | Single API call supplies full dashboard cards tailored by role. |
+| **Phase 13**| React frontend integration (Replace mock services with Axios, wire RoleGuards & headers)| All APIs | Frontend Services | Frontend features interact live with Django backend with strict route protection. |
+| **Phase 14**| Automated test suite execution & concurrency validation | Phase 13 | All Apps | 100% critical test suite passes under pytest. |
+| **Phase 15**| NGINX configuration, Gunicorn setup, HTTPS certificates | Phase 14 | Infrastructure | Live production environment accessible and secure. |
 
 ---
 

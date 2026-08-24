@@ -277,40 +277,42 @@ export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
           {/* Quick System Navigation Shortcuts */}
           <div className="p-2 space-y-0.5">
             {currentRole === 'admin' && (
-              <button
-                role="menuitem"
-                onClick={() => handleNavClick('users')}
-                className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Users className="w-4 h-4 text-blue-600" />
-                  <span className="font-semibold text-blue-700 dark:text-blue-300">Staff Accounts & Approvals</span>
-                </div>
-                {pendingCount > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-white font-mono">
-                    {pendingCount}
-                  </span>
-                )}
-              </button>
+              <>
+                <button
+                  role="menuitem"
+                  onClick={() => handleNavClick('users')}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Users className="w-4 h-4 text-blue-600" />
+                    <span className="font-semibold text-blue-700 dark:text-blue-300">Staff Accounts & Approvals</span>
+                  </div>
+                  {pendingCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500 text-white font-mono">
+                      {pendingCount}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  role="menuitem"
+                  onClick={() => handleNavClick('settings')}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
+                >
+                  <Settings className="w-4 h-4 text-slate-400" />
+                  <span>System Preferences & Settings</span>
+                </button>
+
+                <button
+                  role="menuitem"
+                  onClick={() => handleNavClick('accountability')}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
+                >
+                  <ShieldCheck className="w-4 h-4 text-slate-400" />
+                  <span>Accountability & Shift Logs</span>
+                </button>
+              </>
             )}
-
-            <button
-              role="menuitem"
-              onClick={() => handleNavClick('settings')}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
-            >
-              <Settings className="w-4 h-4 text-slate-400" />
-              <span>System Preferences & Settings</span>
-            </button>
-
-            <button
-              role="menuitem"
-              onClick={() => handleNavClick('accountability')}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
-            >
-              <ShieldCheck className="w-4 h-4 text-slate-400" />
-              <span>Accountability & Shift Logs</span>
-            </button>
 
             {onOpenShortcuts && (
               <button

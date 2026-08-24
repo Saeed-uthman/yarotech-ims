@@ -35,6 +35,7 @@ import { LowStockAlertModal } from './components/common/LowStockAlertModal';
 import { ProductStockAuditModal } from './components/products/ProductStockAuditModal';
 import { ToastContainer, ToastMessage } from './components/common/Toast';
 import { ModulePlaceholder } from './components/common/ModulePlaceholder';
+import { AccessDeniedCard } from './components/common/RoleGuard';
 import { InventoryModule } from './components/inventory/InventoryModule';
 import { CustomerModule } from './components/customers';
 import { SalesModule } from './components/sales';
@@ -556,49 +557,89 @@ function MainPharmacyApp() {
                 }}
               />
             ) : activeNav === 'stock-purchase' ? (
-              <PurchasesModule
-                role={currentRole}
-                onNavigateToInventory={() => {
-                  setActiveNav('inventory');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-              />
+              currentRole === 'admin' ? (
+                <PurchasesModule
+                  role={currentRole}
+                  onNavigateToInventory={() => {
+                    setActiveNav('inventory');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                />
+              ) : (
+                <AccessDeniedCard
+                  title="Stock Procurement Restricted"
+                  message="Cashiers are not permitted to manage wholesale purchase orders or supplier costs. Please return to Point of Sale or Product Catalog."
+                  onReturn={() => setActiveNav('sales')}
+                />
+              )
             ) : activeNav === 'accountability' ? (
-              <AccountabilityModule
-                role={currentRole}
-                onNavigateToSource={(type, referenceId) => {
-                  if (type === 'SALE') {
-                    setActiveNav('sales');
-                  } else if (type === 'DEBT_PAYMENT') {
-                    setActiveNav('customers');
-                  } else if (type === 'STOCK_PURCHASE') {
-                    setActiveNav('stock-purchase');
-                  }
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-              />
+              currentRole === 'admin' ? (
+                <AccountabilityModule
+                  role={currentRole}
+                  onNavigateToSource={(type, referenceId) => {
+                    if (type === 'SALE') {
+                      setActiveNav('sales');
+                    } else if (type === 'DEBT_PAYMENT') {
+                      setActiveNav('customers');
+                    } else if (type === 'STOCK_PURCHASE') {
+                      setActiveNav('stock-purchase');
+                    }
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                />
+              ) : (
+                <AccessDeniedCard
+                  title="Accountability & Shift Logs Restricted"
+                  message="Cashiers do not have access to full ledger audits or reconciliation logs. Please return to Point of Sale."
+                  onReturn={() => setActiveNav('sales')}
+                />
+              )
             ) : activeNav === 'users' ? (
-              <UserManagementModule
-                role={currentRole}
-                onNavigateToProducts={() => {
-                  setActiveNav('products');
-                  setViewMode('list');
-                }}
-              />
+              currentRole === 'admin' ? (
+                <UserManagementModule
+                  role={currentRole}
+                  onNavigateToProducts={() => {
+                    setActiveNav('products');
+                    setViewMode('list');
+                  }}
+                />
+              ) : (
+                <AccessDeniedCard
+                  title="Staff Management Restricted"
+                  message="Cashiers are not permitted to manage user accounts, permissions, or approvals."
+                  onReturn={() => setActiveNav('sales')}
+                />
+              )
             ) : activeNav === 'reports' ? (
-              <ReportsModule
-                role={currentRole}
-                categories={categories}
-                companies={companies}
-                products={products}
-              />
+              currentRole === 'admin' ? (
+                <ReportsModule
+                  role={currentRole}
+                  categories={categories}
+                  companies={companies}
+                  products={products}
+                />
+              ) : (
+                <AccessDeniedCard
+                  title="Reports & Analytics Restricted"
+                  message="Financial and valuation reports are restricted to Administrators."
+                  onReturn={() => setActiveNav('sales')}
+                />
+              )
             ) : activeNav === 'settings' ? (
-              <SettingsModule
-                role={currentRole}
-                onSettingsUpdated={() => {
-                  refetchSettings();
-                }}
-              />
+              currentRole === 'admin' ? (
+                <SettingsModule
+                  role={currentRole}
+                  onSettingsUpdated={() => {
+                    refetchSettings();
+                  }}
+                />
+              ) : (
+                <AccessDeniedCard
+                  title="System Settings Restricted"
+                  message="System configurations and pharmacy profile settings are restricted to Administrators."
+                  onReturn={() => setActiveNav('sales')}
+                />
+              )
             ) : activeNav !== 'products' ? (
               <ModulePlaceholder
                 moduleName={activeNav}

@@ -94,9 +94,24 @@ export const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({
   const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-  const stockAlertsCount = notifications.filter((n) => n.type === 'stock_alert').length;
-  const filteredNotifications = notifications.filter((n) => {
+  const visibleNotifications = notifications.filter((n) => {
+    if (currentRole === 'cashier') {
+      if (
+        n.targetNav === 'accountability' ||
+        n.targetNav === 'stock-purchase' ||
+        n.targetNav === 'users' ||
+        n.targetNav === 'reports' ||
+        n.targetNav === 'settings'
+      ) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  const unreadCount = visibleNotifications.filter((n) => !n.read).length;
+  const stockAlertsCount = visibleNotifications.filter((n) => n.type === 'stock_alert').length;
+  const filteredNotifications = visibleNotifications.filter((n) => {
     if (activeFilter === 'unread') return !n.read;
     return true;
   });
