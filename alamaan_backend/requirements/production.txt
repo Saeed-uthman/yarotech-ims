@@ -1,0 +1,8 @@
+# Production database driver
+psycopg[binary]>=3.2,<4.0
+
+# Production server
+gunicorn>=23.0,<24.0
+
+# Better logging / monitoring
+sentry-sdk>=2.0,<3.0
