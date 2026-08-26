@@ -101,9 +101,9 @@ class ProductVariant(AuditableModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=['product', 'company'], name='unique_product_company_variant'),
-            models.CheckConstraint(check=Q(current_stock__gte=0), name='product_variant_stock_non_negative'),
+            models.CheckConstraint(condition=Q(current_stock__gte=0), name='product_variant_stock_non_negative'),
             models.CheckConstraint(
-                check=(
+                condition=(
                     Q(base_price__gte=0)
                     & Q(min_selling_price__gte=0)
                     & Q(default_selling_price__gte=F('min_selling_price'))
@@ -112,7 +112,7 @@ class ProductVariant(AuditableModel):
                 name='product_variant_price_range_valid',
             ),
             models.CheckConstraint(
-                check=Q(base_price=0) | Q(min_selling_price__gt=F('base_price')),
+                condition=Q(base_price=0) | Q(min_selling_price__gt=F('base_price')),
                 name='product_variant_min_price_above_cost',
             ),
         ]
