@@ -3,6 +3,34 @@ from django.db import models
 from apps.common.models import AuditableModel
 
 
+class ManualExpense(AuditableModel):
+    class Category(models.TextChoices):
+        TRANSPORT = 'Transport', 'Transport'
+        UTILITIES = 'Utilities', 'Utilities'
+        STATIONERY = 'Stationery', 'Stationery'
+        MAINTENANCE = 'Maintenance', 'Maintenance'
+        OTHER = 'Other', 'Other'
+
+    class PaymentMethod(models.TextChoices):
+        CASH = 'CASH', 'Cash'
+        TRANSFER = 'TRANSFER', 'Bank Transfer'
+        POS = 'POS', 'Card / POS'
+
+    id = models.BigAutoField(primary_key=True)
+    expense_number = models.CharField(max_length=32, unique=True, db_index=True)
+    category = models.CharField(max_length=50, choices=Category.choices)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices)
+    description = models.CharField(max_length=255)
+    note = models.TextField(blank=True, default='')
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.expense_number} - {self.description}'
+
+
 class AccountabilityTransaction(AuditableModel):
     class Direction(models.TextChoices):
         IN = 'IN', 'Cash Inflow'
