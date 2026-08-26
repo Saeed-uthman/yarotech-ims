@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'django_filters',
     'corsheaders',
+    'drf_spectacular',
     'apps.common',
     'apps.accounts',
     'apps.products',
@@ -153,7 +154,17 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'EXCEPTION_HANDLER': 'apps.common.exceptions.api_exception_handler',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Al-Amaan Pharmacy IMS API',
+    'DESCRIPTION': 'Backend API for Al-Amaan Pharmacy Management & Financial Accountability System',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SCHEMA_PATH_PREFIX': r'/api/v1/',
 }
 
 

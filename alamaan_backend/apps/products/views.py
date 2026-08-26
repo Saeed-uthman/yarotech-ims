@@ -1,4 +1,5 @@
 from django.db.models import DecimalField, ExpressionWrapper, F, Sum
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
@@ -30,10 +31,12 @@ class CategoryListCreateView(APIView):
             return [IsAdminUserRole()]
         return [IsAuthenticated()]
 
+    @extend_schema(responses={200: CategorySerializer(many=True)})
     def get(self, request):
         serializer = CategorySerializer(list_categories(search=request.query_params.get('search', '')), many=True)
         return Response(success_response(serializer.data))
 
+    @extend_schema(request=CategorySerializer, responses={201: CategorySerializer})
     def post(self, request):
         serializer = CategorySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -47,10 +50,12 @@ class CompanyListCreateView(APIView):
             return [IsAdminUserRole()]
         return [IsAuthenticated()]
 
+    @extend_schema(responses={200: CompanySerializer(many=True)})
     def get(self, request):
         serializer = CompanySerializer(list_companies(search=request.query_params.get('search', '')), many=True)
         return Response(success_response(serializer.data))
 
+    @extend_schema(request=CompanySerializer, responses={201: CompanySerializer})
     def post(self, request):
         serializer = CompanySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -64,6 +69,7 @@ class ProductListCreateView(APIView):
             return [IsAdminUserRole()]
         return [IsAuthenticated()]
 
+    @extend_schema(responses={200: ProductListSerializer(many=True)})
     def get(self, request):
         products = list_products(
             search=request.query_params.get('search', ''),
@@ -74,6 +80,7 @@ class ProductListCreateView(APIView):
         serializer = ProductListSerializer(products, many=True, context={'request': request})
         return Response(success_response(serializer.data))
 
+    @extend_schema(request=ProductCreateUpdateSerializer, responses={201: ProductDetailSerializer})
     def post(self, request):
         serializer = ProductCreateUpdateSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
@@ -88,6 +95,7 @@ class ProductDetailView(APIView):
             return [IsAdminUserRole()]
         return [IsAuthenticated()]
 
+    @extend_schema(responses={200: ProductDetailSerializer})
     def get(self, request, pk):
         product = get_object_or_404(
             Product.objects.select_related('category').prefetch_related('variants__company', 'variants__price_history__adjusted_by'),
@@ -95,9 +103,11 @@ class ProductDetailView(APIView):
         )
         return Response(success_response(ProductDetailSerializer(product, context={'request': request}).data))
 
+    @extend_schema(request=ProductCreateUpdateSerializer, responses={200: ProductDetailSerializer})
     def put(self, request, pk):
         return self._update(request, pk, partial=False)
 
+    @extend_schema(request=ProductCreateUpdateSerializer, responses={200: ProductDetailSerializer})
     def patch(self, request, pk):
         return self._update(request, pk, partial=True)
 
@@ -113,6 +123,7 @@ class ProductDetailView(APIView):
 class ProductVariantCreateView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(request=ProductVariantInputSerializer, responses={201: ProductVariantDetailSerializer})
     def post(self, request, pk):
         product = get_object_or_404(Product, pk=pk)
         serializer = ProductVariantInputSerializer(data=request.data)
@@ -125,9 +136,11 @@ class ProductVariantCreateView(APIView):
 class ProductVariantDetailView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(request=VariantUpdateSerializer, responses={200: ProductVariantDetailSerializer})
     def put(self, request, pk):
         return self._update(request, pk, partial=False)
 
+    @extend_schema(request=VariantUpdateSerializer, responses={200: ProductVariantDetailSerializer})
     def patch(self, request, pk):
         return self._update(request, pk, partial=True)
 
@@ -143,6 +156,7 @@ class ProductVariantDetailView(APIView):
 class ProductVariantPriceAdjustmentView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(request=PriceAdjustmentSerializer, responses={200: ProductVariantDetailSerializer})
     def post(self, request, pk):
         variant = get_object_or_404(ProductVariant.objects.select_related('product', 'company'), pk=pk)
         serializer = PriceAdjustmentSerializer(data=request.data)
@@ -164,6 +178,7 @@ class ProductVariantPriceAdjustmentView(APIView):
 class ProductKpiStatsView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses={200: None})
     def get(self, request):
         data = get_catalog_kpis()
         if getattr(request.user, 'role', None) == 'admin':

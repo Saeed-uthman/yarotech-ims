@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,10 +13,12 @@ from .serializers import SystemSettingsOutputSerializer, SystemSettingsUpdateSer
 class SystemSettingsView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses={200: SystemSettingsOutputSerializer})
     def get(self, request):
         settings = SystemSettings.load()
         return Response(success_response(SystemSettingsOutputSerializer(settings).data))
 
+    @extend_schema(request=SystemSettingsUpdateSerializer, responses={200: SystemSettingsOutputSerializer})
     def put(self, request):
         settings = SystemSettings.load()
         serializer = SystemSettingsUpdateSerializer(settings, data=request.data, partial=True)
@@ -23,6 +26,7 @@ class SystemSettingsView(APIView):
         serializer.save()
         return Response(success_response(SystemSettingsOutputSerializer(settings).data, 'Settings updated successfully.'))
 
+    @extend_schema(request=SystemSettingsUpdateSerializer, responses={200: SystemSettingsOutputSerializer})
     def patch(self, request):
         settings = SystemSettings.load()
         serializer = SystemSettingsUpdateSerializer(settings, data=request.data, partial=True)

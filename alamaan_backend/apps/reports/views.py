@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -27,6 +28,7 @@ from .serializers import (
 class ReportOverviewView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(responses={200: OverviewReportSerializer})
     def get(self, request):
         data = get_overview_report(date_range=request.query_params.get('date_range'))
         return Response(success_response(OverviewReportSerializer(data).data))
@@ -35,6 +37,7 @@ class ReportOverviewView(APIView):
 class ReportSalesView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(responses={200: SalesReportSerializer})
     def get(self, request):
         data = get_sales_report(date_range=request.query_params.get('date_range'))
         return Response(success_response(SalesReportSerializer(data).data))
@@ -43,6 +46,7 @@ class ReportSalesView(APIView):
 class ReportProfitView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(responses={200: ProfitReportSerializer})
     def get(self, request):
         data = get_profit_report(date_range=request.query_params.get('date_range'))
         return Response(success_response(ProfitReportSerializer(data).data))
@@ -51,6 +55,7 @@ class ReportProfitView(APIView):
 class ReportPurchasesView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(responses={200: PurchasesReportSerializer})
     def get(self, request):
         data = get_purchases_report(date_range=request.query_params.get('date_range'))
         return Response(success_response(PurchasesReportSerializer(data).data))
@@ -59,6 +64,7 @@ class ReportPurchasesView(APIView):
 class ReportFinancialMovementView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(responses={200: FinancialMovementReportSerializer})
     def get(self, request):
         data = get_financial_movement_report(date_range=request.query_params.get('date_range'))
         return Response(success_response(FinancialMovementReportSerializer(data).data))
@@ -67,6 +73,7 @@ class ReportFinancialMovementView(APIView):
 class ReportInventoryMovementView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(responses={200: InventoryMovementReportSerializer})
     def get(self, request):
         data = get_inventory_movement_report(date_range=request.query_params.get('date_range'))
         return Response(success_response(InventoryMovementReportSerializer(data).data))
@@ -75,6 +82,7 @@ class ReportInventoryMovementView(APIView):
 class ReportDebtView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(responses={200: DebtReportSerializer})
     def get(self, request):
         data = get_debt_report(date_range=request.query_params.get('date_range'))
         return Response(success_response(DebtReportSerializer(data).data))

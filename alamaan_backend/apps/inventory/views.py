@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -14,6 +15,7 @@ from .services import adjust_stock_manually
 class InventoryListView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses={200: InventoryItemSerializer(many=True)})
     def get(self, request):
         queryset = list_inventory_items(
             search=request.query_params.get('search', ''),
@@ -28,6 +30,7 @@ class InventoryListView(APIView):
 class InventorySummaryKpisView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses={200: None})
     def get(self, request):
         data = get_inventory_kpis()
         if getattr(request.user, 'role', None) != 'admin':
@@ -38,6 +41,7 @@ class InventorySummaryKpisView(APIView):
 class InventoryAdjustView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(request=StockAdjustmentInputSerializer, responses={200: InventoryMovementSerializer})
     def post(self, request):
         serializer = StockAdjustmentInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -57,6 +61,7 @@ class InventoryAdjustView(APIView):
 class InventoryMovementListView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(responses={200: InventoryMovementSerializer(many=True)})
     def get(self, request):
         queryset = list_inventory_movements(
             variant_id=request.query_params.get('variant_id'),
@@ -71,5 +76,6 @@ class InventoryMovementListView(APIView):
 class InventoryInsightsView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(responses={200: None})
     def get(self, request):
         return Response(success_response(get_inventory_insights()))

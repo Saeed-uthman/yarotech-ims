@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
@@ -19,6 +20,7 @@ from .serializers import (
 class PurchaseListCreateView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(responses={200: StockPurchaseListSerializer(many=True)})
     def get(self, request):
         queryset = list_purchases(
             search=request.query_params.get('search', ''),
@@ -29,6 +31,7 @@ class PurchaseListCreateView(APIView):
         serializer = StockPurchaseListSerializer(queryset, many=True)
         return Response(success_response(serializer.data))
 
+    @extend_schema(request=CreatePurchaseInputSerializer, responses={201: StockPurchaseDetailSerializer})
     def post(self, request):
         serializer = CreatePurchaseInputSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
@@ -42,6 +45,7 @@ class PurchaseListCreateView(APIView):
 class PurchaseDetailView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(responses={200: StockPurchaseDetailSerializer})
     def get(self, request, pk):
         purchase = get_purchase_detail(purchase_id=pk)
         return Response(success_response(StockPurchaseDetailSerializer(purchase).data))
@@ -50,6 +54,7 @@ class PurchaseDetailView(APIView):
 class PurchaseCancelView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(request=StockPurchaseCancelSerializer, responses={200: StockPurchaseDetailSerializer})
     def post(self, request, pk):
         purchase = get_object_or_404(StockPurchase, pk=pk)
         serializer = StockPurchaseCancelSerializer(data=request.data)
@@ -63,5 +68,6 @@ class PurchaseCancelView(APIView):
 class PurchaseSummaryKpisView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(responses={200: None})
     def get(self, request):
         return Response(success_response(get_purchase_kpis(date_range=request.query_params.get('date_range'))))

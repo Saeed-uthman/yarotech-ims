@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -24,6 +25,7 @@ from .services import approve_user, reactivate_user, reject_user, suspend_user
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(request=RegisterSerializer, responses={201: UserSerializer})
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -37,6 +39,7 @@ class RegisterView(APIView):
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(request=LoginSerializer, responses={200: None})
     def post(self, request):
         serializer = LoginSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
@@ -53,6 +56,7 @@ class RefreshTokenView(TokenRefreshView):
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses={200: UserSerializer})
     def get(self, request):
         serializer = UserSerializer(user_profile(user=request.user))
         return Response(success_response(serializer.data))
@@ -61,6 +65,7 @@ class MeView(APIView):
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=ChangePasswordSerializer)
     def post(self, request):
         serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
@@ -71,6 +76,7 @@ class ChangePasswordView(APIView):
 class UserListView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(responses={200: UserSerializer(many=True)})
     def get(self, request):
         queryset = list_users(
             status=request.query_params.get('status'),
@@ -84,6 +90,7 @@ class UserListView(APIView):
 class UserDetailView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(responses={200: UserSerializer})
     def get(self, request, pk):
         user = get_object_or_404(User, pk=pk)
         return Response(success_response(UserSerializer(user).data))
@@ -92,6 +99,7 @@ class UserDetailView(APIView):
 class UserApproveView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(request=UserActionApproveSerializer, responses={200: UserSerializer})
     def post(self, request, pk):
         serializer = UserActionApproveSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -107,6 +115,7 @@ class UserApproveView(APIView):
 class UserRejectView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(request=UserActionRejectSerializer, responses={200: UserSerializer})
     def post(self, request, pk):
         serializer = UserActionRejectSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -118,6 +127,7 @@ class UserRejectView(APIView):
 class UserSuspendView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(responses={200: UserSerializer})
     def post(self, request, pk):
         user = get_object_or_404(User, pk=pk)
         user = suspend_user(user=user, suspended_by=request.user)
@@ -127,6 +137,7 @@ class UserSuspendView(APIView):
 class UserReactivateView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(responses={200: UserSerializer})
     def post(self, request, pk):
         user = get_object_or_404(User, pk=pk)
         user = reactivate_user(user=user, reactivated_by=request.user)

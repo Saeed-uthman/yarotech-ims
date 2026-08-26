@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
@@ -29,6 +30,7 @@ from .services import toggle_customer_status
 class CustomerListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses={200: CustomerListSerializer(many=True)})
     def get(self, request):
         debt_status = request.query_params.get('debt_status')
         if debt_status == 'with_debt':
@@ -43,6 +45,7 @@ class CustomerListCreateView(APIView):
         serializer = CustomerListSerializer(queryset, many=True)
         return Response(success_response(serializer.data))
 
+    @extend_schema(request=CustomerCreateUpdateSerializer, responses={201: CustomerDetailSerializer})
     def post(self, request):
         serializer = CustomerCreateUpdateSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
@@ -59,13 +62,16 @@ class CustomerDetailView(APIView):
             return [IsAdminUserRole()]
         return [IsAuthenticated()]
 
+    @extend_schema(responses={200: CustomerDetailSerializer})
     def get(self, request, pk):
         customer = get_object_or_404(Customer, pk=pk)
         return Response(success_response(CustomerDetailSerializer(customer).data))
 
+    @extend_schema(request=CustomerCreateUpdateSerializer, responses={200: CustomerDetailSerializer})
     def put(self, request, pk):
         return self._update(request, pk)
 
+    @extend_schema(request=CustomerCreateUpdateSerializer, responses={200: CustomerDetailSerializer})
     def patch(self, request, pk):
         return self._update(request, pk, partial=True)
 
@@ -87,6 +93,7 @@ class CustomerDetailView(APIView):
 class CustomerToggleStatusView(APIView):
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(responses={200: CustomerDetailSerializer})
     def post(self, request, pk):
         customer = get_object_or_404(Customer, pk=pk)
         customer = toggle_customer_status(customer=customer, toggled_by=request.user)
@@ -98,6 +105,7 @@ class CustomerToggleStatusView(APIView):
 class CustomerSummaryKpisView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses={200: None})
     def get(self, request):
         return Response(success_response(get_customer_kpis()))
 
@@ -105,6 +113,7 @@ class CustomerSummaryKpisView(APIView):
 class CustomerSalesHistoryView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses={200: SaleOutputSerializer(many=True)})
     def get(self, request, pk):
         get_object_or_404(Customer, pk=pk)
         from apps.sales.models import Sale
@@ -116,6 +125,7 @@ class CustomerSalesHistoryView(APIView):
 class CustomerPaymentsHistoryView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses={200: DebtPaymentOutputSerializer(many=True)})
     def get(self, request, pk):
         get_object_or_404(Customer, pk=pk)
         payments = list_customer_payments(customer_id=pk)
@@ -126,6 +136,7 @@ class CustomerPaymentsHistoryView(APIView):
 class DebtPaymentView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=DebtPaymentInputSerializer, responses={201: DebtPaymentOutputSerializer})
     def post(self, request):
         serializer = DebtPaymentInputSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
@@ -139,6 +150,7 @@ class DebtPaymentView(APIView):
 class DebtPaymentReceiptView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses={200: DebtPaymentOutputSerializer})
     def get(self, request, pk):
         payment = get_object_or_404(
             CustomerDebtPayment.objects.select_related('customer', 'recorded_by'),

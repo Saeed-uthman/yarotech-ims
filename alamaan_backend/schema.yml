@@ -1,0 +1,3882 @@
+openapi: 3.0.3
+info:
+  title: Al-Amaan Pharmacy IMS API
+  version: 1.0.0
+  description: Backend API for Al-Amaan Pharmacy Management & Financial Accountability
+    System
+paths:
+  /api/v1/accountability/:
+    get:
+      operationId: accountability_list
+      tags:
+      - accountability
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountabilityTransactionOutput'
+          description: ''
+  /api/v1/accountability/expenses/:
+    post:
+      operationId: accountability_expenses_create
+      tags:
+      - accountability
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExpenseInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreateExpenseInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateExpenseInputRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManualExpenseOutput'
+          description: ''
+  /api/v1/accountability/expenses/list/:
+    get:
+      operationId: accountability_expenses_list_list
+      tags:
+      - accountability
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ManualExpenseOutput'
+          description: ''
+  /api/v1/accountability/summary/:
+    get:
+      operationId: accountability_summary_retrieve
+      tags:
+      - accountability
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashbookSummary'
+          description: ''
+  /api/v1/auth/change-password/:
+    post:
+      operationId: auth_change_password_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/login/:
+    post:
+      operationId: auth_login_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/auth/register/:
+    post:
+      operationId: auth_register_create
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/auth/token/refresh/:
+    post:
+      operationId: auth_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/v1/categories/:
+    get:
+      operationId: categories_list
+      tags:
+      - categories
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+          description: ''
+    post:
+      operationId: categories_create
+      tags:
+      - categories
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+  /api/v1/companies/:
+    get:
+      operationId: companies_list
+      tags:
+      - companies
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Company'
+          description: ''
+    post:
+      operationId: companies_create
+      tags:
+      - companies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CompanyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CompanyRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+          description: ''
+  /api/v1/customers/:
+    get:
+      operationId: customers_list
+      tags:
+      - customers
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CustomerList'
+          description: ''
+    post:
+      operationId: customers_create
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerCreateUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomerCreateUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomerCreateUpdateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerDetail'
+          description: ''
+  /api/v1/customers/{id}/:
+    get:
+      operationId: customers_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customers
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerDetail'
+          description: ''
+    put:
+      operationId: customers_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerCreateUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomerCreateUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomerCreateUpdateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerDetail'
+          description: ''
+    patch:
+      operationId: customers_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerCreateUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerCreateUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerCreateUpdateRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerDetail'
+          description: ''
+  /api/v1/customers/{id}/payments/:
+    get:
+      operationId: customers_payments_list
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customers
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DebtPaymentOutput'
+          description: ''
+  /api/v1/customers/{id}/sales/:
+    get:
+      operationId: customers_sales_list
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customers
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SaleOutput'
+          description: ''
+  /api/v1/customers/{id}/toggle-status/:
+    post:
+      operationId: customers_toggle_status_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customers
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerDetail'
+          description: ''
+  /api/v1/customers/summary-kpis/:
+    get:
+      operationId: customers_summary_kpis_retrieve
+      tags:
+      - customers
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/dashboard/:
+    get:
+      operationId: dashboard_retrieve
+      tags:
+      - dashboard
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDashboard'
+          description: ''
+  /api/v1/inventory/:
+    get:
+      operationId: inventory_list
+      tags:
+      - inventory
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InventoryItem'
+          description: ''
+  /api/v1/inventory/adjust/:
+    post:
+      operationId: inventory_adjust_create
+      tags:
+      - inventory
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockAdjustmentInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StockAdjustmentInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StockAdjustmentInputRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryMovement'
+          description: ''
+  /api/v1/inventory/insights/:
+    get:
+      operationId: inventory_insights_retrieve
+      tags:
+      - inventory
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/inventory/movements/:
+    get:
+      operationId: inventory_movements_list
+      tags:
+      - inventory
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InventoryMovement'
+          description: ''
+  /api/v1/inventory/summary-kpis/:
+    get:
+      operationId: inventory_summary_kpis_retrieve
+      tags:
+      - inventory
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/payments/debt-payment/:
+    post:
+      operationId: payments_debt_payment_create
+      tags:
+      - payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DebtPaymentInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DebtPaymentInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DebtPaymentInputRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DebtPaymentOutput'
+          description: ''
+  /api/v1/payments/receipt/{id}/:
+    get:
+      operationId: payments_receipt_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - payments
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DebtPaymentOutput'
+          description: ''
+  /api/v1/products/:
+    get:
+      operationId: products_list
+      tags:
+      - products
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductList'
+          description: ''
+    post:
+      operationId: products_create
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetail'
+          description: ''
+  /api/v1/products/{id}/:
+    get:
+      operationId: products_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - products
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetail'
+          description: ''
+    put:
+      operationId: products_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetail'
+          description: ''
+    patch:
+      operationId: products_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProductCreateUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProductCreateUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProductCreateUpdateRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetail'
+          description: ''
+  /api/v1/products/{id}/variants/:
+    post:
+      operationId: products_variants_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductVariantInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProductVariantInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductVariantInputRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductVariantDetail'
+          description: ''
+  /api/v1/products/kpi-stats/:
+    get:
+      operationId: products_kpi_stats_retrieve
+      tags:
+      - products
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/products/variants/{id}/:
+    put:
+      operationId: products_variants_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VariantUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VariantUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VariantUpdateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductVariantDetail'
+          description: ''
+    patch:
+      operationId: products_variants_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedVariantUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedVariantUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedVariantUpdateRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductVariantDetail'
+          description: ''
+  /api/v1/products/variants/{id}/price-adjustment/:
+    post:
+      operationId: products_variants_price_adjustment_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PriceAdjustmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PriceAdjustmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PriceAdjustmentRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductVariantDetail'
+          description: ''
+  /api/v1/purchases/:
+    get:
+      operationId: purchases_list
+      tags:
+      - purchases
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StockPurchaseList'
+          description: ''
+    post:
+      operationId: purchases_create
+      tags:
+      - purchases
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePurchaseInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreatePurchaseInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreatePurchaseInputRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockPurchaseDetail'
+          description: ''
+  /api/v1/purchases/{id}/:
+    get:
+      operationId: purchases_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - purchases
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockPurchaseDetail'
+          description: ''
+  /api/v1/purchases/{id}/cancel/:
+    post:
+      operationId: purchases_cancel_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - purchases
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockPurchaseCancelRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StockPurchaseCancelRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StockPurchaseCancelRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockPurchaseDetail'
+          description: ''
+  /api/v1/purchases/summary-kpis/:
+    get:
+      operationId: purchases_summary_kpis_retrieve
+      tags:
+      - purchases
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/reports/debt/:
+    get:
+      operationId: reports_debt_retrieve
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DebtReport'
+          description: ''
+  /api/v1/reports/financial-movement/:
+    get:
+      operationId: reports_financial_movement_retrieve
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialMovementReport'
+          description: ''
+  /api/v1/reports/inventory-movement/:
+    get:
+      operationId: reports_inventory_movement_retrieve
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryMovementReport'
+          description: ''
+  /api/v1/reports/overview/:
+    get:
+      operationId: reports_overview_retrieve
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OverviewReport'
+          description: ''
+  /api/v1/reports/profit/:
+    get:
+      operationId: reports_profit_retrieve
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfitReport'
+          description: ''
+  /api/v1/reports/purchases/:
+    get:
+      operationId: reports_purchases_retrieve
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchasesReport'
+          description: ''
+  /api/v1/reports/sales/:
+    get:
+      operationId: reports_sales_retrieve
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SalesReport'
+          description: ''
+  /api/v1/sales/:
+    get:
+      operationId: sales_list
+      tags:
+      - sales
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SaleList'
+          description: ''
+    post:
+      operationId: sales_create
+      tags:
+      - sales
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSaleInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreateSaleInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateSaleInputRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleDetail'
+          description: ''
+  /api/v1/sales/{id}/:
+    get:
+      operationId: sales_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - sales
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleDetail'
+          description: ''
+  /api/v1/sales/{id}/cancel/:
+    post:
+      operationId: sales_cancel_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - sales
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaleCancelRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SaleCancelRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SaleCancelRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleDetail'
+          description: ''
+  /api/v1/sales/{id}/receipt/:
+    get:
+      operationId: sales_receipt_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - sales
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleReceipt'
+          description: ''
+  /api/v1/sales/summary-kpis/:
+    get:
+      operationId: sales_summary_kpis_retrieve
+      tags:
+      - sales
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/settings/:
+    get:
+      operationId: settings_retrieve
+      tags:
+      - settings
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettingsOutput'
+          description: ''
+    put:
+      operationId: settings_update
+      tags:
+      - settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemSettingsUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SystemSettingsUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SystemSettingsUpdateRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettingsOutput'
+          description: ''
+    patch:
+      operationId: settings_partial_update
+      tags:
+      - settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSystemSettingsUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSystemSettingsUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSystemSettingsUpdateRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettingsOutput'
+          description: ''
+  /api/v1/users/:
+    get:
+      operationId: users_list
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/users/{id}/:
+    get:
+      operationId: users_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/users/{id}/approve/:
+    post:
+      operationId: users_approve_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserActionApproveRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserActionApproveRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserActionApproveRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/users/{id}/reactivate/:
+    post:
+      operationId: users_reactivate_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/users/{id}/reject/:
+    post:
+      operationId: users_reject_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserActionRejectRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserActionRejectRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserActionRejectRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/users/{id}/suspend/:
+    post:
+      operationId: users_suspend_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+components:
+  schemas:
+    AccountabilityTransactionOutput:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        transaction_number:
+          type: string
+          readOnly: true
+        direction:
+          allOf:
+          - $ref: '#/components/schemas/DirectionEnum'
+          readOnly: true
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          readOnly: true
+        category:
+          type: string
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        payment_method:
+          allOf:
+          - $ref: '#/components/schemas/PaymentMethodDd1Enum'
+          readOnly: true
+        reference_type:
+          type: string
+          readOnly: true
+        reference_id:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+        customer_name:
+          type: string
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status14fEnum'
+          readOnly: true
+        created_by_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount
+      - category
+      - created_at
+      - created_by_name
+      - customer_name
+      - description
+      - direction
+      - id
+      - note
+      - payment_method
+      - reference_id
+      - reference_type
+      - status
+      - transaction_number
+      - type
+    AdjustmentTypeEnum:
+      enum:
+      - SET_EXACT
+      - INCREMENT
+      - DECREMENT
+      type: string
+      description: |-
+        * `SET_EXACT` - SET_EXACT
+        * `INCREMENT` - INCREMENT
+        * `DECREMENT` - DECREMENT
+    AdminDashboard:
+      type: object
+      properties:
+        total_sales:
+          type: integer
+        total_revenue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_collected:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_outstanding:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_profit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_units_sold:
+          type: integer
+        low_stock_alerts:
+          type: integer
+        total_customers:
+          type: integer
+        active_debtors:
+          type: integer
+      required:
+      - active_debtors
+      - low_stock_alerts
+      - total_collected
+      - total_customers
+      - total_outstanding
+      - total_profit
+      - total_revenue
+      - total_sales
+      - total_units_sold
+    AssignedRoleEnum:
+      enum:
+      - admin
+      - cashier
+      type: string
+      description: |-
+        * `admin` - Administrator
+        * `cashier` - Cashier
+    CashbookSummary:
+      type: object
+      properties:
+        total_inflow:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_outflow:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        net_movement:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+      required:
+      - net_movement
+      - total_inflow
+      - total_outflow
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        is_active:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - is_active
+      - name
+      - updated_at
+    CategoryEnum:
+      enum:
+      - Transport
+      - Utilities
+      - Stationery
+      - Maintenance
+      - Other
+      type: string
+      description: |-
+        * `Transport` - Transport
+        * `Utilities` - Utilities
+        * `Stationery` - Stationery
+        * `Maintenance` - Maintenance
+        * `Other` - Other
+    CategoryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+      required:
+      - name
+    ChangePasswordRequest:
+      type: object
+      properties:
+        current_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 8
+      required:
+      - current_password
+      - new_password
+    ChangeTypeEnum:
+      enum:
+      - INCREASE
+      - DECREASE
+      - INITIAL
+      - CORRECTION
+      type: string
+      description: |-
+        * `INCREASE` - Price Increase
+        * `DECREASE` - Price Decrease
+        * `INITIAL` - Initial Setup
+        * `CORRECTION` - Correction
+    Company:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        code:
+          type: string
+          maxLength: 20
+        country:
+          type: string
+          maxLength: 50
+        is_active:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - is_active
+      - name
+      - updated_at
+    CompanyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        code:
+          type: string
+          maxLength: 20
+        country:
+          type: string
+          minLength: 1
+          maxLength: 50
+      required:
+      - name
+    CreateExpenseInputRequest:
+      type: object
+      properties:
+        category:
+          $ref: '#/components/schemas/CategoryEnum'
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        payment_method:
+          $ref: '#/components/schemas/PaymentMethodDd1Enum'
+        description:
+          type: string
+          minLength: 1
+          maxLength: 255
+        note:
+          type: string
+          default: ''
+      required:
+      - amount
+      - category
+      - description
+      - payment_method
+    CreatePurchaseInputRequest:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreatePurchaseItemInputRequest'
+        payment_method:
+          $ref: '#/components/schemas/PaymentMethodDd1Enum'
+        purchase_date:
+          type: string
+          format: date-time
+          nullable: true
+        note:
+          type: string
+          default: ''
+      required:
+      - items
+      - payment_method
+    CreatePurchaseItemInputRequest:
+      type: object
+      properties:
+        product_variant_id:
+          type: integer
+        quantity:
+          type: integer
+          minimum: 1
+        unit_purchase_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+      required:
+      - product_variant_id
+      - quantity
+      - unit_purchase_price
+    CreateSaleInputRequest:
+      type: object
+      properties:
+        customer_id:
+          type: integer
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateSaleItemInputRequest'
+        discount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          default: '0.00'
+        amount_paid:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        payment_method:
+          $ref: '#/components/schemas/PaymentMethodAb7Enum'
+        notes:
+          type: string
+          default: ''
+      required:
+      - amount_paid
+      - items
+      - payment_method
+    CreateSaleItemInputRequest:
+      type: object
+      properties:
+        product_variant_id:
+          type: integer
+        quantity:
+          type: integer
+          minimum: 1
+        actual_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+      required:
+      - actual_selling_price
+      - product_variant_id
+      - quantity
+    CustomerCreateUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        phone:
+          type: string
+          minLength: 1
+          maxLength: 20
+        email:
+          type: string
+          format: email
+          default: ''
+        address:
+          type: string
+          default: ''
+        notes:
+          type: string
+          default: ''
+      required:
+      - name
+      - phone
+    CustomerDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        phone:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        address:
+          type: string
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status2d9Enum'
+          readOnly: true
+        outstanding_debt:
+          type: string
+          readOnly: true
+        total_purchases:
+          type: string
+          readOnly: true
+        amount_paid:
+          type: string
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        created_by_name:
+          type: string
+          readOnly: true
+        updated_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        updated_by_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - address
+      - amount_paid
+      - created_at
+      - created_by
+      - created_by_name
+      - email
+      - id
+      - name
+      - notes
+      - outstanding_debt
+      - phone
+      - status
+      - total_purchases
+      - updated_at
+      - updated_by
+      - updated_by_name
+    CustomerList:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        phone:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status2d9Enum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - email
+      - id
+      - name
+      - phone
+      - status
+      - updated_at
+    DebtPaymentInputRequest:
+      type: object
+      properties:
+        customer_id:
+          type: integer
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        payment_method:
+          $ref: '#/components/schemas/PaymentMethodDd1Enum'
+        reference_notes:
+          type: string
+          default: ''
+      required:
+      - amount
+      - customer_id
+      - payment_method
+    DebtPaymentOutput:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        receipt_number:
+          type: string
+          readOnly: true
+        customer:
+          type: integer
+          readOnly: true
+        customer_name:
+          type: string
+          readOnly: true
+        customer_phone:
+          type: string
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        payment_method:
+          allOf:
+          - $ref: '#/components/schemas/PaymentMethodDd1Enum'
+          readOnly: true
+        balance_before:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        balance_after:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        reference_notes:
+          type: string
+          readOnly: true
+        recorded_by:
+          type: integer
+          readOnly: true
+        recorded_by_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount
+      - balance_after
+      - balance_before
+      - created_at
+      - customer
+      - customer_name
+      - customer_phone
+      - id
+      - payment_method
+      - receipt_number
+      - recorded_by
+      - recorded_by_name
+      - reference_notes
+    DebtReport:
+      type: object
+      properties:
+        total_debtors:
+          type: integer
+        total_outstanding:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_debt_payments:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+      required:
+      - total_debt_payments
+      - total_debtors
+      - total_outstanding
+    DirectionEnum:
+      enum:
+      - IN
+      - OUT
+      type: string
+      description: |-
+        * `IN` - Cash Inflow
+        * `OUT` - Cash Outflow
+    DosageFormEnum:
+      enum:
+      - Tablet
+      - Capsule
+      - Syrup
+      - Suspension
+      - Injection
+      - Cream
+      - Ointment
+      - Drops
+      - Inhaler
+      - Gel
+      - Infusion
+      - Powder
+      type: string
+      description: |-
+        * `Tablet` - Tablet
+        * `Capsule` - Capsule
+        * `Syrup` - Syrup
+        * `Suspension` - Suspension
+        * `Injection` - Injection
+        * `Cream` - Cream
+        * `Ointment` - Ointment
+        * `Drops` - Drops
+        * `Inhaler` - Inhaler
+        * `Gel` - Gel
+        * `Infusion` - Infusion
+        * `Powder` - Powder
+    FinancialMovementReport:
+      type: object
+      properties:
+        total_inflow:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_outflow:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        net_movement:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        by_type:
+          type: array
+          items: {}
+      required:
+      - by_type
+      - net_movement
+      - total_inflow
+      - total_outflow
+    InventoryItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        product_id:
+          type: integer
+          readOnly: true
+        product_name:
+          type: string
+          readOnly: true
+        generic_name:
+          type: string
+          readOnly: true
+        category_id:
+          type: integer
+          readOnly: true
+        category_name:
+          type: string
+          readOnly: true
+        company_id:
+          type: integer
+          readOnly: true
+        company_name:
+          type: string
+          readOnly: true
+        min_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        default_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        max_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        current_stock:
+          type: integer
+          readOnly: true
+        reorder_level:
+          type: integer
+          readOnly: true
+        stock_status:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status980Enum'
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - category_id
+      - category_name
+      - company_id
+      - company_name
+      - current_stock
+      - default_selling_price
+      - generic_name
+      - id
+      - max_selling_price
+      - min_selling_price
+      - product_id
+      - product_name
+      - reorder_level
+      - status
+      - stock_status
+      - updated_at
+    InventoryMovement:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        variant_id:
+          type: integer
+          readOnly: true
+        product_name:
+          type: string
+          readOnly: true
+        company_name:
+          type: string
+          readOnly: true
+        movement_type:
+          allOf:
+          - $ref: '#/components/schemas/MovementTypeEnum'
+          readOnly: true
+        quantity:
+          type: integer
+          readOnly: true
+        previous_stock:
+          type: integer
+          readOnly: true
+        new_stock:
+          type: integer
+          readOnly: true
+        reason:
+          type: string
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+        reference_type:
+          allOf:
+          - $ref: '#/components/schemas/ReferenceTypeEnum'
+          readOnly: true
+        reference_id:
+          type: string
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+        created_by_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - company_name
+      - created_at
+      - created_by
+      - created_by_name
+      - id
+      - movement_type
+      - new_stock
+      - notes
+      - previous_stock
+      - product_name
+      - quantity
+      - reason
+      - reference_id
+      - reference_type
+      - variant_id
+    InventoryMovementReport:
+      type: object
+      properties:
+        total_stock_in:
+          type: integer
+        total_stock_out:
+          type: integer
+        total_adjustments:
+          type: integer
+      required:
+      - total_adjustments
+      - total_stock_in
+      - total_stock_out
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - email
+      - password
+    ManualExpenseOutput:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        expense_number:
+          type: string
+          readOnly: true
+        category:
+          allOf:
+          - $ref: '#/components/schemas/CategoryEnum'
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        payment_method:
+          allOf:
+          - $ref: '#/components/schemas/PaymentMethodDd1Enum'
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        created_by_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount
+      - category
+      - created_at
+      - created_by_name
+      - description
+      - expense_number
+      - id
+      - note
+      - payment_method
+    MovementTypeEnum:
+      enum:
+      - STOCK_IN
+      - STOCK_OUT
+      - ADJUSTMENT
+      type: string
+      description: |-
+        * `STOCK_IN` - Stock In
+        * `STOCK_OUT` - Stock Out
+        * `ADJUSTMENT` - Manual Adjustment
+    OverviewReport:
+      type: object
+      properties:
+        total_sales_count:
+          type: integer
+        total_revenue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_collected:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_outstanding:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_purchases_count:
+          type: integer
+        total_purchase_spend:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+      required:
+      - total_collected
+      - total_outstanding
+      - total_purchase_spend
+      - total_purchases_count
+      - total_revenue
+      - total_sales_count
+    PatchedCustomerCreateUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        phone:
+          type: string
+          minLength: 1
+          maxLength: 20
+        email:
+          type: string
+          format: email
+          default: ''
+        address:
+          type: string
+          default: ''
+        notes:
+          type: string
+          default: ''
+    PatchedProductCreateUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        generic_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        category_id:
+          type: integer
+        dosage:
+          type: string
+          minLength: 1
+          maxLength: 50
+        dosage_form:
+          $ref: '#/components/schemas/DosageFormEnum'
+        barcode:
+          type: string
+          maxLength: 64
+        description:
+          type: string
+        subtitle:
+          type: string
+          maxLength: 255
+        image:
+          type: string
+          format: binary
+          nullable: true
+        status:
+          $ref: '#/components/schemas/Status2d9Enum'
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductVariantInputRequest'
+    PatchedSystemSettingsUpdateRequest:
+      type: object
+      properties:
+        pharmacy_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        phone:
+          type: string
+          minLength: 1
+          maxLength: 50
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        address:
+          type: string
+          minLength: 1
+        logo:
+          type: string
+          format: binary
+          nullable: true
+        business_description:
+          type: string
+        currency:
+          type: string
+          minLength: 1
+          maxLength: 10
+        currency_symbol:
+          type: string
+          minLength: 1
+          maxLength: 5
+        show_decimals:
+          type: boolean
+        allow_walking_sales:
+          type: boolean
+        allow_credit_sales:
+          type: boolean
+        require_customer_for_credit:
+          type: boolean
+        low_stock_threshold:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        allow_negative_stock:
+          type: boolean
+        receipt_footer:
+          type: string
+          minLength: 1
+    PatchedVariantUpdateRequest:
+      type: object
+      properties:
+        company_id:
+          type: integer
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        min_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        default_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        max_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        current_stock:
+          type: integer
+          minimum: 0
+          default: 0
+        reorder_level:
+          type: integer
+          minimum: 0
+          default: 10
+        status:
+          $ref: '#/components/schemas/Status980Enum'
+    PaymentMethodAb7Enum:
+      enum:
+      - CASH
+      - TRANSFER
+      - POS
+      - CREDIT
+      type: string
+      description: |-
+        * `CASH` - Cash
+        * `TRANSFER` - Bank Transfer
+        * `POS` - Card / POS
+        * `CREDIT` - Credit
+    PaymentMethodDd1Enum:
+      enum:
+      - CASH
+      - TRANSFER
+      - POS
+      type: string
+      description: |-
+        * `CASH` - Cash
+        * `TRANSFER` - Bank Transfer
+        * `POS` - Card / POS
+    PaymentStatusEnum:
+      enum:
+      - PAID
+      - PARTIAL
+      - UNPAID
+      type: string
+      description: |-
+        * `PAID` - Fully Paid
+        * `PARTIAL` - Partially Paid
+        * `UNPAID` - Credit / Unpaid
+    PriceAdjustmentHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        old_base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        new_base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        old_min_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        new_min_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        old_default_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        new_default_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        old_max_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        new_max_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        change_type:
+          allOf:
+          - $ref: '#/components/schemas/ChangeTypeEnum'
+          readOnly: true
+        reason:
+          type: string
+          readOnly: true
+        adjusted_by:
+          type: integer
+          readOnly: true
+        adjusted_by_name:
+          type: string
+          readOnly: true
+        effective_date:
+          type: string
+          format: date-time
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - adjusted_by
+      - adjusted_by_name
+      - change_type
+      - created_at
+      - effective_date
+      - id
+      - new_base_price
+      - new_default_selling_price
+      - new_max_selling_price
+      - new_min_selling_price
+      - old_base_price
+      - old_default_selling_price
+      - old_max_selling_price
+      - old_min_selling_price
+      - reason
+    PriceAdjustmentRequest:
+      type: object
+      properties:
+        new_base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        new_min_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        new_default_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        new_max_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - new_base_price
+      - new_default_selling_price
+      - new_max_selling_price
+      - new_min_selling_price
+      - reason
+    ProductCreateUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        generic_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        category_id:
+          type: integer
+        dosage:
+          type: string
+          minLength: 1
+          maxLength: 50
+        dosage_form:
+          $ref: '#/components/schemas/DosageFormEnum'
+        barcode:
+          type: string
+          maxLength: 64
+        description:
+          type: string
+        subtitle:
+          type: string
+          maxLength: 255
+        image:
+          type: string
+          format: binary
+          nullable: true
+        status:
+          $ref: '#/components/schemas/Status2d9Enum'
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductVariantInputRequest'
+      required:
+      - category_id
+      - dosage
+      - dosage_form
+      - generic_name
+      - name
+    ProductDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        generic_name:
+          type: string
+          maxLength: 200
+        category:
+          allOf:
+          - $ref: '#/components/schemas/Category'
+          readOnly: true
+        dosage:
+          type: string
+          maxLength: 50
+        dosage_form:
+          $ref: '#/components/schemas/DosageFormEnum'
+        barcode:
+          type: string
+          maxLength: 64
+        subtitle:
+          type: string
+          maxLength: 255
+        image:
+          type: string
+          format: uri
+          nullable: true
+        status:
+          $ref: '#/components/schemas/Status2d9Enum'
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductVariantDetail'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        description:
+          type: string
+        created_by:
+          type: integer
+          nullable: true
+        updated_by:
+          type: integer
+          nullable: true
+      required:
+      - category
+      - created_at
+      - dosage
+      - dosage_form
+      - generic_name
+      - id
+      - name
+      - updated_at
+      - variants
+    ProductList:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        generic_name:
+          type: string
+          maxLength: 200
+        category:
+          allOf:
+          - $ref: '#/components/schemas/Category'
+          readOnly: true
+        dosage:
+          type: string
+          maxLength: 50
+        dosage_form:
+          $ref: '#/components/schemas/DosageFormEnum'
+        barcode:
+          type: string
+          maxLength: 64
+        subtitle:
+          type: string
+          maxLength: 255
+        image:
+          type: string
+          format: uri
+          nullable: true
+        status:
+          $ref: '#/components/schemas/Status2d9Enum'
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductVariant'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - category
+      - created_at
+      - dosage
+      - dosage_form
+      - generic_name
+      - id
+      - name
+      - updated_at
+      - variants
+    ProductVariant:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        company:
+          allOf:
+          - $ref: '#/components/schemas/Company'
+          readOnly: true
+        min_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        default_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        max_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        current_stock:
+          type: integer
+          readOnly: true
+        reorder_level:
+          type: integer
+          readOnly: true
+        stock_status:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status980Enum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - company
+      - created_at
+      - current_stock
+      - default_selling_price
+      - id
+      - max_selling_price
+      - min_selling_price
+      - reorder_level
+      - status
+      - stock_status
+      - updated_at
+    ProductVariantDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        company:
+          allOf:
+          - $ref: '#/components/schemas/Company'
+          readOnly: true
+        min_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        default_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        max_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        current_stock:
+          type: integer
+          readOnly: true
+        reorder_level:
+          type: integer
+          readOnly: true
+        stock_status:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status980Enum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        price_history:
+          type: array
+          items:
+            $ref: '#/components/schemas/PriceAdjustmentHistory'
+          readOnly: true
+      required:
+      - company
+      - created_at
+      - current_stock
+      - default_selling_price
+      - id
+      - max_selling_price
+      - min_selling_price
+      - price_history
+      - reorder_level
+      - status
+      - stock_status
+      - updated_at
+    ProductVariantInputRequest:
+      type: object
+      properties:
+        company_id:
+          type: integer
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        min_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        default_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        max_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        current_stock:
+          type: integer
+          minimum: 0
+          default: 0
+        reorder_level:
+          type: integer
+          minimum: 0
+          default: 10
+      required:
+      - base_price
+      - company_id
+      - default_selling_price
+      - max_selling_price
+      - min_selling_price
+    ProfitReport:
+      type: object
+      properties:
+        total_revenue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_cost:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_profit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        margin_percentage:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+      required:
+      - margin_percentage
+      - total_cost
+      - total_profit
+      - total_revenue
+    PurchaseItemOutput:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        variant_id:
+          type: integer
+          readOnly: true
+        product_name:
+          type: string
+          readOnly: true
+        company_name:
+          type: string
+          readOnly: true
+        quantity:
+          type: integer
+          readOnly: true
+        unit_purchase_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        subtotal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+      required:
+      - company_name
+      - id
+      - product_name
+      - quantity
+      - subtotal
+      - unit_purchase_price
+      - variant_id
+    PurchasesReport:
+      type: object
+      properties:
+        total_purchases:
+          type: integer
+        total_spend:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        by_payment_method:
+          type: array
+          items: {}
+      required:
+      - by_payment_method
+      - total_purchases
+      - total_spend
+    ReferenceTypeEnum:
+      enum:
+      - SALE
+      - STOCK_PURCHASE
+      - MANUAL_ADJUSTMENT
+      - INITIAL_SETUP
+      type: string
+      description: |-
+        * `SALE` - Sale Checkout
+        * `STOCK_PURCHASE` - Stock Purchase
+        * `MANUAL_ADJUSTMENT` - Manual Adjustment
+        * `INITIAL_SETUP` - Initial Inventory Setup
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 8
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        phone:
+          type: string
+          minLength: 1
+          maxLength: 20
+      required:
+      - email
+      - full_name
+      - password
+      - phone
+    RoleEnum:
+      enum:
+      - admin
+      - cashier
+      type: string
+      description: |-
+        * `admin` - Administrator
+        * `cashier` - Cashier
+    SaleCancelRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required:
+      - reason
+    SaleDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        invoice_number:
+          type: string
+          readOnly: true
+        customer_name:
+          type: string
+          readOnly: true
+          default: Walk-in
+        subtotal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        discount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        total_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        amount_paid:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        outstanding_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        payment_status:
+          allOf:
+          - $ref: '#/components/schemas/PaymentStatusEnum'
+          readOnly: true
+        payment_method:
+          allOf:
+          - $ref: '#/components/schemas/PaymentMethodAb7Enum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status14fEnum'
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+        served_by_name:
+          type: string
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SaleItemOutput'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount_paid
+      - created_at
+      - customer_name
+      - discount
+      - id
+      - invoice_number
+      - items
+      - notes
+      - outstanding_amount
+      - payment_method
+      - payment_status
+      - served_by_name
+      - status
+      - subtotal
+      - total_amount
+      - updated_at
+    SaleItemOutput:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        variant_id:
+          type: integer
+          readOnly: true
+        product_name:
+          type: string
+          readOnly: true
+        company_name:
+          type: string
+          readOnly: true
+        quantity:
+          type: integer
+          readOnly: true
+        actual_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        unit_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        min_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        default_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        max_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        subtotal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+      required:
+      - actual_selling_price
+      - company_name
+      - default_selling_price
+      - id
+      - max_selling_price
+      - min_selling_price
+      - product_name
+      - quantity
+      - subtotal
+      - unit_selling_price
+      - variant_id
+    SaleList:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        invoice_number:
+          type: string
+          readOnly: true
+        customer_name:
+          type: string
+          readOnly: true
+          default: Walk-in
+        subtotal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        discount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        total_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        amount_paid:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        outstanding_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        payment_status:
+          allOf:
+          - $ref: '#/components/schemas/PaymentStatusEnum'
+          readOnly: true
+        payment_method:
+          allOf:
+          - $ref: '#/components/schemas/PaymentMethodAb7Enum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status14fEnum'
+          readOnly: true
+        served_by_name:
+          type: string
+          readOnly: true
+        items_count:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount_paid
+      - created_at
+      - customer_name
+      - discount
+      - id
+      - invoice_number
+      - items_count
+      - outstanding_amount
+      - payment_method
+      - payment_status
+      - served_by_name
+      - status
+      - subtotal
+      - total_amount
+    SaleOutput:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        invoice_number:
+          type: string
+          readOnly: true
+        total_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        amount_paid:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        outstanding_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        payment_status:
+          allOf:
+          - $ref: '#/components/schemas/PaymentStatusEnum'
+          readOnly: true
+        payment_method:
+          allOf:
+          - $ref: '#/components/schemas/PaymentMethodAb7Enum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount_paid
+      - created_at
+      - id
+      - invoice_number
+      - outstanding_amount
+      - payment_method
+      - payment_status
+      - total_amount
+    SaleReceipt:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        invoice_number:
+          type: string
+          readOnly: true
+        customer_name:
+          type: string
+          readOnly: true
+          default: Walk-in
+        customer_phone:
+          type: string
+          readOnly: true
+          default: ''
+        customer_address:
+          type: string
+          readOnly: true
+          default: ''
+        subtotal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        discount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        total_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        amount_paid:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        outstanding_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        payment_status:
+          allOf:
+          - $ref: '#/components/schemas/PaymentStatusEnum'
+          readOnly: true
+        payment_method:
+          allOf:
+          - $ref: '#/components/schemas/PaymentMethodAb7Enum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status14fEnum'
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+        served_by_name:
+          type: string
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SaleItemOutput'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount_paid
+      - created_at
+      - customer_address
+      - customer_name
+      - customer_phone
+      - discount
+      - id
+      - invoice_number
+      - items
+      - notes
+      - outstanding_amount
+      - payment_method
+      - payment_status
+      - served_by_name
+      - status
+      - subtotal
+      - total_amount
+    SalesReport:
+      type: object
+      properties:
+        total_sales:
+          type: integer
+        total_revenue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_collected:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_outstanding:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        by_payment_method:
+          type: array
+          items: {}
+      required:
+      - by_payment_method
+      - total_collected
+      - total_outstanding
+      - total_revenue
+      - total_sales
+    Status14fEnum:
+      enum:
+      - COMPLETED
+      - CANCELLED
+      type: string
+      description: |-
+        * `COMPLETED` - Completed
+        * `CANCELLED` - Cancelled
+    Status2d9Enum:
+      enum:
+      - Active
+      - Inactive
+      type: string
+      description: |-
+        * `Active` - Active
+        * `Inactive` - Inactive
+    Status980Enum:
+      enum:
+      - Available
+      - Inactive
+      type: string
+      description: |-
+        * `Available` - Available
+        * `Inactive` - Inactive
+    StockAdjustmentInputRequest:
+      type: object
+      properties:
+        variant_id:
+          type: integer
+        adjustment_type:
+          $ref: '#/components/schemas/AdjustmentTypeEnum'
+        quantity:
+          type: integer
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 255
+        notes:
+          type: string
+      required:
+      - adjustment_type
+      - quantity
+      - reason
+      - variant_id
+    StockPurchaseCancelRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required:
+      - reason
+    StockPurchaseDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        purchase_number:
+          type: string
+          readOnly: true
+        purchase_date:
+          type: string
+          format: date-time
+          readOnly: true
+        total_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        payment_method:
+          allOf:
+          - $ref: '#/components/schemas/PaymentMethodDd1Enum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status14fEnum'
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        recorded_by_name:
+          type: string
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PurchaseItemOutput'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - items
+      - note
+      - payment_method
+      - purchase_date
+      - purchase_number
+      - recorded_by_name
+      - status
+      - total_amount
+      - updated_at
+    StockPurchaseList:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        purchase_number:
+          type: string
+          readOnly: true
+        purchase_date:
+          type: string
+          format: date-time
+          readOnly: true
+        total_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        payment_method:
+          allOf:
+          - $ref: '#/components/schemas/PaymentMethodDd1Enum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status14fEnum'
+          readOnly: true
+        recorded_by_name:
+          type: string
+          readOnly: true
+        items_count:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - items_count
+      - payment_method
+      - purchase_date
+      - purchase_number
+      - recorded_by_name
+      - status
+      - total_amount
+    SystemSettingsOutput:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        pharmacy_name:
+          type: string
+          maxLength: 150
+        phone:
+          type: string
+          maxLength: 50
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        address:
+          type: string
+        logo:
+          type: string
+          format: uri
+          nullable: true
+        business_description:
+          type: string
+        currency:
+          type: string
+          maxLength: 10
+        currency_symbol:
+          type: string
+          maxLength: 5
+        show_decimals:
+          type: boolean
+        allow_walking_sales:
+          type: boolean
+        allow_credit_sales:
+          type: boolean
+        require_customer_for_credit:
+          type: boolean
+        low_stock_threshold:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        allow_negative_stock:
+          type: boolean
+        receipt_footer:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - id
+      - updated_at
+    SystemSettingsUpdateRequest:
+      type: object
+      properties:
+        pharmacy_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        phone:
+          type: string
+          minLength: 1
+          maxLength: 50
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        address:
+          type: string
+          minLength: 1
+        logo:
+          type: string
+          format: binary
+          nullable: true
+        business_description:
+          type: string
+        currency:
+          type: string
+          minLength: 1
+          maxLength: 10
+        currency_symbol:
+          type: string
+          minLength: 1
+          maxLength: 5
+        show_decimals:
+          type: boolean
+        allow_walking_sales:
+          type: boolean
+        allow_credit_sales:
+          type: boolean
+        require_customer_for_credit:
+          type: boolean
+        low_stock_threshold:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        allow_negative_stock:
+          type: boolean
+        receipt_footer:
+          type: string
+          minLength: 1
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+      required:
+      - access
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - refresh
+    TypeEnum:
+      enum:
+      - SALE
+      - DEBT_PAYMENT
+      - STOCK_PURCHASE
+      - OTHER_EXPENSE
+      type: string
+      description: |-
+        * `SALE` - Sales Revenue
+        * `DEBT_PAYMENT` - Customer Debt Recovery
+        * `STOCK_PURCHASE` - Stock Purchase Disbursement
+        * `OTHER_EXPENSE` - Operational Expense
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        full_name:
+          type: string
+          readOnly: true
+        phone:
+          type: string
+          readOnly: true
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/UserStatusEnum'
+          readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+        is_staff:
+          type: boolean
+          readOnly: true
+        approved_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        approved_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        rejected_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        rejected_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        rejection_reason:
+          type: string
+          readOnly: true
+        suspended_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        suspended_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        last_login:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - approved_at
+      - approved_by
+      - created_at
+      - email
+      - full_name
+      - id
+      - is_active
+      - is_staff
+      - last_login
+      - phone
+      - rejected_at
+      - rejected_by
+      - rejection_reason
+      - role
+      - status
+      - suspended_at
+      - suspended_by
+      - updated_at
+    UserActionApproveRequest:
+      type: object
+      properties:
+        assigned_role:
+          allOf:
+          - $ref: '#/components/schemas/AssignedRoleEnum'
+          default: cashier
+    UserActionRejectRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required:
+      - reason
+    UserStatusEnum:
+      enum:
+      - PENDING
+      - ACTIVE
+      - REJECTED
+      - SUSPENDED
+      type: string
+      description: |-
+        * `PENDING` - Pending Approval
+        * `ACTIVE` - Active
+        * `REJECTED` - Rejected
+        * `SUSPENDED` - Suspended
+    VariantUpdateRequest:
+      type: object
+      properties:
+        company_id:
+          type: integer
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        min_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        default_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        max_selling_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        current_stock:
+          type: integer
+          minimum: 0
+          default: 0
+        reorder_level:
+          type: integer
+          minimum: 0
+          default: 10
+        status:
+          $ref: '#/components/schemas/Status980Enum'
+      required:
+      - base_price
+      - default_selling_price
+      - max_selling_price
+      - min_selling_price
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

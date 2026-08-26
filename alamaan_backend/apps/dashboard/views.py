@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -11,6 +12,7 @@ from .serializers import AdminDashboardSerializer, CashierDashboardSerializer
 class DashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses={200: AdminDashboardSerializer})
     def get(self, request):
         date_range = request.query_params.get('date_range')
         user = request.user
