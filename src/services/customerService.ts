@@ -377,6 +377,9 @@ export class CustomerService {
 
       apiCache.invalidateByPrefix('customers:');
       apiCache.invalidateByPrefix(`customer:${input.customerId}`);
+      apiCache.invalidateByPrefix('accountability:');
+      apiCache.invalidateByPrefix('dashboard:');
+      apiCache.invalidateByPrefix('reports:');
 
       return {
         success: true,

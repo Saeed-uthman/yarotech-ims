@@ -121,6 +121,15 @@ class ReportApiTests(APITestCase):
         self.assertEqual(data['total_sales'], 1)
         self.assertEqual(Decimal(data['total_revenue']), Decimal('15000.00'))
 
+    def test_sales_report_product_filter_excludes_unmatched_sales(self):
+        self.client.force_authenticate(self.admin)
+        response = self.client.get(reverse('reports-sales'), {'product_id': 999999})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data['data']
+        self.assertEqual(data['total_sales'], 0)
+        self.assertEqual(Decimal(data['total_revenue']), Decimal('0.00'))
+
     def test_profit_report(self):
         self.client.force_authenticate(self.admin)
         response = self.client.get(reverse('reports-profit'))
@@ -128,11 +137,56 @@ class ReportApiTests(APITestCase):
         data = response.data['data']
         self.assertEqual(Decimal(data['total_revenue']), Decimal('15000.00'))
         self.assertEqual(Decimal(data['total_profit']), Decimal('5000.00'))
+        self.assertEqual(Decimal(data['summary']['gross_profit']), Decimal('5000.00'))
+        self.assertEqual(len(data['top_profitable_products']), 1)
+
+    def test_product_performance_report(self):
+        self.client.force_authenticate(self.admin)
+        response = self.client.get(reverse('reports-product-performance'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data['data']
+        self.assertEqual(data['total_units_sold'], 10)
+        self.assertEqual(len(data['items']), 1)
+        self.assertEqual(data['items'][0]['product_name'], 'Amoxicillin')
 
     def test_purchases_report(self):
         self.client.force_authenticate(self.admin)
         response = self.client.get(reverse('reports-purchases'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_overview_does_not_duplicate_purchase_totals_for_multiple_items(self):
+        purchase = StockPurchase.objects.create(
+            purchase_number='PUR-202608-00001',
+            total_amount=Decimal('3000.00'),
+            payment_method=StockPurchase.PaymentMethod.CASH,
+            recorded_by=self.admin,
+            created_by=self.admin,
+            updated_by=self.admin,
+        )
+        PurchaseItem.objects.create(
+            purchase=purchase,
+            variant=self.variant,
+            quantity=1,
+            unit_purchase_price=Decimal('1000.00'),
+            subtotal=Decimal('1000.00'),
+        )
+        PurchaseItem.objects.create(
+            purchase=purchase,
+            variant=self.variant,
+            quantity=2,
+            unit_purchase_price=Decimal('1000.00'),
+            subtotal=Decimal('2000.00'),
+        )
+
+        self.client.force_authenticate(self.admin)
+        response = self.client.get(reverse('reports-overview'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data['data']
+        self.assertEqual(data['total_purchases_count'], 1)
+        self.assertEqual(Decimal(data['total_purchase_spend']), Decimal('3000.00'))
+        self.assertEqual(data['total_units_purchased'], 3)
 
     def test_financial_movement_report(self):
         self.client.force_authenticate(self.admin)

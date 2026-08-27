@@ -754,6 +754,7 @@ export type AccountabilityPaymentMethod = 'CASH' | 'TRANSFER' | 'POS';
 export type AccountabilityDateRange = 'today' | 'this_week' | 'this_month' | 'overall' | 'custom';
 
 export interface AccountabilityItemDetail {
+  productId?: string;
   name: string;
   genericName?: string;
   company: string;
@@ -1091,6 +1092,7 @@ export interface InventoryMovementReportItem {
   productName: string;
   genericName: string;
   companyName: string;
+  categoryName: string;
   dosage?: string;
   form?: string;
   openingStock: number;
@@ -1098,20 +1100,22 @@ export interface InventoryMovementReportItem {
   stockOut: number; // sales + negative adjustments
   currentStock: number;
   reorderLevel: number;
-  status: 'In Stock' | 'Low Stock' | 'Out of Stock';
+  status: 'in_stock' | 'low_stock' | 'out_of_stock';
   lastMovementDate?: string;
 }
 
 export interface InventoryMovementReportData {
   items: InventoryMovementReportItem[];
-  totalOpeningStock: number;
-  totalStockIn: number;
-  totalStockOut: number;
-  totalCurrentStock: number;
-  stockInPurchases: number;
-  stockInAdjustments: number;
-  stockOutSales: number;
-  stockOutAdjustments: number;
+  summary: {
+    totalOpeningStock: number;
+    totalStockIn: number;
+    totalStockOut: number;
+    totalCurrentStock: number;
+    stockInPurchases: number;
+    stockInAdjustments: number;
+    stockOutSales: number;
+    stockOutAdjustments: number;
+  };
 }
 
 export interface DebtMovementReportData {

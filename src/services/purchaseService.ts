@@ -296,6 +296,8 @@ export class PurchaseService {
       apiCache.invalidateByPrefix('inventory:');
       apiCache.invalidateByPrefix('products:');
       apiCache.invalidateByPrefix('dashboard:');
+      apiCache.invalidateByPrefix('accountability:');
+      apiCache.invalidateByPrefix('reports:');
 
       return { success: true, data: purchase, message: res.message };
     } catch (err) {
@@ -317,6 +319,8 @@ export class PurchaseService {
       apiCache.invalidateByPrefix('inventory:');
       apiCache.invalidateByPrefix('products:');
       apiCache.invalidateByPrefix('dashboard:');
+      apiCache.invalidateByPrefix('accountability:');
+      apiCache.invalidateByPrefix('reports:');
 
       return { success: true, data: purchase, message: res.message };
     } catch (err) {

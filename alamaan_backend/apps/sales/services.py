@@ -171,7 +171,7 @@ def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'),
             reference_type='Sale',
             reference_id=str(sale.id),
             description=f'Sale revenue for {invoice_number}',
-            customer_name='',
+            customer_name=sale.customer.name if sale.customer_id else '',
             created_by=user,
             updated_by=user,
         )

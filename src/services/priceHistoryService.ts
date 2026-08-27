@@ -83,7 +83,7 @@ export class PriceHistoryService {
       const response = await api.post<any>(`/products/variants/${variant.id}/price-adjustment/`, {
         newBasePrice: newBase,
         newMinSellingPrice: newMinSelling,
-        newDefaultSellingPrice,
+        newDefaultSellingPrice: newDefaultSelling,
         newMaxSellingPrice: newMaxSelling,
         reason: input.reason.trim() || 'Manual pricing adjustment by administrator',
       });

@@ -2562,16 +2562,6 @@ components:
         id:
           type: integer
           readOnly: true
-        old_base_price:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
-          readOnly: true
-        new_base_price:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
-          readOnly: true
         old_min_selling_price:
           type: string
           format: decimal
@@ -2630,11 +2620,9 @@ components:
       - created_at
       - effective_date
       - id
-      - new_base_price
       - new_default_selling_price
       - new_max_selling_price
       - new_min_selling_price
-      - old_base_price
       - old_default_selling_price
       - old_max_selling_price
       - old_min_selling_price

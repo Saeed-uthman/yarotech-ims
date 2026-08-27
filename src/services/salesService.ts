@@ -281,6 +281,9 @@ export class SalesService {
       apiCache.invalidateByPrefix('inventory:');
       apiCache.invalidateByPrefix('products:');
       apiCache.invalidateByPrefix('kpi:');
+      apiCache.invalidateByPrefix('accountability:');
+      apiCache.invalidateByPrefix('dashboard:');
+      apiCache.invalidateByPrefix('reports:');
 
       return { success: true, data: sale, message: res.message };
     } catch (err) {

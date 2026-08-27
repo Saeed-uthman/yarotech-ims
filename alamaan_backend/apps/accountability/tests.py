@@ -77,6 +77,16 @@ class AccountabilityApiTests(APITestCase):
         self.assertEqual(Decimal(data['total_inflow']), Decimal('5000.00'))
         self.assertEqual(Decimal(data['total_outflow']), Decimal('0.00'))
         self.assertEqual(Decimal(data['net_movement']), Decimal('5000.00'))
+        self.assertEqual(data['total_transactions_count'], 1)
+        self.assertEqual(Decimal(data['sales_income']), Decimal('5000.00'))
+
+    def test_admin_can_view_transaction_detail(self):
+        self.client.force_authenticate(self.admin)
+        transaction = AccountabilityTransaction.objects.first()
+        response = self.client.get(reverse('accountability-detail', args=[transaction.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['data']['transaction_number'], transaction.transaction_number)
 
     def test_admin_can_create_expense(self):
         self.client.force_authenticate(self.admin)
@@ -93,7 +103,8 @@ class AccountabilityApiTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(response.data['success'])
-        self.assertEqual(response.data['data']['category'], 'Transport')
+        self.assertEqual(response.data['data']['expense']['category'], 'Transport')
+        self.assertEqual(response.data['data']['transaction']['direction'], 'OUT')
 
         expense = ManualExpense.objects.first()
         self.assertIsNotNone(expense)
@@ -106,6 +117,17 @@ class AccountabilityApiTests(APITestCase):
         self.assertEqual(tx.direction, AccountabilityTransaction.Direction.OUT)
         self.assertEqual(tx.amount, Decimal('500.00'))
         self.assertEqual(tx.category, 'Transport')
+
+        detail_response = self.client.get(reverse('accountability-detail', args=[tx.id]))
+        self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            detail_response.data['data']['reference_number'],
+            expense.expense_number,
+        )
+        self.assertEqual(
+            detail_response.data['data']['source_details']['note'],
+            'Monthly fuel',
+        )
 
     def test_expense_validation_negative_amount(self):
         self.client.force_authenticate(self.admin)
@@ -120,3 +142,32 @@ class AccountabilityApiTests(APITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_expense_create_is_idempotent(self):
+        self.client.force_authenticate(self.admin)
+        payload = {
+            'category': 'Transport',
+            'amount': '500.00',
+            'payment_method': 'CASH',
+            'description': 'Fuel for delivery',
+        }
+        headers = {'HTTP_IDEMPOTENCY_KEY': 'expense-request-1'}
+
+        first = self.client.post(
+            reverse('accountability-expenses-create'),
+            payload,
+            format='json',
+            **headers,
+        )
+        replay = self.client.post(
+            reverse('accountability-expenses-create'),
+            payload,
+            format='json',
+            **headers,
+        )
+
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(replay.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(replay['Idempotency-Replayed'], 'true')
+        self.assertEqual(ManualExpense.objects.count(), 1)
+        self.assertEqual(AccountabilityTransaction.objects.filter(type='OTHER_EXPENSE').count(), 1)

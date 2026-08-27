@@ -4887,9 +4887,9 @@ export class MockDatabaseRepository {
         stockOutAdjustments += adjOut;
 
         const reorderLevel = v.reorderLevel || 10;
-        let status: 'In Stock' | 'Low Stock' | 'Out of Stock' = 'In Stock';
-        if (currentStock === 0) status = 'Out of Stock';
-        else if (currentStock <= reorderLevel) status = 'Low Stock';
+        let status: 'in_stock' | 'low_stock' | 'out_of_stock' = 'in_stock';
+        if (currentStock === 0) status = 'out_of_stock';
+        else if (currentStock <= reorderLevel) status = 'low_stock';
 
         items.push({
           productId: p.id,
@@ -4897,6 +4897,7 @@ export class MockDatabaseRepository {
           productName: p.name,
           genericName: p.genericName,
           companyName: comp ? comp.name : 'Unknown',
+          categoryName: this.categories.find((category) => category.id === p.categoryId)?.name || 'Uncategorized',
           dosage: p.dosage,
           form: p.form,
           openingStock,
@@ -4915,14 +4916,16 @@ export class MockDatabaseRepository {
       success: true,
       data: {
         items,
-        totalOpeningStock,
-        totalStockIn,
-        totalStockOut,
-        totalCurrentStock,
-        stockInPurchases,
-        stockInAdjustments,
-        stockOutSales,
-        stockOutAdjustments,
+        summary: {
+          totalOpeningStock,
+          totalStockIn,
+          totalStockOut,
+          totalCurrentStock,
+          stockInPurchases,
+          stockInAdjustments,
+          stockOutSales,
+          stockOutAdjustments,
+        },
       },
       message: 'Inventory movement report loaded.',
     };

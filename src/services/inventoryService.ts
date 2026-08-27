@@ -377,6 +377,8 @@ export class InventoryService {
     apiCache.invalidateByPrefix('products:');
     apiCache.invalidateByPrefix('product:');
     apiCache.invalidateByPrefix('kpi:');
+    apiCache.invalidateByPrefix('dashboard:');
+    apiCache.invalidateByPrefix('reports:');
   }
 }
 
