@@ -32,7 +32,7 @@ export const CancelPurchaseConfirmModal: React.FC<CancelPurchaseConfirmModalProp
     setError(null);
 
     try {
-      const res = await purchaseService.cancelPurchase(purchase.id, 'admin');
+      const res = await purchaseService.cancelPurchase(purchase.id, 'Cancelled by admin', 'admin');
       if (res.success && res.data) {
         onSuccess(res.data);
       } else {
@@ -78,7 +78,7 @@ export const CancelPurchaseConfirmModal: React.FC<CancelPurchaseConfirmModalProp
           </div>
           <div className="flex justify-between">
             <span className="text-slate-500">Items:</span>
-            <strong className="text-slate-900">{purchase.items.length} line(s)</strong>
+            <strong className="text-slate-900">{purchase.itemCount} line(s)</strong>
           </div>
           <div className="flex justify-between">
             <span className="text-slate-500">Recorded Date:</span>

@@ -1,10 +1,11 @@
 from decimal import Decimal
 
+from django.db.models import Sum
 from rest_framework import serializers
 
 from apps.products.models import ProductVariant
 
-from .models import StockPurchase
+from .models import PurchaseItem, StockPurchase
 from .services import cancel_purchase, create_stock_purchase
 
 
@@ -67,9 +68,21 @@ class PurchaseItemOutputSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class PurchaseItemSummarySerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='variant.product.name', read_only=True)
+    company_name = serializers.CharField(source='variant.company.name', read_only=True)
+
+    class Meta:
+        model = PurchaseItem
+        fields = ['product_name', 'company_name', 'quantity']
+        read_only_fields = fields
+
+
 class StockPurchaseListSerializer(serializers.ModelSerializer):
     recorded_by_name = serializers.CharField(source='recorded_by.full_name', read_only=True)
     items_count = serializers.SerializerMethodField()
+    items_summary = serializers.SerializerMethodField()
+    total_units = serializers.SerializerMethodField()
 
     class Meta:
         model = StockPurchase
@@ -82,6 +95,8 @@ class StockPurchaseListSerializer(serializers.ModelSerializer):
             'status',
             'recorded_by_name',
             'items_count',
+            'items_summary',
+            'total_units',
             'created_at',
         ]
         read_only_fields = fields
@@ -89,10 +104,18 @@ class StockPurchaseListSerializer(serializers.ModelSerializer):
     def get_items_count(self, obj):
         return obj.items.count()
 
+    def get_items_summary(self, obj):
+        items = obj.items.select_related('variant__product', 'variant__company')[:3]
+        return PurchaseItemSummarySerializer(items, many=True).data
+
+    def get_total_units(self, obj):
+        return obj.items.aggregate(total=Sum('quantity'))['total'] or 0
+
 
 class StockPurchaseDetailSerializer(serializers.ModelSerializer):
     recorded_by_name = serializers.CharField(source='recorded_by.full_name', read_only=True)
     items = PurchaseItemOutputSerializer(many=True, read_only=True)
+    total_units = serializers.SerializerMethodField()
 
     class Meta:
         model = StockPurchase
@@ -106,10 +129,14 @@ class StockPurchaseDetailSerializer(serializers.ModelSerializer):
             'note',
             'recorded_by_name',
             'items',
+            'total_units',
             'created_at',
             'updated_at',
         ]
         read_only_fields = fields
+
+    def get_total_units(self, obj):
+        return sum(item.quantity for item in obj.items.all())
 
 
 class StockPurchaseCancelSerializer(serializers.Serializer):

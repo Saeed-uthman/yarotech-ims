@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { UserAccount, UserRole, LoginInput, RegisterInput, AuthResponse } from '../types';
 import { authService } from '../services/authService';
+import { getAccessToken, clearTokens, setTokens } from '../services/apiClient';
 
 const AUTH_STORAGE_KEY = 'stitch_pharmacy_current_user';
-const TOKEN_STORAGE_KEY = 'stitch_pharmacy_auth_token';
 
 export interface AuthContextType {
   user: UserAccount | null;
@@ -31,27 +31,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const loadSavedSession = useCallback(async () => {
     try {
       setIsLoading(true);
-      const savedUserJson = localStorage.getItem(AUTH_STORAGE_KEY);
-      const savedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+      const token = getAccessToken();
 
-      if (savedUserJson && savedToken) {
-        const parsedUser: UserAccount = JSON.parse(savedUserJson);
-        // Verify current status from repository
-        const res = await authService.getUserById(parsedUser.id);
+      if (token) {
+        const res = await authService.getCurrentUser();
         if (res.success && res.data && res.data.status === 'ACTIVE') {
           setUser(res.data);
           localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(res.data));
         } else {
-          // If user was suspended/rejected while logged in, clear session
           localStorage.removeItem(AUTH_STORAGE_KEY);
-          localStorage.removeItem(TOKEN_STORAGE_KEY);
+          clearTokens();
           setUser(null);
         }
       } else {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
         setUser(null);
       }
     } catch (err) {
       console.error('Failed to restore auth session:', err);
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      clearTokens();
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -80,7 +79,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (response.success && response.user && response.token) {
           setUser(response.user);
           localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(response.user));
-          localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
           refreshPendingCount();
         }
         return response;
@@ -109,11 +107,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = useCallback(() => {
     localStorage.removeItem(AUTH_STORAGE_KEY);
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    clearTokens();
     setUser(null);
   }, []);
 
-  // Quick switch role (updates current user role for rapid development/testing)
+  // Quick switch role (for development/testing only)
   const switchRole = useCallback((newRole: UserRole) => {
     setUser((prev) => {
       if (!prev) return null;
@@ -144,10 +142,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(newUser);
     if (newUser) {
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newUser));
-      localStorage.setItem(TOKEN_STORAGE_KEY, `mock_token_${newUser.id}_${Date.now()}`);
     } else {
       localStorage.removeItem(AUTH_STORAGE_KEY);
-      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      clearTokens();
     }
   }, []);
 

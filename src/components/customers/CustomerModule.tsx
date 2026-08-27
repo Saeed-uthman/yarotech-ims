@@ -203,15 +203,20 @@ export const CustomerModule: React.FC<CustomerModuleProps> = ({ currentRole }) =
         ) {
           await deactivateCustomer(customer.id);
           showToast(`Customer "${customer.name}" has been deactivated.`);
+          refetchCustomers(true);
+          refetchKpis(true);
+          if (selectedCustomerId) {
+            refetchProfile();
+          }
         }
       } else {
         await activateCustomer(customer.id);
         showToast(`Customer "${customer.name}" is now active.`);
-      }
-      refetchCustomers(true);
-      refetchKpis(true);
-      if (selectedCustomerId) {
-        refetchProfile();
+        refetchCustomers(true);
+        refetchKpis(true);
+        if (selectedCustomerId) {
+          refetchProfile();
+        }
       }
     } catch (err: any) {
       showToast(err.message || 'Failed to update customer status.', 'error');

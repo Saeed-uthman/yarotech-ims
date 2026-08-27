@@ -49,6 +49,12 @@ class CustomerCreateUpdateSerializer(serializers.Serializer):
 
 
 class CustomerListSerializer(serializers.ModelSerializer):
+    outstanding_debt = serializers.SerializerMethodField()
+    total_purchases = serializers.SerializerMethodField()
+    sales_count = serializers.SerializerMethodField()
+    amount_paid = serializers.SerializerMethodField()
+    last_purchase_date = serializers.SerializerMethodField()
+
     class Meta:
         model = Customer
         fields = [
@@ -57,10 +63,64 @@ class CustomerListSerializer(serializers.ModelSerializer):
             'phone',
             'email',
             'status',
+            'outstanding_debt',
+            'total_purchases',
+            'sales_count',
+            'amount_paid',
+            'last_purchase_date',
             'created_at',
             'updated_at',
         ]
         read_only_fields = fields
+
+    def get_outstanding_debt(self, obj):
+        result = (
+            Sale.objects
+            .filter(
+                customer=obj,
+                status=Sale.Status.COMPLETED,
+                payment_status__in=[Sale.PaymentStatus.PARTIAL, Sale.PaymentStatus.UNPAID],
+            )
+            .aggregate(total=Sum('outstanding_amount'))
+        )
+        return result['total'] or Decimal('0.00')
+
+    def get_total_purchases(self, obj):
+        result = (
+            Sale.objects
+            .filter(
+                customer=obj,
+                status=Sale.Status.COMPLETED,
+            )
+            .aggregate(total=Sum('total_amount'))
+        )
+        return result['total'] or Decimal('0.00')
+
+    def get_sales_count(self, obj):
+        return Sale.objects.filter(
+            customer=obj,
+            status=Sale.Status.COMPLETED,
+        ).count()
+
+    def get_amount_paid(self, obj):
+        result = (
+            Sale.objects
+            .filter(
+                customer=obj,
+                status=Sale.Status.COMPLETED,
+            )
+            .aggregate(total=Sum('amount_paid'))
+        )
+        return result['total'] or Decimal('0.00')
+
+    def get_last_purchase_date(self, obj):
+        last_sale = (
+            Sale.objects
+            .filter(customer=obj, status=Sale.Status.COMPLETED)
+            .order_by('-created_at')
+            .first()
+        )
+        return last_sale.created_at if last_sale else None
 
 
 class CustomerDetailSerializer(serializers.ModelSerializer):
@@ -68,6 +128,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     updated_by_name = serializers.CharField(source='updated_by.full_name', read_only=True, default=None)
     outstanding_debt = serializers.SerializerMethodField()
     total_purchases = serializers.SerializerMethodField()
+    sales_count = serializers.SerializerMethodField()
     amount_paid = serializers.SerializerMethodField()
 
     class Meta:
@@ -82,6 +143,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             'status',
             'outstanding_debt',
             'total_purchases',
+            'sales_count',
             'amount_paid',
             'created_by',
             'created_by_name',
@@ -105,6 +167,17 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         return result['total'] or Decimal('0.00')
 
     def get_total_purchases(self, obj):
+        result = (
+            Sale.objects
+            .filter(
+                customer=obj,
+                status=Sale.Status.COMPLETED,
+            )
+            .aggregate(total=Sum('total_amount'))
+        )
+        return result['total'] or Decimal('0.00')
+
+    def get_sales_count(self, obj):
         return Sale.objects.filter(
             customer=obj,
             status=Sale.Status.COMPLETED,

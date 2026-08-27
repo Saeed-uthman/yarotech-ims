@@ -322,7 +322,7 @@ export function usePurchaseMutations(role: UserRole = 'admin') {
     }
   };
 
-  const cancelPurchase = async (id: string): Promise<StockPurchase> => {
+  const cancelPurchase = async (id: string, reason: string = 'Cancelled by admin'): Promise<StockPurchase> => {
     if (isSubmitting) {
       throw new Error('An operation is already in progress. Please wait.');
     }
@@ -331,7 +331,7 @@ export function usePurchaseMutations(role: UserRole = 'admin') {
     setError(null);
 
     try {
-      const res = await purchaseService.cancelPurchase(id, role);
+      const res = await purchaseService.cancelPurchase(id, reason, role);
       return res.data;
     } catch (err: any) {
       const msg = err.message || 'Failed to cancel stock purchase.';

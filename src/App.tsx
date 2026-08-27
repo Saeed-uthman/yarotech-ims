@@ -319,6 +319,8 @@ function MainPharmacyApp() {
     if (productToEdit) {
       try {
         const updated = await updateProduct(productToEdit.id, data, currentRole);
+        refetchProducts(true);
+        refetchKPIs();
         addToast('success', 'Product Updated', `${data.name} was updated successfully.`);
         if (selectedProduct && selectedProduct.id === productToEdit.id) {
           setSelectedProduct(updated);
@@ -332,6 +334,8 @@ function MainPharmacyApp() {
     } else {
       try {
         await createProduct(data, currentRole);
+        refetchProducts(true);
+        refetchKPIs();
         addToast('success', 'Product Created', `${data.name} was added to inventory.`);
         setViewMode('list');
       } catch (err: any) {
@@ -351,6 +355,8 @@ function MainPharmacyApp() {
 
     try {
       const updated = await deactivateProduct(productToDeactivate, currentRole);
+      refetchProducts(true);
+      refetchKPIs();
       addToast('info', 'Product Deactivated', `${productToDeactivate.name} has been archived.`);
       if (selectedProduct && selectedProduct.id === productToDeactivate.id) {
         setSelectedProduct(updated);
@@ -368,6 +374,8 @@ function MainPharmacyApp() {
     updateOptimisticStatus(product.id, 'Active');
     try {
       const updated = await activateProduct(product, currentRole);
+      refetchProducts(true);
+      refetchKPIs();
       addToast('success', 'Product Activated', `${product.name} is now active.`);
       if (selectedProduct && selectedProduct.id === product.id) {
         setSelectedProduct(updated);

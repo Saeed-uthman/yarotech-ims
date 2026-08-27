@@ -61,7 +61,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
 
   if (!isOpen) return null;
 
-  const validate = () => {
+  const validate = async () => {
     const newErrors: typeof errors = {};
 
     if (!formData.name.trim()) {
@@ -72,7 +72,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
       newErrors.phone = 'Phone number is required.';
     } else {
       // Check duplicate phone
-      const isDuplicate = customerService.checkDuplicatePhone(
+      const isDuplicate = await customerService.checkDuplicatePhone(
         formData.phone.trim(),
         customer ? customer.id : undefined
       );
@@ -94,7 +94,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!await validate()) return;
 
     try {
       await onSubmit({

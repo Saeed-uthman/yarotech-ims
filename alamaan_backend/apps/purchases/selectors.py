@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from django.db.models import Q, Sum
+from django.db.models import Q, Sum, Count, F
 from django.utils import timezone
 
 from datetime import timedelta
@@ -49,9 +49,7 @@ def get_purchase_detail(*, purchase_id):
     )
 
 
-def get_purchase_kpis(*, date_range=None):
-    queryset = StockPurchase.objects.filter(status=StockPurchase.Status.COMPLETED)
-
+def _apply_date_filter(queryset, date_range):
     if date_range:
         now = timezone.now()
         if date_range == 'today':
@@ -64,17 +62,30 @@ def get_purchase_kpis(*, date_range=None):
         elif date_range == 'month':
             start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             queryset = queryset.filter(created_at__gte=start)
+    return queryset
 
-    aggregates = queryset.aggregate(
-        total_purchases=Sum('id'),
+
+def get_purchase_kpis(*, date_range=None):
+    base_qs = _apply_date_filter(StockPurchase.objects.all(), date_range)
+
+    completed_qs = base_qs.filter(status=StockPurchase.Status.COMPLETED)
+    cancelled_qs = base_qs.filter(status=StockPurchase.Status.CANCELLED)
+
+    completed_agg = completed_qs.aggregate(
         total_spend=Sum('total_amount'),
+        total_units=Sum('items__quantity'),
     )
+    cancelled_count = cancelled_qs.count()
 
-    total_purchases = aggregates['total_purchases'] or 0
-    total_spend = aggregates['total_spend'] or Decimal('0.00')
+    total_purchases = base_qs.count()
+    total_spend = completed_agg['total_spend'] or Decimal('0.00')
+    total_units = completed_agg['total_units'] or 0
 
     return {
         'total_purchases': total_purchases,
+        'completed_purchases': total_purchases - cancelled_count,
+        'cancelled_purchases': cancelled_count,
         'total_spend': total_spend,
-        'average_purchase_value': total_spend / total_purchases if total_purchases > 0 else Decimal('0.00'),
+        'total_units_restocked': total_units,
+        'average_purchase_value': total_spend / (total_purchases - cancelled_count) if (total_purchases - cancelled_count) > 0 else Decimal('0.00'),
     }

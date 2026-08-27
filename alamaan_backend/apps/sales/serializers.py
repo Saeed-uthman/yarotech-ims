@@ -126,6 +126,7 @@ class SaleItemOutputSerializer(serializers.ModelSerializer):
 
 
 class SaleListSerializer(serializers.ModelSerializer):
+    customer = serializers.PrimaryKeyRelatedField(read_only=True)
     customer_name = serializers.CharField(source='customer.name', read_only=True, default='Walk-in')
     served_by_name = serializers.CharField(source='served_by.full_name', read_only=True)
     items_count = serializers.SerializerMethodField()
@@ -135,6 +136,7 @@ class SaleListSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'invoice_number',
+            'customer',
             'customer_name',
             'subtotal',
             'discount',
@@ -155,6 +157,7 @@ class SaleListSerializer(serializers.ModelSerializer):
 
 
 class SaleDetailSerializer(serializers.ModelSerializer):
+    customer = serializers.PrimaryKeyRelatedField(read_only=True)
     customer_name = serializers.CharField(source='customer.name', read_only=True, default='Walk-in')
     served_by_name = serializers.CharField(source='served_by.full_name', read_only=True)
     items = SaleItemOutputSerializer(many=True, read_only=True)
@@ -164,6 +167,7 @@ class SaleDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'invoice_number',
+            'customer',
             'customer_name',
             'subtotal',
             'discount',
@@ -183,6 +187,7 @@ class SaleDetailSerializer(serializers.ModelSerializer):
 
 
 class SaleReceiptSerializer(serializers.ModelSerializer):
+    customer = serializers.PrimaryKeyRelatedField(read_only=True)
     customer_name = serializers.CharField(source='customer.name', read_only=True, default='Walk-in')
     customer_phone = serializers.CharField(source='customer.phone', read_only=True, default='')
     customer_address = serializers.CharField(source='customer.address', read_only=True, default='')
@@ -194,6 +199,7 @@ class SaleReceiptSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'invoice_number',
+            'customer',
             'customer_name',
             'customer_phone',
             'customer_address',

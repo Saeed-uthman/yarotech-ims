@@ -22,5 +22,9 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "alamaan_backend/**/*",
+    "node_modules/**/*"
+  ]
 }
