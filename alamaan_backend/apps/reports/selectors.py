@@ -195,10 +195,16 @@ def get_inventory_movement_report(*, date_range=None):
 
 
 def get_debt_report(*, date_range=None):
-    customers = Customer.objects.filter(is_active=True)
+    customers = Customer.objects.filter(status=Customer.Status.ACTIVE)
 
     debtors = customers.annotate(
-        outstanding=Sum('sales__outstanding_amount', filter=Q(sales__payment_status=Sale.PaymentStatus.UNPAID))
+        outstanding=Sum(
+            'sales__outstanding_amount',
+            filter=Q(
+                sales__status=Sale.Status.COMPLETED,
+                sales__payment_status__in=[Sale.PaymentStatus.PARTIAL, Sale.PaymentStatus.UNPAID],
+            ),
+        )
     ).filter(outstanding__gt=0)
 
     total_outstanding = debtors.aggregate(total=Sum('outstanding'))['total'] or Decimal('0.00')

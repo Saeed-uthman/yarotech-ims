@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from django.db.models import Q, Sum
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
 from datetime import timedelta
@@ -8,7 +8,7 @@ from datetime import timedelta
 from .models import Sale
 
 
-def list_sales(*, search='', date_range=None, payment_status=None, customer_type=None):
+def list_sales(*, search='', date_range=None, payment_status=None, customer_type=None, ordering='-date'):
     queryset = Sale.objects.select_related('customer', 'served_by')
 
     if search:
@@ -40,7 +40,18 @@ def list_sales(*, search='', date_range=None, payment_status=None, customer_type
     elif customer_type == 'registered':
         queryset = queryset.filter(customer__isnull=False)
 
-    return queryset.order_by('-created_at')
+    ordering_map = {
+        'date': 'created_at',
+        'total': 'total_amount',
+        'customer': 'customer__name',
+        'invoiceNumber': 'invoice_number',
+    }
+    descending = ordering.startswith('-')
+    ordering_key = ordering[1:] if descending else ordering
+    ordering_field = ordering_map.get(ordering_key, 'created_at')
+    if descending:
+        ordering_field = f'-{ordering_field}'
+    return queryset.order_by(ordering_field)
 
 
 def get_sale_receipt(*, sale_id):
@@ -69,7 +80,7 @@ def get_sales_kpis(*, date_range=None):
             queryset = queryset.filter(created_at__gte=start)
 
     aggregates = queryset.aggregate(
-        total_sales=Sum('id'),
+        total_sales=Count('id'),
         total_revenue=Sum('total_amount'),
         total_amount_paid=Sum('amount_paid'),
     )
@@ -80,9 +91,7 @@ def get_sales_kpis(*, date_range=None):
 
     from django.db.models import F
     total_profit = (
-        queryset
-        .filter(payment_status=Sale.PaymentStatus.PAID)
-        .aggregate(
+        queryset.aggregate(
             profit=Sum(F('items__profit'))
         )['profit'] or Decimal('0.00')
     )

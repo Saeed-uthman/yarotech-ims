@@ -6,6 +6,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.permissions import IsAdminUserRole
+from apps.common.pagination import paginated_response
+from apps.common.idempotency import execute_idempotent
 from apps.common.responses import success_response
 
 from .models import Sale
@@ -29,19 +31,35 @@ class SaleListCreateView(APIView):
             date_range=request.query_params.get('date_range'),
             payment_status=request.query_params.get('payment_status'),
             customer_type=request.query_params.get('customer_type'),
+            ordering=request.query_params.get('ordering', '-date'),
         )
-        serializer = SaleListSerializer(queryset, many=True)
-        return Response(success_response(serializer.data))
+        return paginated_response(
+            request,
+            queryset,
+            SaleListSerializer,
+            context={'request': request},
+        )
 
     @extend_schema(request=CreateSaleInputSerializer, responses={201: SaleDetailSerializer})
     def post(self, request):
-        serializer = CreateSaleInputSerializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        sale = serializer.save()
-        return Response(
-            success_response(SaleDetailSerializer(sale, context={'request': request}).data, 'Sale completed successfully.'),
-            status=status.HTTP_201_CREATED,
+        def create_response():
+            serializer = CreateSaleInputSerializer(data=request.data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            sale = serializer.save()
+            body = success_response(
+                SaleDetailSerializer(sale, context={'request': request}).data,
+                'Sale completed successfully.',
+            )
+            return body, status.HTTP_201_CREATED
+
+        (body, response_status), replayed = execute_idempotent(
+            request=request,
+            scope='sales.create',
+            operation=create_response,
         )
+        response = Response(body, status=response_status)
+        response['Idempotency-Replayed'] = str(replayed).lower()
+        return response
 
 
 class SaleDetailView(APIView):

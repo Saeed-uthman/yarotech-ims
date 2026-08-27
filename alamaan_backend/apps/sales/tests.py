@@ -95,6 +95,33 @@ class SalesApiTests(APITestCase):
         self.assertEqual(movement.previous_stock, 50)
         self.assertEqual(movement.new_stock, 48)
 
+    def test_sale_idempotency_key_replays_without_duplicate_stock_deduction(self):
+        self.client.force_authenticate(self.cashier)
+        headers = {'HTTP_IDEMPOTENCY_KEY': 'sale-checkout-test-key'}
+
+        first = self.client.post(reverse('sales-list'), self._sale_payload(), format='json', **headers)
+        second = self.client.post(reverse('sales-list'), self._sale_payload(), format='json', **headers)
+
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(first.data['data']['id'], second.data['data']['id'])
+        self.assertEqual(second['Idempotency-Replayed'], 'true')
+        self.assertEqual(Sale.objects.count(), 1)
+        self.variant.refresh_from_db()
+        self.assertEqual(self.variant.current_stock, 48)
+
+    def test_reused_idempotency_key_with_different_payload_returns_conflict(self):
+        self.client.force_authenticate(self.cashier)
+        headers = {'HTTP_IDEMPOTENCY_KEY': 'sale-conflict-test-key'}
+
+        self.client.post(reverse('sales-list'), self._sale_payload(), format='json', **headers)
+        changed_payload = self._sale_payload(amount_paid='1800.00')
+        response = self.client.post(reverse('sales-list'), changed_payload, format='json', **headers)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['error'], 'IDEMPOTENCY_KEY_REUSED')
+        self.assertEqual(Sale.objects.count(), 1)
+
     def test_credit_sale_without_customer_fails(self):
         self.client.force_authenticate(self.cashier)
         payload = self._sale_payload(customer_id=None, amount_paid='0.00', payment_method='CREDIT')

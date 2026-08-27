@@ -41,7 +41,9 @@ class AccountsApiTests(APITestCase):
             'password': 'StrongPass123!',
         })
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(response.data['success'])
+        self.assertEqual(response.data['error'], 'ACCOUNT_PENDING_APPROVAL')
 
     def test_admin_can_approve_pending_user(self):
         pending_user = User.objects.create_user(

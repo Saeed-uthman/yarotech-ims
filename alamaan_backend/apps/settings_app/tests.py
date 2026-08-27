@@ -39,6 +39,7 @@ class SystemSettingsApiTests(APITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['error'], 'PERMISSION_DENIED')
 
     def test_admin_can_update_settings(self):
         self.client.force_authenticate(self.admin)

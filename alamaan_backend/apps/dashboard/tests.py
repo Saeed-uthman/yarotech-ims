@@ -96,3 +96,10 @@ class DashboardApiTests(APITestCase):
         self.assertEqual(data['total_checkouts'], 1)
         self.assertIn('total_units_dispensed', data)
         self.assertIn('active_debtors', data)
+
+    def test_cashier_summary_endpoint_uses_period_contract(self):
+        self.client.force_authenticate(self.cashier)
+        response = self.client.get(reverse('dashboard-cashier-summary'), {'period': 'today'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotIn('total_profit', response.data['data'])
+        self.assertIn('total_checkouts', response.data['data'])

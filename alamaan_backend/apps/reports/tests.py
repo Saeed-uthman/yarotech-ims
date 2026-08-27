@@ -51,8 +51,10 @@ class ReportApiTests(APITestCase):
         )
 
         self.customer = Customer.objects.create(
-            full_name='Test Customer',
+            name='Test Customer',
             phone='08012345678',
+            created_by=self.admin,
+            updated_by=self.admin,
         )
 
         self.sale = Sale.objects.create(

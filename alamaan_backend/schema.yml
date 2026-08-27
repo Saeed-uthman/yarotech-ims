@@ -482,6 +482,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/AdminDashboard'
           description: ''
+  /api/v1/dashboard/cashier-summary/:
+    get:
+      operationId: dashboard_cashier_summary_retrieve
+      tags:
+      - dashboard
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CashierDashboard'
+          description: ''
   /api/v1/inventory/:
     get:
       operationId: inventory_list
@@ -1538,6 +1552,32 @@ components:
       - net_movement
       - total_inflow
       - total_outflow
+    CashierDashboard:
+      type: object
+      properties:
+        total_checkouts:
+          type: integer
+        total_revenue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_collected:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_units_dispensed:
+          type: integer
+        active_debtors:
+          type: integer
+        low_stock_alerts:
+          type: integer
+      required:
+      - active_debtors
+      - low_stock_alerts
+      - total_checkouts
+      - total_collected
+      - total_revenue
+      - total_units_dispensed
     Category:
       type: object
       properties:
@@ -1779,9 +1819,12 @@ components:
           minLength: 1
           maxLength: 20
         email:
-          type: string
-          format: email
-          default: ''
+          oneOf:
+          - type: string
+            format: email
+            default: ''
+          - type: string
+            maxLength: 0
         address:
           type: string
           default: ''
@@ -1823,6 +1866,9 @@ components:
         total_purchases:
           type: string
           readOnly: true
+        sales_count:
+          type: string
+          readOnly: true
         amount_paid:
           type: string
           readOnly: true
@@ -1860,6 +1906,7 @@ components:
       - notes
       - outstanding_debt
       - phone
+      - sales_count
       - status
       - total_purchases
       - updated_at
@@ -1885,6 +1932,21 @@ components:
           allOf:
           - $ref: '#/components/schemas/Status2d9Enum'
           readOnly: true
+        outstanding_debt:
+          type: string
+          readOnly: true
+        total_purchases:
+          type: string
+          readOnly: true
+        sales_count:
+          type: string
+          readOnly: true
+        amount_paid:
+          type: string
+          readOnly: true
+        last_purchase_date:
+          type: string
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -1894,12 +1956,17 @@ components:
           format: date-time
           readOnly: true
       required:
+      - amount_paid
       - created_at
       - email
       - id
+      - last_purchase_date
       - name
+      - outstanding_debt
       - phone
+      - sales_count
       - status
+      - total_purchases
       - updated_at
     DebtPaymentInputRequest:
       type: object
@@ -2326,9 +2393,12 @@ components:
           minLength: 1
           maxLength: 20
         email:
-          type: string
-          format: email
-          default: ''
+          oneOf:
+          - type: string
+            format: email
+            default: ''
+          - type: string
+            maxLength: 0
         address:
           type: string
           default: ''
@@ -3055,6 +3125,9 @@ components:
         invoice_number:
           type: string
           readOnly: true
+        customer:
+          type: integer
+          readOnly: true
         customer_name:
           type: string
           readOnly: true
@@ -3118,6 +3191,7 @@ components:
       required:
       - amount_paid
       - created_at
+      - customer
       - customer_name
       - discount
       - id
@@ -3201,6 +3275,9 @@ components:
         invoice_number:
           type: string
           readOnly: true
+        customer:
+          type: integer
+          readOnly: true
         customer_name:
           type: string
           readOnly: true
@@ -3255,6 +3332,7 @@ components:
       required:
       - amount_paid
       - created_at
+      - customer
       - customer_name
       - discount
       - id
@@ -3320,6 +3398,9 @@ components:
           readOnly: true
         invoice_number:
           type: string
+          readOnly: true
+        customer:
+          type: integer
           readOnly: true
         customer_name:
           type: string
@@ -3388,6 +3469,7 @@ components:
       required:
       - amount_paid
       - created_at
+      - customer
       - customer_address
       - customer_name
       - customer_phone
@@ -3519,6 +3601,9 @@ components:
           items:
             $ref: '#/components/schemas/PurchaseItemOutput'
           readOnly: true
+        total_units:
+          type: string
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -3538,6 +3623,7 @@ components:
       - recorded_by_name
       - status
       - total_amount
+      - total_units
       - updated_at
     StockPurchaseList:
       type: object
@@ -3571,6 +3657,12 @@ components:
         items_count:
           type: string
           readOnly: true
+        items_summary:
+          type: string
+          readOnly: true
+        total_units:
+          type: string
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -3579,12 +3671,14 @@ components:
       - created_at
       - id
       - items_count
+      - items_summary
       - payment_method
       - purchase_date
       - purchase_number
       - recorded_by_name
       - status
       - total_amount
+      - total_units
     SystemSettingsOutput:
       type: object
       properties:

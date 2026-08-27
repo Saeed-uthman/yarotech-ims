@@ -2,6 +2,13 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.common.exceptions import (
+    AccountInactive,
+    AccountPendingApproval,
+    AccountRegistrationRejected,
+    AccountSuspended,
+)
+
 from .models import User
 from .services import register_user
 
@@ -76,13 +83,13 @@ class LoginSerializer(serializers.Serializer):
         if user is None or not user.check_password(password):
             raise serializers.ValidationError({'detail': 'Invalid email or password.'})
         if user.status == User.Status.PENDING:
-            raise serializers.ValidationError({'detail': 'Your account is pending administrator approval.'})
+            raise AccountPendingApproval()
         if user.status == User.Status.REJECTED:
-            raise serializers.ValidationError({'detail': 'Your account registration was rejected.'})
+            raise AccountRegistrationRejected()
         if user.status == User.Status.SUSPENDED:
-            raise serializers.ValidationError({'detail': 'Your account has been suspended.'})
+            raise AccountSuspended()
         if not user.is_active:
-            raise serializers.ValidationError({'detail': 'Your account is not active.'})
+            raise AccountInactive()
 
         refresh = RefreshToken.for_user(user)
         return {

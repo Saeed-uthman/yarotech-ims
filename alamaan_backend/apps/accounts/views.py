@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.common.permissions import IsAdminUserRole
+from apps.common.pagination import paginated_response
 from apps.common.responses import success_response
 
 from .models import User
@@ -83,8 +84,7 @@ class UserListView(APIView):
             role=request.query_params.get('role'),
             search=request.query_params.get('search', ''),
         )
-        serializer = UserSerializer(queryset, many=True)
-        return Response(success_response(serializer.data))
+        return paginated_response(request, queryset, UserSerializer)
 
 
 class UserDetailView(APIView):

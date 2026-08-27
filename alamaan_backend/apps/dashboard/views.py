@@ -14,7 +14,9 @@ class DashboardView(APIView):
 
     @extend_schema(responses={200: AdminDashboardSerializer})
     def get(self, request):
-        date_range = request.query_params.get('date_range')
+        # `period` is the canonical public contract. Keep `date_range` as a
+        # temporary compatibility alias for clients integrated before Phase A.
+        date_range = request.query_params.get('period') or request.query_params.get('date_range')
         user = request.user
 
         if getattr(user, 'role', None) == 'admin':
@@ -25,3 +27,13 @@ class DashboardView(APIView):
             serializer = CashierDashboardSerializer(data)
 
         return Response(success_response(serializer.data))
+
+
+class CashierDashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: CashierDashboardSerializer})
+    def get(self, request):
+        date_range = request.query_params.get('period') or request.query_params.get('date_range')
+        data = get_cashier_dashboard(user=request.user, date_range=date_range)
+        return Response(success_response(CashierDashboardSerializer(data).data))

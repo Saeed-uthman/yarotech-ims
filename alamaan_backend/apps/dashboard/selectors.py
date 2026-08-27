@@ -50,13 +50,13 @@ def get_admin_dashboard(*, date_range=None):
 
     low_stock_count = ProductVariant.objects.filter(
         current_stock__lte=F('reorder_level'),
-        is_active=True,
+        status=ProductVariant.Status.AVAILABLE,
     ).count()
 
-    total_customers = Customer.objects.filter(is_active=True).count()
+    total_customers = Customer.objects.filter(status=Customer.Status.ACTIVE).count()
     debtors_count = Customer.objects.filter(
-        is_active=True,
-        sales__payment_status=Sale.PaymentStatus.UNPAID,
+        status=Customer.Status.ACTIVE,
+        sales__payment_status__in=[Sale.PaymentStatus.PARTIAL, Sale.PaymentStatus.UNPAID],
         sales__outstanding_amount__gt=0,
     ).distinct().count()
 
@@ -92,14 +92,14 @@ def get_cashier_dashboard(*, user, date_range=None):
     )
 
     active_debtors = Customer.objects.filter(
-        is_active=True,
-        sales__payment_status=Sale.PaymentStatus.UNPAID,
+        status=Customer.Status.ACTIVE,
+        sales__payment_status__in=[Sale.PaymentStatus.PARTIAL, Sale.PaymentStatus.UNPAID],
         sales__outstanding_amount__gt=0,
     ).distinct().count()
 
     low_stock_count = ProductVariant.objects.filter(
         current_stock__lte=F('reorder_level'),
-        is_active=True,
+        status=ProductVariant.Status.AVAILABLE,
     ).count()
 
     return {

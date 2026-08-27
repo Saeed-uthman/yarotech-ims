@@ -181,13 +181,20 @@ def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'),
 
 @transaction.atomic
 def cancel_sale(*, sale, cancelled_by, reason=''):
+    sale = Sale.objects.select_for_update().get(pk=sale.pk)
     if sale.status == Sale.Status.CANCELLED:
         raise ValidationError({'detail': 'Sale is already cancelled.'})
 
-    sale_items = sale.items.select_related('variant').all()
+    sale_items = list(sale.items.select_related('variant').all())
+    locked_variants = {
+        variant.id: variant
+        for variant in ProductVariant.objects.select_for_update().filter(
+            id__in=[item.variant_id for item in sale_items]
+        )
+    }
 
     for item in sale_items:
-        variant = item.variant
+        variant = locked_variants[item.variant_id]
         previous_stock = variant.current_stock
         new_stock = previous_stock + item.quantity
 

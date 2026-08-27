@@ -82,6 +82,10 @@ class ProductsApiTests(APITestCase):
         response = self.client.get(reverse('products-list-create'))
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['meta']['current_page'], 1)
+        self.assertEqual(response.data['meta']['per_page'], 15)
+        self.assertEqual(response.data['meta']['total'], 1)
+        self.assertEqual(response.data['meta']['total_pages'], 1)
         variant = response.data['data'][0]['variants'][0]
         self.assertNotIn('base_price', variant)
 

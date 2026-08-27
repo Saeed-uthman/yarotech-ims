@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.permissions import IsAdminUserRole
+from apps.common.pagination import paginated_response
 from apps.common.responses import success_response
 
 from .models import Category, Company, Product, ProductVariant
@@ -76,9 +77,15 @@ class ProductListCreateView(APIView):
             category=request.query_params.get('category'),
             company=request.query_params.get('company'),
             stock_status=request.query_params.get('stock_status'),
+            status=request.query_params.get('status'),
+            ordering=request.query_params.get('ordering', 'name'),
         )
-        serializer = ProductListSerializer(products, many=True, context={'request': request})
-        return Response(success_response(serializer.data))
+        return paginated_response(
+            request,
+            products,
+            ProductListSerializer,
+            context={'request': request},
+        )
 
     @extend_schema(request=ProductCreateUpdateSerializer, responses={201: ProductDetailSerializer})
     def post(self, request):

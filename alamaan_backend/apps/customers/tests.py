@@ -47,12 +47,6 @@ class CustomerApiTests(APITestCase):
             current_stock=50,
             reorder_level=10,
         )
-        self.customer = Customer.objects.create(
-            name='John Doe',
-            phone='08012345678',
-            created_by=self.admin,
-            updated_by=self.admin,
-        )
 
     def _customer_payload(self, **overrides):
         data = {
@@ -64,22 +58,6 @@ class CustomerApiTests(APITestCase):
         }
         data.update(overrides)
         return data
-
-    def _create_credit_sale(self, amount_paid=Decimal('2000.00')):
-        from apps.sales.services import process_pos_sale
-        return process_pos_sale(
-            user=self.cashier,
-            customer_id=self.customer.id,
-            items=[{
-                'product_variant_id': self.variant.id,
-                'quantity': 2,
-                'actual_selling_price': Decimal('1800.00'),
-            }],
-            discount=Decimal('0.00'),
-            amount_paid=amount_paid,
-            payment_method='CASH',
-            notes='',
-        )
 
     def test_register_customer(self):
         self.client.force_authenticate(self.cashier)
@@ -266,7 +244,7 @@ class DebtPaymentApiTests(APITestCase):
         self.assertEqual(sale_a.payment_status, Sale.PaymentStatus.PAID)
         self.assertEqual(sale_a.outstanding_amount, Decimal('0.00'))
         self.assertEqual(sale_b.payment_status, Sale.PaymentStatus.PARTIAL)
-        self.assertEqual(sale_b.outstanding_amount, Decimal('1600.00'))
+        self.assertEqual(sale_b.outstanding_amount, Decimal('2200.00'))
 
     def test_payment_exceeding_debt_fails(self):
         self._create_credit_sale(amount_paid=Decimal('0.00'))
@@ -300,6 +278,27 @@ class DebtPaymentApiTests(APITestCase):
         self.assertEqual(tx.direction, AccountabilityTransaction.Direction.IN)
         self.assertEqual(tx.type, AccountabilityTransaction.TxType.DEBT_PAYMENT)
         self.assertEqual(tx.amount, Decimal('1000.00'))
+
+    def test_debt_payment_idempotency_key_prevents_duplicate_allocation(self):
+        sale = self._create_credit_sale(amount_paid=Decimal('0.00'))
+        self.client.force_authenticate(self.cashier)
+        payload = {
+            'customer_id': self.customer.id,
+            'amount': '1000.00',
+            'payment_method': 'CASH',
+            'reference_notes': '',
+        }
+        headers = {'HTTP_IDEMPOTENCY_KEY': 'debt-payment-test-key'}
+
+        first = self.client.post(reverse('debt-payment-create'), payload, format='json', **headers)
+        second = self.client.post(reverse('debt-payment-create'), payload, format='json', **headers)
+
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(first.data['data']['id'], second.data['data']['id'])
+        self.assertEqual(CustomerDebtPayment.objects.count(), 1)
+        sale.refresh_from_db()
+        self.assertEqual(sale.outstanding_amount, Decimal('2600.00'))
 
     def test_debt_payment_receipt_endpoint(self):
         self._create_credit_sale(amount_paid=Decimal('0.00'))

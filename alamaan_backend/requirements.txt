@@ -28,3 +28,7 @@ gunicorn>=23.0,<24.0
 
 # Static files
 whitenoise>=6.9,<7.0
+
+# Test runner
+pytest>=8.3,<9.0
+pytest-django>=4.11,<5.0

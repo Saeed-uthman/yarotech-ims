@@ -8,6 +8,13 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000
 const TOKEN_KEY = 'stitch_pharmacy_auth_token';
 const REFRESH_TOKEN_KEY = 'stitch_pharmacy_refresh_token';
 
+export interface BackendPaginationMeta {
+  current_page?: number;
+  per_page?: number;
+  total?: number;
+  total_pages?: number;
+}
+
 // ==========================================
 // snake_case ↔ camelCase Conversion
 // ==========================================
@@ -40,6 +47,15 @@ export function toCamelCaseKeys(obj: any): any {
   return convertKeys(obj, toCamelCase);
 }
 
+export function mapPaginationMeta(meta?: BackendPaginationMeta | null) {
+  return {
+    currentPage: Number(meta?.current_page || 1),
+    perPage: Number(meta?.per_page || 15),
+    total: Number(meta?.total || 0),
+    lastPage: Number(meta?.total_pages || 1),
+  };
+}
+
 // ==========================================
 // Token Management
 // ==========================================
@@ -64,12 +80,20 @@ export function clearTokens(): void {
   localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
+export function createIdempotencyKey(scope: string): string {
+  const randomPart = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${scope}:${randomPart}`;
+}
+
 // ==========================================
 // Backend Response Types
 // ==========================================
 
 interface BackendErrorResponse {
   success: false;
+  error?: string;
   message?: string;
   errors?: Record<string, string[]> | string;
 }
@@ -132,7 +156,7 @@ export async function apiRequest<T>(
   if (!response.ok) {
     const errorMessage = data?.message || data?.detail || `Request failed (${response.status})`;
     const errors = data?.errors || null;
-    const apiError = new ApiError(errorMessage, response.status, errors);
+    const apiError = new ApiError(errorMessage, response.status, errors, data?.error);
     throw apiError;
   }
 
@@ -184,12 +208,14 @@ async function attemptTokenRefresh(): Promise<boolean> {
 
 export class ApiError extends Error {
   status: number;
+  code: string;
   errors: Record<string, string[]> | string | null;
 
-  constructor(message: string, status: number, errors?: Record<string, string[]> | string | null) {
+  constructor(message: string, status: number, errors?: Record<string, string[]> | string | null, code = 'REQUEST_FAILED') {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.code = code;
     this.errors = errors || null;
   }
 }
@@ -210,8 +236,12 @@ export const api = {
     return apiRequest<T>(`${endpoint}${query}`);
   },
 
-  post<T>(endpoint: string, body?: any): Promise<T> {
-    return apiRequest<T>(endpoint, { method: 'POST', body });
+  post<T>(endpoint: string, body?: any, idempotencyKey?: string): Promise<T> {
+    return apiRequest<T>(endpoint, {
+      method: 'POST',
+      body,
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+    });
   },
 
   put<T>(endpoint: string, body?: any): Promise<T> {

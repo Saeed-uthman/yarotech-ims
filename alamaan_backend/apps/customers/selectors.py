@@ -1,4 +1,4 @@
-from django.db.models import Q, Sum
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
 from datetime import timedelta
@@ -10,8 +10,15 @@ from .models import Customer, CustomerDebtPayment
 NINETY_DAYS = timedelta(days=90)
 
 
-def list_customers(*, search='', status=None):
-    queryset = Customer.objects.all()
+def list_customers(*, search='', status=None, ordering='name'):
+    queryset = Customer.objects.annotate(
+        sort_purchases=Count('sales'),
+        sort_debt=Sum(
+            'sales__outstanding_amount',
+            filter=Q(sales__status=Sale.Status.COMPLETED),
+            default=0,
+        ),
+    )
 
     if search:
         queryset = queryset.filter(
@@ -22,7 +29,18 @@ def list_customers(*, search='', status=None):
     if status:
         queryset = queryset.filter(status=status)
 
-    return queryset.order_by('-created_at')
+    ordering_map = {
+        'name': 'name',
+        'debt': 'sort_debt',
+        'purchases': 'sort_purchases',
+        'date': 'created_at',
+    }
+    descending = ordering.startswith('-')
+    ordering_key = ordering[1:] if descending else ordering
+    ordering_field = ordering_map.get(ordering_key, 'name')
+    if descending:
+        ordering_field = f'-{ordering_field}'
+    return queryset.order_by(ordering_field)
 
 
 def get_customer_detail(*, customer_id):

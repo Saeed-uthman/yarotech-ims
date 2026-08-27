@@ -167,6 +167,14 @@ class PriceAdjustmentHistorySerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+    def get_fields(self):
+        fields = super().get_fields()
+        request = self.context.get('request')
+        if not request or getattr(request.user, 'role', None) != 'admin':
+            fields.pop('old_base_price', None)
+            fields.pop('new_base_price', None)
+        return fields
+
 
 class ProductVariantDetailSerializer(ProductVariantSerializer):
     price_history = PriceAdjustmentHistorySerializer(many=True, read_only=True)

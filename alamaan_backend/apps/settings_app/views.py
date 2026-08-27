@@ -11,7 +11,10 @@ from .serializers import SystemSettingsOutputSerializer, SystemSettingsUpdateSer
 
 
 class SystemSettingsView(APIView):
-    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method in ('PUT', 'PATCH'):
+            return [IsAdminUserRole()]
+        return [IsAuthenticated()]
 
     @extend_schema(responses={200: SystemSettingsOutputSerializer})
     def get(self, request):

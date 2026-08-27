@@ -7,131 +7,32 @@ import {
   ApiResponse,
   UserRole
 } from '../types';
-import { mockRepository } from './mockRepository';
-
-const STORAGE_KEY = 'stitch_pharmacy_db_price_history';
+import { api, ApiError, toCamelCaseKeys } from './apiClient';
 
 export class PriceHistoryService {
-  private getStoredAdjustments(): ProductPriceAdjustment[] {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return [];
-      return JSON.parse(raw);
-    } catch {
-      return [];
-    }
-  }
-
-  private saveAdjustments(adjustments: ProductPriceAdjustment[]): void {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(adjustments));
-    } catch (err) {
-      console.error('Failed to save price history adjustments', err);
-    }
-  }
-
-  /**
-   * Generates realistic seeded price history adjustments for a product if none exist
-   */
-  private generateDefaultHistoryForProduct(product: Product): ProductPriceAdjustment[] {
-    const adjustments: ProductPriceAdjustment[] = [];
-    const now = new Date();
-
-    product.variants.forEach((variant, vIdx) => {
-      const currentSelling = variant.sellingPrice;
-      const currentBase = variant.basePrice > 0 ? variant.basePrice : Math.round(currentSelling * 0.72);
-
-      // Milestone 1: 9 months ago (Initial catalog entry)
-      const date1 = new Date(now);
-      date1.setMonth(now.getMonth() - 9);
-      date1.setDate(Math.max(1, 10 + (vIdx * 3)));
-      const base1 = Math.round(currentBase * 0.78);
-      const sell1 = Math.round(currentSelling * 0.80);
-
-      adjustments.push({
-        id: `adj-init-${product.id}-${variant.id}`,
-        productId: product.id,
-        variantId: variant.id,
-        companyName: variant.companyName,
-        oldBasePrice: 0,
-        newBasePrice: base1,
-        oldSellingPrice: 0,
-        newSellingPrice: sell1,
-        changeType: 'INITIAL',
-        reason: 'Initial pharmaceutical catalog price onboarding',
-        adjustedBy: 'System Administrator (Initial Batch)',
-        effectiveDate: date1.toISOString().split('T')[0],
-        createdAt: date1.toISOString(),
-      });
-
-      // Milestone 2: 5 months ago (Manufacturer cost revision)
-      const date2 = new Date(now);
-      date2.setMonth(now.getMonth() - 5);
-      date2.setDate(Math.max(1, 14 + (vIdx * 2)));
-      const base2 = Math.round(currentBase * 0.88);
-      const sell2 = Math.round(currentSelling * 0.89);
-
-      adjustments.push({
-        id: `adj-rev1-${product.id}-${variant.id}`,
-        productId: product.id,
-        variantId: variant.id,
-        companyName: variant.companyName,
-        oldBasePrice: base1,
-        newBasePrice: base2,
-        oldSellingPrice: sell1,
-        newSellingPrice: sell2,
-        changeType: 'SUPPLIER_REVISION',
-        reason: 'Manufacturer wholesale tariff update & active ingredient cost revision',
-        adjustedBy: 'Dr. Chidi Okafor (Chief Pharmacist)',
-        effectiveDate: date2.toISOString().split('T')[0],
-        createdAt: date2.toISOString(),
-      });
-
-      // Milestone 3: 2 months ago (Inflation & FX index adjustment)
-      const date3 = new Date(now);
-      date3.setMonth(now.getMonth() - 2);
-      date3.setDate(Math.max(1, 5 + (vIdx * 4)));
-      const base3 = Math.round(currentBase * 0.95);
-      const sell3 = Math.round(currentSelling * 0.96);
-
-      adjustments.push({
-        id: `adj-rev2-${product.id}-${variant.id}`,
-        productId: product.id,
-        variantId: variant.id,
-        companyName: variant.companyName,
-        oldBasePrice: base2,
-        newBasePrice: base3,
-        oldSellingPrice: sell2,
-        newSellingPrice: sell3,
-        changeType: 'INCREASE',
-        reason: 'National drug pricing guideline realignment & logistics surcharge',
-        adjustedBy: 'Administrator',
-        effectiveDate: date3.toISOString().split('T')[0],
-        createdAt: date3.toISOString(),
-      });
-
-      // Milestone 4: 3 weeks ago (Current active price stabilization)
-      const date4 = new Date(now);
-      date4.setDate(now.getDate() - 21);
-      
-      adjustments.push({
-        id: `adj-curr-${product.id}-${variant.id}`,
-        productId: product.id,
-        variantId: variant.id,
-        companyName: variant.companyName,
-        oldBasePrice: base3,
-        newBasePrice: currentBase,
-        oldSellingPrice: sell3,
-        newSellingPrice: currentSelling,
-        changeType: currentSelling >= sell3 ? 'INCREASE' : 'DECREASE',
-        reason: 'Commercial margin optimization and supplier invoice re-verification',
-        adjustedBy: 'Pharmacy Inventory Controller',
-        effectiveDate: date4.toISOString().split('T')[0],
-        createdAt: date4.toISOString(),
-      });
-    });
-
-    return adjustments;
+  private mapAdjustment(raw: any, product: Product, variant: Product['variants'][number]): ProductPriceAdjustment {
+    const item = toCamelCaseKeys(raw);
+    return {
+      id: String(item.id),
+      productId: product.id,
+      variantId: variant.id,
+      companyName: variant.companyName,
+      oldBasePrice: Number(item.oldBasePrice || 0),
+      newBasePrice: Number(item.newBasePrice || 0),
+      oldMinSellingPrice: Number(item.oldMinSellingPrice || 0),
+      newMinSellingPrice: Number(item.newMinSellingPrice || 0),
+      oldDefaultSellingPrice: Number(item.oldDefaultSellingPrice || 0),
+      newDefaultSellingPrice: Number(item.newDefaultSellingPrice || 0),
+      oldMaxSellingPrice: Number(item.oldMaxSellingPrice || 0),
+      newMaxSellingPrice: Number(item.newMaxSellingPrice || 0),
+      oldSellingPrice: Number(item.oldDefaultSellingPrice || 0),
+      newSellingPrice: Number(item.newDefaultSellingPrice || 0),
+      changeType: item.changeType,
+      reason: item.reason || '',
+      adjustedBy: item.adjustedByName || 'Administrator',
+      effectiveDate: item.effectiveDate,
+      createdAt: item.createdAt,
+    };
   }
 
   /**
@@ -141,39 +42,23 @@ export class PriceHistoryService {
     product: Product,
     role: UserRole = 'admin'
   ): Promise<ApiResponse<ProductPriceAdjustment[]>> {
-    let allStored = this.getStoredAdjustments();
-    let productAdjustments = allStored.filter((a) => a.productId === product.id);
-
-    if (productAdjustments.length === 0) {
-      // Seed default history for this product
-      const seeded = this.generateDefaultHistoryForProduct(product);
-      allStored = [...allStored, ...seeded];
-      this.saveAdjustments(allStored);
-      productAdjustments = seeded;
+    try {
+      const response = await api.get<any>(`/products/${product.id}/`);
+      const detail = toCamelCaseKeys(response.data);
+      const variantsById = new Map(product.variants.map((variant) => [variant.id, variant]));
+      const adjustments = (detail.variants || []).flatMap((rawVariant: any) => {
+        const variant = variantsById.get(String(rawVariant.id));
+        if (!variant) return [];
+        return (rawVariant.priceHistory || []).map((raw: any) => this.mapAdjustment(raw, product, variant));
+      });
+      adjustments.sort((a: ProductPriceAdjustment, b: ProductPriceAdjustment) =>
+        new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime()
+      );
+      return { success: true, data: adjustments, message: response.message };
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new Error('Failed to retrieve product price history.');
     }
-
-    // Sort descending by effective date
-    productAdjustments.sort(
-      (a, b) => new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime()
-    );
-
-    // Apply role-based redaction on base prices for cashiers
-    const processed = productAdjustments.map((item) => {
-      if (role === 'cashier') {
-        return {
-          ...item,
-          oldBasePrice: 0,
-          newBasePrice: 0,
-        };
-      }
-      return item;
-    });
-
-    return {
-      success: true,
-      data: processed,
-      message: 'Product price history retrieved successfully.',
-    };
   }
 
   /**
@@ -189,70 +74,27 @@ export class PriceHistoryService {
       throw new Error(`Variant ${input.variantId} not found on product ${product.id}`);
     }
 
-    const oldSelling = variant.sellingPrice;
-    const oldBase = variant.basePrice;
     const newDefaultSelling = input.newDefaultSellingPrice ? Number(input.newDefaultSellingPrice) : Number(input.newSellingPrice);
-    const newSelling = newDefaultSelling;
     const newBase = Number(input.newBasePrice);
     const newMinSelling = input.newMinSellingPrice ? Number(input.newMinSellingPrice) : (variant.minSellingPrice || Math.round(newBase * 1.15));
-    const newMaxSelling = input.newMaxSellingPrice ? Number(input.newMaxSellingPrice) : (variant.maxSellingPrice || Math.round(newSelling * 1.25));
+    const newMaxSelling = input.newMaxSellingPrice ? Number(input.newMaxSellingPrice) : (variant.maxSellingPrice || Math.round(newDefaultSelling * 1.25));
 
-    let changeType: ProductPriceAdjustment['changeType'] = 'INCREASE';
-    if (newSelling < oldSelling) {
-      changeType = 'DECREASE';
-    } else if (newSelling === oldSelling && newBase !== oldBase) {
-      changeType = 'CORRECTION';
+    try {
+      const response = await api.post<any>(`/products/variants/${variant.id}/price-adjustment/`, {
+        newBasePrice: newBase,
+        newMinSellingPrice: newMinSelling,
+        newDefaultSellingPrice,
+        newMaxSellingPrice: newMaxSelling,
+        reason: input.reason.trim() || 'Manual pricing adjustment by administrator',
+      });
+      const updatedVariant = toCamelCaseKeys(response.data);
+      const latest = updatedVariant.priceHistory?.[0];
+      if (!latest) throw new Error('Backend did not return the recorded price adjustment.');
+      return { success: true, data: this.mapAdjustment(latest, product, variant), message: response.message };
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new Error('Failed to record price adjustment.');
     }
-
-    const now = new Date();
-    const effectiveDate = input.effectiveDate || now.toISOString().split('T')[0];
-
-    const newAdjustment: ProductPriceAdjustment = {
-      id: `adj-custom-${Date.now()}`,
-      productId: product.id,
-      variantId: variant.id,
-      companyName: variant.companyName,
-      oldBasePrice: oldBase,
-      newBasePrice: newBase,
-      oldMinSellingPrice: variant.minSellingPrice,
-      newMinSellingPrice: newMinSelling,
-      oldDefaultSellingPrice: variant.defaultSellingPrice || variant.sellingPrice,
-      newDefaultSellingPrice: newDefaultSelling,
-      oldMaxSellingPrice: variant.maxSellingPrice,
-      newMaxSellingPrice: newMaxSelling,
-      oldSellingPrice: oldSelling,
-      newSellingPrice: newSelling,
-      changeType,
-      reason: input.reason.trim() || 'Manual pricing adjustment by staff',
-      adjustedBy: input.adjustedBy || (role === 'admin' ? 'Administrator' : 'Authorized Staff'),
-      effectiveDate,
-      createdAt: now.toISOString(),
-    };
-
-    // Save adjustment
-    const allStored = this.getStoredAdjustments();
-    allStored.push(newAdjustment);
-    this.saveAdjustments(allStored);
-
-    // Update variant price in repository
-    await mockRepository.updateVariant(
-      product.id,
-      variant.id,
-      {
-        basePrice: newBase,
-        minSellingPrice: newMinSelling,
-        defaultSellingPrice: newDefaultSelling,
-        maxSellingPrice: newMaxSelling,
-        sellingPrice: newSelling,
-      },
-      role
-    );
-
-    return {
-      success: true,
-      data: role === 'cashier' ? { ...newAdjustment, oldBasePrice: 0, newBasePrice: 0 } : newAdjustment,
-      message: 'Price adjustment recorded successfully and updated in product catalog.',
-    };
   }
 
   /**
@@ -440,9 +282,7 @@ export class PriceHistoryService {
   }
 
   public resetPriceHistory(): void {
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch {}
+    // Historical price records are immutable server data and cannot be reset by the client.
   }
 }
 

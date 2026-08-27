@@ -6,6 +6,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.permissions import IsAdminUserRole
+from apps.common.pagination import paginated_response
+from apps.common.idempotency import execute_idempotent
 from apps.common.responses import success_response
 
 from .models import Customer, CustomerDebtPayment
@@ -35,15 +37,14 @@ class CustomerListCreateView(APIView):
         debt_status = request.query_params.get('debt_status')
         if debt_status == 'with_debt':
             queryset = list_debtors(search=request.query_params.get('search', ''))
-            serializer = CustomerDetailSerializer(queryset, many=True)
-            return Response(success_response(serializer.data))
+            return paginated_response(request, queryset, CustomerDetailSerializer)
 
         queryset = list_customers(
             search=request.query_params.get('search', ''),
             status=request.query_params.get('status'),
+            ordering=request.query_params.get('ordering', 'name'),
         )
-        serializer = CustomerListSerializer(queryset, many=True)
-        return Response(success_response(serializer.data))
+        return paginated_response(request, queryset, CustomerListSerializer)
 
     @extend_schema(request=CustomerCreateUpdateSerializer, responses={201: CustomerDetailSerializer})
     def post(self, request):
@@ -118,8 +119,7 @@ class CustomerSalesHistoryView(APIView):
         get_object_or_404(Customer, pk=pk)
         from apps.sales.models import Sale
         sales = Sale.objects.filter(customer_id=pk).order_by('-created_at')
-        serializer = SaleOutputSerializer(sales, many=True)
-        return Response(success_response(serializer.data))
+        return paginated_response(request, sales, SaleOutputSerializer)
 
 
 class CustomerPaymentsHistoryView(APIView):
@@ -129,8 +129,7 @@ class CustomerPaymentsHistoryView(APIView):
     def get(self, request, pk):
         get_object_or_404(Customer, pk=pk)
         payments = list_customer_payments(customer_id=pk)
-        serializer = DebtPaymentOutputSerializer(payments, many=True)
-        return Response(success_response(serializer.data))
+        return paginated_response(request, payments, DebtPaymentOutputSerializer)
 
 
 class DebtPaymentView(APIView):
@@ -138,13 +137,24 @@ class DebtPaymentView(APIView):
 
     @extend_schema(request=DebtPaymentInputSerializer, responses={201: DebtPaymentOutputSerializer})
     def post(self, request):
-        serializer = DebtPaymentInputSerializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        payment = serializer.save()
-        return Response(
-            success_response(DebtPaymentOutputSerializer(payment).data, 'Debt payment recorded successfully.'),
-            status=status.HTTP_201_CREATED,
+        def create_response():
+            serializer = DebtPaymentInputSerializer(data=request.data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            payment = serializer.save()
+            body = success_response(
+                DebtPaymentOutputSerializer(payment).data,
+                'Debt payment recorded successfully.',
+            )
+            return body, status.HTTP_201_CREATED
+
+        (body, response_status), replayed = execute_idempotent(
+            request=request,
+            scope='debt-payments.create',
+            operation=create_response,
         )
+        response = Response(body, status=response_status)
+        response['Idempotency-Replayed'] = str(replayed).lower()
+        return response
 
 
 class DebtPaymentReceiptView(APIView):

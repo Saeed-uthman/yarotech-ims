@@ -1,4 +1,4 @@
-from django.db.models import F, Q, Sum
+from django.db.models import F, Min, Q, Sum
 
 from .models import Category, Company, Product, ProductVariant
 
@@ -17,8 +17,15 @@ def list_companies(*, search=''):
     return queryset.order_by('name')
 
 
-def list_products(*, search='', category=None, company=None, stock_status=None):
-    queryset = Product.objects.select_related('category').prefetch_related('variants__company')
+def list_products(*, search='', category=None, company=None, stock_status=None, status=None, ordering='name'):
+    queryset = (
+        Product.objects.select_related('category')
+        .prefetch_related('variants__company')
+        .annotate(
+            sort_stock=Sum('variants__current_stock'),
+            sort_price=Min('variants__default_selling_price'),
+        )
+    )
 
     if search:
         queryset = queryset.filter(
@@ -31,6 +38,8 @@ def list_products(*, search='', category=None, company=None, stock_status=None):
         queryset = queryset.filter(category_id=category)
     if company:
         queryset = queryset.filter(variants__company_id=company)
+    if status:
+        queryset = queryset.filter(status=status)
     if stock_status == 'low':
         queryset = queryset.filter(variants__current_stock__gt=0, variants__current_stock__lte=F('variants__reorder_level'))
     elif stock_status == 'out':
@@ -38,7 +47,19 @@ def list_products(*, search='', category=None, company=None, stock_status=None):
     elif stock_status == 'available':
         queryset = queryset.filter(variants__current_stock__gt=0)
 
-    return queryset.distinct().order_by('name')
+    ordering_map = {
+        'name': 'name',
+        'genericName': 'generic_name',
+        'stock': 'sort_stock',
+        'price': 'sort_price',
+        'date': 'created_at',
+    }
+    descending = ordering.startswith('-')
+    ordering_key = ordering[1:] if descending else ordering
+    ordering_field = ordering_map.get(ordering_key, 'name')
+    if descending:
+        ordering_field = f'-{ordering_field}'
+    return queryset.distinct().order_by(ordering_field)
 
 
 def get_product_detail(*, product_id):

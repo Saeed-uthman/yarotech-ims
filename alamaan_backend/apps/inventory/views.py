@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.permissions import IsAdminUserRole
+from apps.common.pagination import paginated_response
 from apps.common.responses import success_response
 
 from .selectors import get_inventory_insights, get_inventory_kpis, list_inventory_items, list_inventory_movements
@@ -22,9 +23,14 @@ class InventoryListView(APIView):
             category=request.query_params.get('category'),
             company=request.query_params.get('company'),
             stock_status=request.query_params.get('stock_status'),
+            ordering=request.query_params.get('ordering', 'name'),
         )
-        serializer = InventoryItemSerializer(queryset, many=True, context={'request': request})
-        return Response(success_response(serializer.data))
+        return paginated_response(
+            request,
+            queryset,
+            InventoryItemSerializer,
+            context={'request': request},
+        )
 
 
 class InventorySummaryKpisView(APIView):
@@ -69,8 +75,7 @@ class InventoryMovementListView(APIView):
             start_date=request.query_params.get('start_date'),
             end_date=request.query_params.get('end_date'),
         )
-        serializer = InventoryMovementSerializer(queryset, many=True)
-        return Response(success_response(serializer.data))
+        return paginated_response(request, queryset, InventoryMovementSerializer)
 
 
 class InventoryInsightsView(APIView):

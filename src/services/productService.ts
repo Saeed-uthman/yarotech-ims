@@ -11,7 +11,7 @@ import {
   ProductVariantInput,
   CompanyVariant,
 } from '../types';
-import { api, ApiError, toCamelCaseKeys, toSnakeCaseKeys } from './apiClient';
+import { api, ApiError, mapPaginationMeta, toCamelCaseKeys, toSnakeCaseKeys } from './apiClient';
 import { apiCache } from './apiCache';
 import { categoryService } from './categoryService';
 import { companyService } from './companyService';
@@ -83,26 +83,13 @@ function mapCompanyFilterId(companies: Company[], companyName: string): string |
 }
 
 // ==========================================
-// Client-Side Pagination
-// ==========================================
-
-function paginate<T>(items: T[], page: number, limit: number): { data: T[]; meta: { currentPage: number; perPage: number; total: number; lastPage: number } } {
-  const total = items.length;
-  const lastPage = Math.max(1, Math.ceil(total / limit));
-  const safePage = Math.min(Math.max(1, page), lastPage);
-  const start = (safePage - 1) * limit;
-  const data = items.slice(start, start + limit);
-  return { data, meta: { currentPage: safePage, perPage: limit, total, lastPage } };
-}
-
-// ==========================================
 // Product Service
 // ==========================================
 
 export class ProductService {
   /**
    * Fetch paginated and filtered products list from backend.
-   * Backend returns all matching products; client-side filtering & pagination.
+   * Filtering and pagination are performed by Django.
    */
   public async getProducts(
     params?: Partial<ProductFilterParams>,
@@ -124,38 +111,33 @@ export class ProductService {
       try {
         const queryParams: Record<string, any> = {};
         if (params?.search) queryParams.search = params.search;
+        queryParams.page = params?.page || 1;
+        queryParams.per_page = params?.limit || 10;
         if (params?.stockStatus && params.stockStatus !== 'all') {
           const mapped = mapStockStatusFilter(params.stockStatus);
           if (mapped) queryParams.stock_status = mapped;
         }
 
-        const res = await api.get<any>('/products/', queryParams);
-        let products: Product[] = (res.data || []).map(mapBackendProduct);
-
-        // Client-side category filter (backend filters by category_id, but frontend sends name)
         if (params?.category && params.category !== 'All Categories') {
           const refRes = await categoryService.getCategories();
           const catId = mapCategoryFilterId(refRes.data || [], params.category);
-          if (catId) {
-            products = products.filter((p: Product) => p.categoryId === catId);
-          }
+          if (catId) queryParams.category = catId;
         }
 
-        // Client-side company filter
         if (params?.company && params.company !== 'All') {
           const refRes = await companyService.getCompanies();
           const compId = mapCompanyFilterId(refRes.data || [], params.company);
-          if (compId) {
-            products = products.filter((p: Product) =>
-              p.variants.some((v) => v.companyId === compId)
-            );
-          }
+          if (compId) queryParams.company = compId;
         }
 
-        // Client-side status filter
         if (params?.status && params.status !== 'All Status') {
-          products = products.filter((p: Product) => p.status === params.status);
+          queryParams.status = params.status;
         }
+
+        queryParams.ordering = `${params?.sortOrder === 'desc' ? '-' : ''}${params?.sortBy || 'name'}`;
+
+        const res = await api.get<any>('/products/', queryParams);
+        const products: Product[] = (res.data || []).map(mapBackendProduct);
 
         // Client-side sorting
         const sortBy = params?.sortBy || 'name';
@@ -174,12 +156,11 @@ export class ProductService {
           return sortOrder === 'asc' ? cmp : -cmp;
         });
 
-        // Client-side pagination
-        const page = params?.page || 1;
-        const limit = params?.limit || 10;
-        const { data, meta } = paginate(products, page, limit);
-
-        const response: ApiResponse<Product[]> = { success: true, data, meta };
+        const response: ApiResponse<Product[]> = {
+          success: true,
+          data: products,
+          meta: mapPaginationMeta(res.meta),
+        };
         apiCache.set(key, response, 30 * 1000);
         return response;
       } catch (err) {

@@ -83,6 +83,20 @@ class PurchaseApiTests(APITestCase):
         self.assertEqual(movement.previous_stock, 50)
         self.assertEqual(movement.new_stock, 100)
 
+    def test_purchase_idempotency_key_prevents_duplicate_restock(self):
+        self.client.force_authenticate(self.admin)
+        headers = {'HTTP_IDEMPOTENCY_KEY': 'purchase-create-test-key'}
+
+        first = self.client.post(reverse('purchases-list'), self._purchase_payload(), format='json', **headers)
+        second = self.client.post(reverse('purchases-list'), self._purchase_payload(), format='json', **headers)
+
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(first.data['data']['id'], second.data['data']['id'])
+        self.assertEqual(StockPurchase.objects.count(), 1)
+        self.variant.refresh_from_db()
+        self.assertEqual(self.variant.current_stock, 100)
+
     def test_accountability_transaction_created(self):
         self.client.force_authenticate(self.admin)
         self.client.post(reverse('purchases-list'), self._purchase_payload(), format='json')

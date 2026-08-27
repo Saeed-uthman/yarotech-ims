@@ -142,13 +142,20 @@ def create_stock_purchase(*, user, items, payment_method, purchase_date=None, no
 
 @transaction.atomic
 def cancel_purchase(*, purchase, cancelled_by, reason=''):
+    purchase = StockPurchase.objects.select_for_update().get(pk=purchase.pk)
     if purchase.status == StockPurchase.Status.CANCELLED:
         raise ValidationError({'detail': 'Purchase is already cancelled.'})
 
-    purchase_items = purchase.items.select_related('variant').all()
+    purchase_items = list(purchase.items.select_related('variant').all())
+    locked_variants = {
+        variant.id: variant
+        for variant in ProductVariant.objects.select_for_update().filter(
+            id__in=[item.variant_id for item in purchase_items]
+        )
+    }
 
     for item in purchase_items:
-        variant = item.variant
+        variant = locked_variants[item.variant_id]
         previous_stock = variant.current_stock
         new_stock = previous_stock - item.quantity
 

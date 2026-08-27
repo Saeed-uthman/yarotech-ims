@@ -9,16 +9,8 @@ import {
   UserRole,
   ApiResponse,
 } from '../types';
-import { api, ApiError, toCamelCaseKeys } from './apiClient';
+import { api, ApiError, createIdempotencyKey, mapPaginationMeta, toCamelCaseKeys } from './apiClient';
 import { apiCache } from './apiCache';
-
-function paginate<T>(items: T[], page: number, limit: number): { data: T[]; meta: { currentPage: number; perPage: number; total: number; lastPage: number } } {
-  const total = items.length;
-  const lastPage = Math.ceil(total / limit) || 1;
-  const start = (page - 1) * limit;
-  const data = items.slice(start, start + limit);
-  return { data, meta: { currentPage: page, perPage: limit, total, lastPage } };
-}
 
 function mapBackendPurchaseItem(raw: any): PurchaseItemEntity {
   const i = toCamelCaseKeys(raw);
@@ -158,8 +150,15 @@ export class PurchaseService {
       try {
         const queryParams: Record<string, any> = {};
         if (defaultParams.search) queryParams.search = defaultParams.search;
+        queryParams.page = defaultParams.page;
+        queryParams.per_page = defaultParams.limit;
+        queryParams.ordering = `${defaultParams.sortOrder === 'desc' ? '-' : ''}${defaultParams.sortBy}`;
         if (defaultParams.dateRange && defaultParams.dateRange !== 'overall') {
-          queryParams.date_range = defaultParams.dateRange;
+          queryParams.date_range = defaultParams.dateRange === 'this_week'
+            ? 'week'
+            : defaultParams.dateRange === 'this_month'
+              ? 'month'
+              : defaultParams.dateRange;
         }
         if (defaultParams.paymentMethod && defaultParams.paymentMethod !== 'all') {
           queryParams.payment_method = defaultParams.paymentMethod;
@@ -177,8 +176,11 @@ export class PurchaseService {
           return defaultParams.sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
         });
 
-        const { data, meta } = paginate(purchases, defaultParams.page, defaultParams.limit);
-        const response: ApiResponse<StockPurchase[]> = { success: true, data, meta };
+        const response: ApiResponse<StockPurchase[]> = {
+          success: true,
+          data: purchases,
+          meta: mapPaginationMeta(res.meta),
+        };
         apiCache.set(key, response, 30 * 1000);
         return response;
       } catch (err) {
@@ -287,7 +289,7 @@ export class PurchaseService {
         note: input.note || '',
       };
 
-      const res = await api.post<any>('/purchases/', payload);
+      const res = await api.post<any>('/purchases/', payload, createIdempotencyKey('purchase'));
       const purchase = mapBackendPurchase(res.data);
 
       apiCache.invalidateByPrefix('purchases:');

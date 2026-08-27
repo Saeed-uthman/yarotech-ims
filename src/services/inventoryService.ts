@@ -11,7 +11,7 @@ import {
   StockStatusType,
   ProductStatus,
 } from '../types';
-import { api, ApiError, toCamelCaseKeys } from './apiClient';
+import { api, ApiError, mapPaginationMeta, toCamelCaseKeys } from './apiClient';
 import { apiCache } from './apiCache';
 import { categoryService } from './categoryService';
 import { companyService } from './companyService';
@@ -84,18 +84,6 @@ function mapStockStatusFilter(backendValue: InventoryFilterParams['stockStatus']
 }
 
 // ==========================================
-// Client-Side Pagination
-// ==========================================
-
-function paginate<T>(items: T[], page: number, limit: number): { data: T[]; meta: { currentPage: number; perPage: number; total: number; lastPage: number } } {
-  const total = items.length;
-  const lastPage = Math.max(1, Math.ceil(total / limit));
-  const safePage = Math.min(Math.max(1, page), lastPage);
-  const start = (safePage - 1) * limit;
-  return { data: items.slice(start, start + limit), meta: { currentPage: safePage, perPage: limit, total, lastPage } };
-}
-
-// ==========================================
 // Inventory Service
 // ==========================================
 
@@ -122,27 +110,29 @@ export class InventoryService {
       try {
         const queryParams: Record<string, any> = {};
         if (params?.search) queryParams.search = params.search;
+        queryParams.page = params?.page || 1;
+        queryParams.per_page = params?.limit || 15;
         if (params?.stockStatus && params.stockStatus !== 'all') {
           const mapped = mapStockStatusFilter(params.stockStatus);
           if (mapped) queryParams.stock_status = mapped;
         }
 
-        const res = await api.get<any>('/inventory/', queryParams);
-        let items: InventoryItem[] = (res.data || []).map(mapBackendInventoryItem);
-
-        // Client-side category filter
         if (params?.category && params.category !== 'All Categories') {
           const refRes = await categoryService.getCategories();
           const cat = refRes.data?.find((c) => c.name === params.category);
-          if (cat) items = items.filter((i) => i.categoryId === cat.id);
+          if (cat) queryParams.category = cat.id;
         }
 
-        // Client-side company filter
         if (params?.company && params.company !== 'All') {
           const refRes = await companyService.getCompanies();
           const comp = refRes.data?.find((c) => c.name === params.company);
-          if (comp) items = items.filter((i) => i.companyId === comp.id);
+          if (comp) queryParams.company = comp.id;
         }
+
+        queryParams.ordering = `${params?.sortOrder === 'desc' ? '-' : ''}${params?.sortBy || 'name'}`;
+
+        const res = await api.get<any>('/inventory/', queryParams);
+        const items: InventoryItem[] = (res.data || []).map(mapBackendInventoryItem);
 
         // Client-side sorting
         const sortBy = params?.sortBy || 'name';
@@ -161,10 +151,11 @@ export class InventoryService {
           return sortOrder === 'asc' ? cmp : -cmp;
         });
 
-        // Client-side pagination
-        const { data, meta } = paginate(items, params?.page || 1, params?.limit || 15);
-
-        const response: ApiResponse<InventoryItem[]> = { success: true, data, meta };
+        const response: ApiResponse<InventoryItem[]> = {
+          success: true,
+          data: items,
+          meta: mapPaginationMeta(res.meta),
+        };
         apiCache.set(key, response, 30 * 1000);
         return response;
       } catch (err) {

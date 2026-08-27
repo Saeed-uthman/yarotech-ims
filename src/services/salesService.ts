@@ -9,7 +9,7 @@ import {
   UserRole,
   ApiResponse,
 } from '../types';
-import { api, ApiError, toCamelCaseKeys } from './apiClient';
+import { api, ApiError, createIdempotencyKey, mapPaginationMeta, toCamelCaseKeys } from './apiClient';
 import { apiCache } from './apiCache';
 
 // ==========================================
@@ -82,18 +82,6 @@ function mapDateRange(params?: Partial<SalesFilterParams>): string | undefined {
 }
 
 // ==========================================
-// Client-Side Pagination
-// ==========================================
-
-function paginate<T>(items: T[], page: number, limit: number): { data: T[]; meta: { currentPage: number; perPage: number; total: number; lastPage: number } } {
-  const total = items.length;
-  const lastPage = Math.max(1, Math.ceil(total / limit));
-  const safePage = Math.min(Math.max(1, page), lastPage);
-  const start = (safePage - 1) * limit;
-  return { data: items.slice(start, start + limit), meta: { currentPage: safePage, perPage: limit, total, lastPage } };
-}
-
-// ==========================================
 // Sales Service
 // ==========================================
 
@@ -118,6 +106,9 @@ export class SalesService {
       try {
         const queryParams: Record<string, any> = {};
         if (params?.search) queryParams.search = params.search;
+        queryParams.page = params?.page || 1;
+        queryParams.per_page = params?.limit || 10;
+        queryParams.ordering = `${params?.sortOrder === 'desc' ? '-' : ''}${params?.sortBy || 'date'}`;
         const dateRange = mapDateRange(params);
         if (dateRange) queryParams.date_range = dateRange;
         if (params?.paymentStatus && params.paymentStatus !== 'all') {
@@ -145,8 +136,11 @@ export class SalesService {
           return sortOrder === 'asc' ? cmp : -cmp;
         });
 
-        const { data, meta } = paginate(sales, params?.page || 1, params?.limit || 10);
-        const response: ApiResponse<Sale[]> = { success: true, data, meta };
+        const response: ApiResponse<Sale[]> = {
+          success: true,
+          data: sales,
+          meta: mapPaginationMeta(res.meta),
+        };
         apiCache.set(key, response, 30 * 1000);
         return response;
       } catch (err) {
@@ -278,7 +272,7 @@ export class SalesService {
         notes: input.notes || '',
       };
 
-      const res = await api.post<any>('/sales/', payload);
+      const res = await api.post<any>('/sales/', payload, createIdempotencyKey('sale'));
       const sale = mapBackendSale(res.data);
 
       // Invalidate related caches

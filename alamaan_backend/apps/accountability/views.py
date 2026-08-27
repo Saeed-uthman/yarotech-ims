@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.permissions import IsAdminUserRole
+from apps.common.pagination import paginated_response
 from apps.common.responses import success_response
 
 from .selectors import get_cashbook_summary, list_cashbook_movements, list_manual_expenses
@@ -26,8 +27,7 @@ class CashbookListView(APIView):
             date_range=request.query_params.get('date_range'),
             search=request.query_params.get('search', ''),
         )
-        serializer = AccountabilityTransactionOutputSerializer(queryset, many=True)
-        return Response(success_response(serializer.data))
+        return paginated_response(request, queryset, AccountabilityTransactionOutputSerializer)
 
 
 class CashbookSummaryView(APIView):
@@ -63,5 +63,4 @@ class ManualExpenseListView(APIView):
             date_range=request.query_params.get('date_range'),
             search=request.query_params.get('search', ''),
         )
-        serializer = ManualExpenseOutputSerializer(queryset, many=True)
-        return Response(success_response(serializer.data))
+        return paginated_response(request, queryset, ManualExpenseOutputSerializer)

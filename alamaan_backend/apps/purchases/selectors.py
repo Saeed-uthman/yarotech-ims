@@ -8,7 +8,7 @@ from datetime import timedelta
 from .models import StockPurchase
 
 
-def list_purchases(*, search='', date_range=None, payment_method=None, status=None):
+def list_purchases(*, search='', date_range=None, payment_method=None, status=None, ordering='-date'):
     queryset = StockPurchase.objects.select_related('recorded_by')
 
     if search:
@@ -37,7 +37,13 @@ def list_purchases(*, search='', date_range=None, payment_method=None, status=No
     if status:
         queryset = queryset.filter(status=status)
 
-    return queryset.order_by('-created_at')
+    ordering_map = {'date': 'created_at', 'total': 'total_amount'}
+    descending = ordering.startswith('-')
+    ordering_key = ordering[1:] if descending else ordering
+    ordering_field = ordering_map.get(ordering_key, 'created_at')
+    if descending:
+        ordering_field = f'-{ordering_field}'
+    return queryset.order_by(ordering_field)
 
 
 def get_purchase_detail(*, purchase_id):

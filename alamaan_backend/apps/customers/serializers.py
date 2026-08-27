@@ -86,15 +86,7 @@ class CustomerListSerializer(serializers.ModelSerializer):
         return result['total'] or Decimal('0.00')
 
     def get_total_purchases(self, obj):
-        result = (
-            Sale.objects
-            .filter(
-                customer=obj,
-                status=Sale.Status.COMPLETED,
-            )
-            .aggregate(total=Sum('total_amount'))
-        )
-        return result['total'] or Decimal('0.00')
+        return Sale.objects.filter(customer=obj, status=Sale.Status.COMPLETED).count()
 
     def get_sales_count(self, obj):
         return Sale.objects.filter(
@@ -167,15 +159,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         return result['total'] or Decimal('0.00')
 
     def get_total_purchases(self, obj):
-        result = (
-            Sale.objects
-            .filter(
-                customer=obj,
-                status=Sale.Status.COMPLETED,
-            )
-            .aggregate(total=Sum('total_amount'))
-        )
-        return result['total'] or Decimal('0.00')
+        return Sale.objects.filter(customer=obj, status=Sale.Status.COMPLETED).count()
 
     def get_sales_count(self, obj):
         return Sale.objects.filter(

@@ -6,8 +6,13 @@ from apps.products.models import ProductVariant
 from .models import InventoryMovement
 
 
-def list_inventory_items(*, search='', category=None, company=None, stock_status=None):
-    queryset = ProductVariant.objects.select_related('product', 'product__category', 'company')
+def list_inventory_items(*, search='', category=None, company=None, stock_status=None, ordering='name'):
+    queryset = ProductVariant.objects.select_related('product', 'product__category', 'company').annotate(
+        inventory_value=ExpressionWrapper(
+            F('current_stock') * F('base_price'),
+            output_field=DecimalField(max_digits=14, decimal_places=2),
+        )
+    )
 
     if search:
         queryset = queryset.filter(
@@ -27,7 +32,20 @@ def list_inventory_items(*, search='', category=None, company=None, stock_status
     elif stock_status == 'available':
         queryset = queryset.filter(current_stock__gt=0)
 
-    return queryset.order_by('product__name', 'company__name')
+    ordering_map = {
+        'name': 'product__name',
+        'stock': 'current_stock',
+        'inventoryValue': 'inventory_value',
+        'basePrice': 'base_price',
+        'reorderLevel': 'reorder_level',
+        'company': 'company__name',
+    }
+    descending = ordering.startswith('-')
+    ordering_key = ordering[1:] if descending else ordering
+    ordering_field = ordering_map.get(ordering_key, 'product__name')
+    if descending:
+        ordering_field = f'-{ordering_field}'
+    return queryset.order_by(ordering_field, 'company__name')
 
 
 def get_inventory_kpis():
