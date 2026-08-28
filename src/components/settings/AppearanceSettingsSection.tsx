@@ -137,7 +137,7 @@ export const AppearanceSettingsSection: React.FC<AppearanceSettingsSectionProps>
         <div className="bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
           <label htmlFor="settings-session-timeout" className="text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
             <Clock className="w-4 h-4 text-slate-500" />
-            <span>Inactivity Auto-Lock Timeout</span>
+            <span>Inactivity Auto-Logout Timeout</span>
           </label>
           <select
             id="settings-session-timeout"
@@ -152,7 +152,7 @@ export const AppearanceSettingsSection: React.FC<AppearanceSettingsSectionProps>
             ))}
           </select>
           <p className="text-[11px] text-slate-500">
-            Protects till terminals by prompting authentication after idle periods.
+            Signs out idle till terminals and requires staff authentication to continue.
           </p>
         </div>
       </div>

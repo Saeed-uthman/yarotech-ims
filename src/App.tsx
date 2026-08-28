@@ -14,7 +14,8 @@ import {
   useSmartPolling, 
   useNetworkStatus,
   useAuth,
-  useKeyboardShortcuts
+  useKeyboardShortcuts,
+  useInactivityLogout,
 } from './hooks';
 import { AuthProvider } from './contexts/AuthContext';
 import { AuthContainer } from './components/auth/AuthContainer';
@@ -52,7 +53,13 @@ import { useInventoryKPIs } from './hooks/useInventory';
 import { useDocumentTheme } from './hooks/useDocumentTheme';
 
 function MainPharmacyApp() {
-  const { isAuthenticated, isLoading: isAuthLoading, user, role: currentRole } = useAuth();
+  const {
+    isAuthenticated,
+    isLoading: isAuthLoading,
+    user,
+    role: currentRole,
+    logoutForInactivity,
+  } = useAuth();
 
   // Navigation & View Mode
   const [activeNav, setActiveNav] = useState<string>('dashboard');
@@ -95,6 +102,25 @@ function MainPharmacyApp() {
   const { kpis: inventoryKPIs, refetch: refetchInventoryKPIs } = useInventoryKPIs(currentRole);
   const { categories, companies, refetch: refetchReferenceData } = useReferenceData();
   const { settings, refetch: refetchSettings } = useSettings(currentRole);
+
+  const sessionTimeout = settings?.sessionTimeout || '30m';
+  const handleInactivityTimeout = useCallback(() => {
+    logoutForInactivity(sessionTimeout);
+  }, [logoutForInactivity, sessionTimeout]);
+
+  useInactivityLogout({
+    enabled: isAuthenticated && user?.status === 'ACTIVE',
+    timeout: sessionTimeout,
+    onTimeout: handleInactivityTimeout,
+  });
+
+  // A first login may happen after the unauthenticated settings request, so
+  // always reload the server policy as soon as a session becomes active.
+  useEffect(() => {
+    if (isAuthenticated && user?.status === 'ACTIVE') {
+      void refetchSettings(true);
+    }
+  }, [isAuthenticated, refetchSettings, user?.status]);
 
   const totalLowStockAlerts = (inventoryKPIs?.lowStockCount || 0) + (inventoryKPIs?.outOfStockCount || 0);
 
@@ -604,7 +630,7 @@ function MainPharmacyApp() {
                 <SettingsModule
                   role={currentRole}
                   onSettingsUpdated={() => {
-                    refetchSettings();
+                    void refetchSettings(true);
                   }}
                 />
               ) : (

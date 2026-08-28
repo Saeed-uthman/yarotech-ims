@@ -19,7 +19,7 @@ interface LoginPageProps {
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onGoToRegister }) => {
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, sessionNotice } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -69,6 +69,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onGoToRegister }) => {
       </div>
 
       {/* Structured Status Alert Banners */}
+      {sessionNotice && (
+        <div
+          role="status"
+          className="p-3.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl flex items-start gap-2.5 text-xs text-blue-800 dark:text-blue-200"
+        >
+          <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+          <span>{sessionNotice}</span>
+        </div>
+      )}
+
       {loginError && (
         <div className="animate-in fade-in duration-150">
           {loginError.code === 'PENDING' ? (

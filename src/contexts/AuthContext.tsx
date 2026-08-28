@@ -1,5 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { UserAccount, UserRole, LoginInput, RegisterInput, AuthResponse } from '../types';
+import {
+  UserAccount,
+  UserRole,
+  LoginInput,
+  RegisterInput,
+  AuthResponse,
+  SessionTimeout,
+} from '../types';
 import { authService } from '../services/authService';
 import { getAccessToken, clearTokens, setTokens } from '../services/apiClient';
 
@@ -11,9 +18,11 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   pendingCount: number;
+  sessionNotice: string | null;
   login: (input: LoginInput) => Promise<AuthResponse>;
   register: (input: RegisterInput) => Promise<AuthResponse>;
   logout: () => void;
+  logoutForInactivity: (timeout: SessionTimeout) => void;
   refreshUser: () => Promise<void>;
   refreshPendingCount: () => Promise<void>;
   setUserDirectly: (user: UserAccount | null) => void;
@@ -25,6 +34,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<UserAccount | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [pendingCount, setPendingCount] = useState<number>(0);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
 
   // Load session from storage on boot
   const loadSavedSession = useCallback(async () => {
@@ -72,6 +82,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = useCallback(
     async (input: LoginInput): Promise<AuthResponse> => {
+      setSessionNotice(null);
       setIsLoading(true);
       try {
         const response = await authService.login(input);
@@ -104,11 +115,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     [refreshPendingCount]
   );
 
-  const logout = useCallback(() => {
+  const endSession = useCallback((notice: string | null) => {
+    setSessionNotice(notice);
     localStorage.removeItem(AUTH_STORAGE_KEY);
     setUser(null);
     void authService.logout();
   }, []);
+
+  const logout = useCallback(() => {
+    endSession(null);
+  }, [endSession]);
+
+  const logoutForInactivity = useCallback(
+    (timeout: SessionTimeout) => {
+      const duration = timeout === '15m' ? '15 minutes' : timeout === '60m' ? '1 hour' : '30 minutes';
+      endSession(`You were signed out after ${duration} of inactivity. Sign in again to continue.`);
+    },
+    [endSession]
+  );
 
   const refreshUser = useCallback(async () => {
     if (!user) return;
@@ -130,6 +154,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const setUserDirectly = useCallback((newUser: UserAccount | null) => {
     setUser(newUser);
     if (newUser) {
+      setSessionNotice(null);
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newUser));
     } else {
       localStorage.removeItem(AUTH_STORAGE_KEY);
@@ -148,9 +173,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isAuthenticated,
         isLoading,
         pendingCount,
+        sessionNotice,
         login,
         register,
         logout,
+        logoutForInactivity,
         refreshUser,
         refreshPendingCount,
         setUserDirectly,
