@@ -3,8 +3,8 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue.svg)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19.0-61dafb.svg)](https://react.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.0-38bdf8.svg)](https://tailwindcss.com/)
-[![Planned Backend](https://img.shields.io/badge/Planned_Backend-Django_REST_Framework-092e20.svg)](https://www.djangoproject.com/)
-[![Database](https://img.shields.io/badge/Database-MySQL_8.x-4479A1.svg)](https://www.mysql.com/)
+[![Backend](https://img.shields.io/badge/Backend-Django_REST_Framework-092e20.svg)](https://www.djangoproject.com/)
+[![Database](https://img.shields.io/badge/Database-PostgreSQL_Production-4169E1.svg)](https://www.postgresql.org/)
 
 **Al-Amaan Pharmacy Management & Financial Accountability System** is a streamlined, resilient, and audit-transparent pharmaceutical retail operations and business accountability platform. It is engineered specifically for pharmaceutical retailing, multi-manufacturer variant tracking, customer credit management, atomic inventory control, stock replenishment, and verifiable financial cashbook accounting.
 
@@ -21,7 +21,7 @@
 7. [Folder Structure](#-folder-structure)
 8. [Installation & Setup](#-installation--setup)
 9. [Available Scripts](#-available-scripts)
-10. [Django REST Framework Backend Blueprint](#-django-rest-framework-backend-blueprint)
+10. [Django REST Framework Backend](#-django-rest-framework-backend-blueprint)
 11. [License & Proprietary Notice](#-license--proprietary-notice)
 
 ---
@@ -200,8 +200,8 @@ In a high-turnover pharmaceutical retail environment, operational accuracy and f
 | **Styling & Design System**| **Tailwind CSS v4** | Modern utility-first styling with responsive, accessible layouts |
 | **Iconography** | **Lucide React** | Consistent, lightweight vector icons |
 | **Transitions** | **Motion (`motion/react`)** | Fluid micro-interactions and layout transitions |
-| **Current Data Layer** | **Mock Service Repository** | In-memory reactive repository simulating REST API behavior |
-| **Target Backend** | **Django 5.x + DRF** | Python-based RESTful API with MySQL 8.x and JWT authentication |
+| **Current Data Layer** | **Django REST API** | Live JWT-authenticated API services with idempotent transaction workflows |
+| **Backend** | **Django 5.x + DRF** | SQLite for local development and PostgreSQL for production |
 | **Build Tooling** | **Vite 6** | Fast development server and production bundler |
 
 ---
@@ -225,7 +225,7 @@ src/
 │   ├── settings/                     # Pharmacy identity, rules, and preferences
 │   └── users/                        # Staff user management and admin approval console
 ├── contexts/                         # React context providers
-├── data/                             # Initial mock data and seeds
+├── data/                             # Static application defaults
 ├── hooks/                            # Custom React hooks (Auth, Dashboard, Shortcuts, etc.)
 ├── services/                         # Domain service layer (Product, Sales, Inventory, etc.)
 ├── utils/                            # Date, currency (₦/NGN), and number formatting helpers
@@ -281,13 +281,20 @@ src/
 
 ## 🔌 Django REST Framework Backend Blueprint
 
-A comprehensive, authoritative backend architecture blueprint has been authored for this project:
+The Django blueprint is implemented as the live API under `alamaan_backend/`.
+SQLite remains the local development database; PostgreSQL is the production
+target and the required database for the final concurrency gate.
 
 📄 **[`DJANGO_BACKEND_DEVELOPMENT_BLUEPRINT.md`](./DJANGO_BACKEND_DEVELOPMENT_BLUEPRINT.md)**
 
-### Key Highlights of the Backend Blueprint:
+Additional operational references:
+
+- **Deployment and PostgreSQL gate**: [`alamaan_backend/DEPLOYMENT.md`](./alamaan_backend/DEPLOYMENT.md)
+- **End-to-end release acceptance**: [`RELEASE_ACCEPTANCE.md`](./RELEASE_ACCEPTANCE.md)
+
+### Key Highlights of the Backend:
 - **Project Structure**: Clean separation across Django apps (`accounts`, `products`, `inventory`, `customers`, `sales`, `purchases`, `accountability`, `reports`, `settings_app`, `dashboard`, `common`).
-- **Database Schema**: Full MySQL model specifications with explicit constraints, foreign key cascades, and check constraints (`current_stock >= 0`).
+- **Database Schema**: Normalized PostgreSQL-ready models with explicit constraints, foreign keys, and check constraints (`current_stock >= 0`).
 - **Pessimistic Concurrency**: Prevents race conditions and overselling using `select_for_update()` inside `transaction.atomic` blocks.
 - **RESTful Endpoints (`/api/v1/`)**: Fully documented endpoints, serializers, permissions, and request/response contracts.
 - **15-Phase Implementation Roadmap**: Step-by-step development sequence from project foundation to production deployment.

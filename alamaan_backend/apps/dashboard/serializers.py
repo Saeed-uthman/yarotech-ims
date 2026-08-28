@@ -1,22 +1,44 @@
 from rest_framework import serializers
 
 
-class AdminDashboardSerializer(serializers.Serializer):
-    total_sales = serializers.IntegerField()
-    total_revenue = serializers.DecimalField(max_digits=12, decimal_places=2)
-    total_collected = serializers.DecimalField(max_digits=12, decimal_places=2)
-    total_outstanding = serializers.DecimalField(max_digits=12, decimal_places=2)
-    total_profit = serializers.DecimalField(max_digits=12, decimal_places=2)
-    total_units_sold = serializers.IntegerField()
-    low_stock_alerts = serializers.IntegerField()
-    total_customers = serializers.IntegerField()
-    active_debtors = serializers.IntegerField()
+class DashboardSummarySerializer(serializers.Serializer):
+    total_sales = serializers.DecimalField(max_digits=18, decimal_places=2)
+    total_profit = serializers.DecimalField(max_digits=18, decimal_places=2)
+    transaction_count = serializers.IntegerField()
+    items_sold = serializers.IntegerField()
+    money_in = serializers.DecimalField(max_digits=18, decimal_places=2)
+    money_out = serializers.DecimalField(max_digits=18, decimal_places=2)
+    net_money_movement = serializers.DecimalField(max_digits=18, decimal_places=2)
+    outstanding_debt = serializers.DecimalField(max_digits=18, decimal_places=2)
+    debtor_count = serializers.IntegerField()
+    inventory_value = serializers.DecimalField(max_digits=18, decimal_places=2)
+    total_stock_units = serializers.IntegerField()
+    low_stock_count = serializers.IntegerField()
+    out_of_stock_count = serializers.IntegerField()
+    registered_customers_count = serializers.IntegerField()
+    total_purchases_amount = serializers.DecimalField(max_digits=18, decimal_places=2)
+    purchases_count = serializers.IntegerField()
 
 
-class CashierDashboardSerializer(serializers.Serializer):
-    total_checkouts = serializers.IntegerField()
-    total_revenue = serializers.DecimalField(max_digits=12, decimal_places=2)
-    total_collected = serializers.DecimalField(max_digits=12, decimal_places=2)
-    total_units_dispensed = serializers.IntegerField()
-    active_debtors = serializers.IntegerField()
-    low_stock_alerts = serializers.IntegerField()
+class DashboardDataSerializer(serializers.Serializer):
+    summary = DashboardSummarySerializer()
+    sales_trends = serializers.ListField(child=serializers.DictField())
+    financial_movement_trends = serializers.ListField(child=serializers.DictField())
+    top_products = serializers.ListField(child=serializers.DictField())
+    recent_sales = serializers.ListField(child=serializers.DictField())
+    recent_purchases = serializers.ListField(child=serializers.DictField())
+    stock_alerts = serializers.ListField(child=serializers.DictField())
+    low_stock_threshold = serializers.IntegerField()
+
+    # Temporary compatibility fields for clients using the earlier compact dashboard.
+    total_sales = serializers.IntegerField(required=False)
+    total_revenue = serializers.DecimalField(max_digits=18, decimal_places=2, required=False)
+    total_collected = serializers.DecimalField(max_digits=18, decimal_places=2, required=False)
+    total_outstanding = serializers.DecimalField(max_digits=18, decimal_places=2, required=False)
+    total_profit = serializers.DecimalField(max_digits=18, decimal_places=2, required=False)
+    total_units_sold = serializers.IntegerField(required=False)
+    total_checkouts = serializers.IntegerField(required=False)
+    total_units_dispensed = serializers.IntegerField(required=False)
+    low_stock_alerts = serializers.IntegerField(required=False)
+    total_customers = serializers.IntegerField(required=False)
+    active_debtors = serializers.IntegerField(required=False)

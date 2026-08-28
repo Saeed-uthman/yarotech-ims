@@ -5,9 +5,11 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import User
+from apps.accountability.models import AccountabilityTransaction
 from apps.customers.models import Customer
 from apps.products.models import Category, Company, Product, ProductVariant
 from apps.sales.models import Sale, SaleItem
+from apps.settings_app.models import SystemSettings
 
 
 class DashboardApiTests(APITestCase):
@@ -74,6 +76,19 @@ class DashboardApiTests(APITestCase):
             subtotal=Decimal('15000.00'),
             profit=Decimal('5000.00'),
         )
+        AccountabilityTransaction.objects.create(
+            transaction_number='ACC-202608-000001',
+            direction=AccountabilityTransaction.Direction.IN,
+            type=AccountabilityTransaction.TxType.SALE,
+            category='Sales Revenue',
+            amount=Decimal('15000.00'),
+            payment_method='CASH',
+            reference_type='Sale',
+            reference_id=str(self.sale.id),
+            description='Dashboard test sale',
+            created_by=self.cashier,
+            updated_by=self.cashier,
+        )
 
     def test_unauthenticated_user_cannot_access_dashboard(self):
         response = self.client.get(reverse('dashboard'))
@@ -87,6 +102,11 @@ class DashboardApiTests(APITestCase):
         self.assertEqual(data['total_sales'], 1)
         self.assertIn('total_profit', data)
         self.assertIn('low_stock_alerts', data)
+        self.assertEqual(Decimal(data['summary']['total_sales']), Decimal('15000.00'))
+        self.assertEqual(Decimal(data['summary']['total_profit']), Decimal('5000.00'))
+        self.assertEqual(Decimal(data['summary']['money_in']), Decimal('15000.00'))
+        self.assertEqual(len(data['top_products']), 1)
+        self.assertEqual(len(data['recent_sales']), 1)
 
     def test_cashier_gets_cashier_dashboard(self):
         self.client.force_authenticate(self.cashier)
@@ -96,6 +116,9 @@ class DashboardApiTests(APITestCase):
         self.assertEqual(data['total_checkouts'], 1)
         self.assertIn('total_units_dispensed', data)
         self.assertIn('active_debtors', data)
+        self.assertEqual(Decimal(data['summary']['total_profit']), Decimal('0.00'))
+        self.assertEqual(Decimal(data['summary']['inventory_value']), Decimal('0.00'))
+        self.assertEqual(data['recent_purchases'], [])
 
     def test_cashier_summary_endpoint_uses_period_contract(self):
         self.client.force_authenticate(self.cashier)
@@ -103,3 +126,21 @@ class DashboardApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertNotIn('total_profit', response.data['data'])
         self.assertIn('total_checkouts', response.data['data'])
+
+    def test_configured_low_stock_threshold_drives_dashboard_alerts(self):
+        settings = SystemSettings.load()
+        settings.low_stock_threshold = 20
+        settings.save(update_fields=['low_stock_threshold'])
+        self.variant.current_stock = 15
+        self.variant.reorder_level = 5
+        self.variant.save(update_fields=['current_stock', 'reorder_level'])
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.get(reverse('dashboard'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data['data']
+        self.assertEqual(data['low_stock_threshold'], 20)
+        self.assertEqual(data['summary']['low_stock_count'], 1)
+        self.assertEqual(len(data['stock_alerts']), 1)
+        self.assertEqual(data['stock_alerts'][0]['reorder_level'], 20)

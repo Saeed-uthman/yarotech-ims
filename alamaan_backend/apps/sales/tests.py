@@ -8,6 +8,7 @@ from apps.accounts.models import User
 from apps.customers.models import Customer
 from apps.inventory.models import InventoryMovement
 from apps.products.models import Category, Company, Product, ProductVariant
+from apps.settings_app.models import SystemSettings
 
 from .models import Sale, SaleItem
 
@@ -229,3 +230,30 @@ class SalesApiTests(APITestCase):
         self.assertEqual(sale.payment_status, Sale.PaymentStatus.PARTIAL)
         self.assertEqual(sale.outstanding_amount, Decimal('1600.00'))
         self.assertEqual(sale.customer, self.customer)
+
+    def test_walk_in_sales_setting_is_enforced(self):
+        settings = SystemSettings.load()
+        settings.allow_walking_sales = False
+        settings.save(update_fields=['allow_walking_sales'])
+        self.client.force_authenticate(self.cashier)
+
+        response = self.client.post(reverse('sales-list'), self._sale_payload(), format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Sale.objects.count(), 0)
+
+    def test_credit_sales_setting_is_enforced(self):
+        settings = SystemSettings.load()
+        settings.allow_credit_sales = False
+        settings.save(update_fields=['allow_credit_sales'])
+        self.client.force_authenticate(self.cashier)
+        payload = self._sale_payload(
+            customer_id=self.customer.id,
+            amount_paid='2000.00',
+            payment_method='CASH',
+        )
+
+        response = self.client.post(reverse('sales-list'), payload, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Sale.objects.count(), 0)

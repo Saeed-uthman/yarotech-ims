@@ -8,15 +8,8 @@ import {
   Clock, 
   Ban, 
   ShieldAlert, 
-  CheckCircle2, 
   Loader2, 
-  ArrowRight,
-  Sparkles,
-  KeyRound,
-  UserCheck,
-  User,
-  Shield,
-  HelpCircle
+  ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../../hooks';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
@@ -24,58 +17,6 @@ import { ForgotPasswordModal } from './ForgotPasswordModal';
 interface LoginPageProps {
   onGoToRegister: () => void;
 }
-
-interface DemoAccount {
-  label: string;
-  roleDescription: string;
-  email: string;
-  password: string;
-  status: 'ACTIVE' | 'PENDING' | 'REJECTED' | 'SUSPENDED';
-  badgeColor: string;
-}
-
-const DEMO_ACCOUNTS: DemoAccount[] = [
-  {
-    label: 'Admin (System Administrator)',
-    roleDescription: 'Full access to costs, accounting, and user approval',
-    email: 'admin@alamaan.test',
-    password: 'Password123',
-    status: 'ACTIVE',
-    badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-  },
-  {
-    label: 'Cashier (Dispensary Staff)',
-    roleDescription: 'Streamlined POS sales with wholesale costs masked',
-    email: 'cashier@alamaan.test',
-    password: 'Password123',
-    status: 'ACTIVE',
-    badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
-  },
-  {
-    label: 'Pending User (Awaiting Approval)',
-    roleDescription: 'Simulates newly registered user state awaiting admin review',
-    email: 'john@example.test',
-    password: 'Password123',
-    status: 'PENDING',
-    badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800',
-  },
-  {
-    label: 'Rejected User (Declined Registration)',
-    roleDescription: 'Simulates denied application with audit reason',
-    email: 'rejected@example.test',
-    password: 'Password123',
-    status: 'REJECTED',
-    badgeColor: 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800',
-  },
-  {
-    label: 'Suspended User (Locked Account)',
-    roleDescription: 'Simulates deactivated staff account',
-    email: 'suspended@example.test',
-    password: 'Password123',
-    status: 'SUSPENDED',
-    badgeColor: 'bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700',
-  },
-];
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onGoToRegister }) => {
   const { login, isLoading } = useAuth();
@@ -115,12 +56,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onGoToRegister }) => {
         message: 'Unable to connect to the authentication service. Please check your network connection.',
       });
     }
-  };
-
-  const handleSelectDemoAccount = (demo: DemoAccount) => {
-    setEmail(demo.email);
-    setPassword(demo.password);
-    setLoginError(null);
   };
 
   return (
@@ -188,7 +123,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onGoToRegister }) => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="e.g. admin@alamaan.test"
+              placeholder="e.g. staff@example.com"
               required
               className="w-full pl-9 pr-3 py-2.5 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
             />
@@ -260,52 +195,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onGoToRegister }) => {
         >
           Register for Approval
         </button>
-      </div>
-
-      {/* Quick Test Accounts Switcher */}
-      <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>Interactive Demo Accounts</span>
-          </span>
-          <span className="text-[10px] text-slate-400">Click to fill</span>
-        </div>
-
-        <div className="grid grid-cols-1 gap-1.5">
-          {DEMO_ACCOUNTS.map((demo) => {
-            const isSelected = email === demo.email;
-            return (
-              <button
-                key={demo.email}
-                type="button"
-                onClick={() => handleSelectDemoAccount(demo)}
-                className={`w-full flex items-center justify-between p-2 rounded-lg text-left text-xs border transition-colors ${
-                  isSelected
-                    ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                }`}
-              >
-                <div className="min-w-0 flex-1 pr-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-900 dark:text-white truncate">
-                      {demo.label}
-                    </span>
-                    <span className={`text-[9px] font-mono uppercase px-1.5 py-0.2 rounded border font-bold shrink-0 ${demo.badgeColor}`}>
-                      {demo.status}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate mt-0.5">
-                    {demo.email} &bull; {demo.roleDescription}
-                  </p>
-                </div>
-                <div className="shrink-0 text-slate-400 font-mono text-[10px]">
-                  Fill
-                </div>
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       {/* Forgot Password Modal */}

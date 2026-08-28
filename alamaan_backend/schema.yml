@@ -21,6 +21,26 @@ paths:
                 items:
                   $ref: '#/components/schemas/AccountabilityTransactionOutput'
           description: ''
+  /api/v1/accountability/{id}/:
+    get:
+      operationId: accountability_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - accountability
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountabilityTransactionDetail'
+          description: ''
   /api/v1/accountability/expenses/:
     post:
       operationId: accountability_expenses_create
@@ -45,7 +65,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ManualExpenseOutput'
+                $ref: '#/components/schemas/ManualExpenseCreateOutput'
           description: ''
   /api/v1/accountability/expenses/list/:
     get:
@@ -119,6 +139,29 @@ paths:
       security:
       - jwtAuth: []
       - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      description: |-
+        Takes a token and blacklists it. Must be used with the
+        `rest_framework_simplejwt.token_blacklist` app installed.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenBlacklistRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenBlacklistRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenBlacklistRequest'
+        required: true
       responses:
         '200':
           description: No response body
@@ -480,7 +523,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AdminDashboard'
+                $ref: '#/components/schemas/DashboardData'
           description: ''
   /api/v1/dashboard/cashier-summary/:
     get:
@@ -494,7 +537,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CashierDashboard'
+                $ref: '#/components/schemas/DashboardData'
           description: ''
   /api/v1/inventory/:
     get:
@@ -1037,6 +1080,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/OverviewReport'
           description: ''
+  /api/v1/reports/product-performance/:
+    get:
+      operationId: reports_product_performance_retrieve
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPerformanceReport'
+          description: ''
   /api/v1/reports/profit/:
     get:
       operationId: reports_profit_retrieve
@@ -1264,6 +1321,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/SystemSettingsOutput'
           description: ''
+  /api/v1/settings/reset/:
+    post:
+      operationId: settings_reset_create
+      tags:
+      - settings
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettingsOutput'
+          description: ''
   /api/v1/users/:
     get:
       operationId: users_list
@@ -1405,6 +1476,92 @@ paths:
           description: ''
 components:
   schemas:
+    AccountabilityTransactionDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        transaction_number:
+          type: string
+          readOnly: true
+        direction:
+          allOf:
+          - $ref: '#/components/schemas/DirectionEnum'
+          readOnly: true
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          readOnly: true
+        category:
+          type: string
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        payment_method:
+          allOf:
+          - $ref: '#/components/schemas/PaymentMethodEnum'
+          readOnly: true
+        reference_type:
+          type: string
+          readOnly: true
+        reference_id:
+          type: string
+          readOnly: true
+        reference_number:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+        customer_name:
+          type: string
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/CompletionStatusEnum'
+          readOnly: true
+        created_by_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        customer_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        source_details:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
+      required:
+      - amount
+      - category
+      - created_at
+      - created_by_name
+      - customer_id
+      - customer_name
+      - description
+      - direction
+      - id
+      - note
+      - payment_method
+      - reference_id
+      - reference_number
+      - reference_type
+      - source_details
+      - status
+      - transaction_number
+      - type
     AccountabilityTransactionOutput:
       type: object
       properties:
@@ -1432,12 +1589,15 @@ components:
           readOnly: true
         payment_method:
           allOf:
-          - $ref: '#/components/schemas/PaymentMethodDd1Enum'
+          - $ref: '#/components/schemas/PaymentMethodEnum'
           readOnly: true
         reference_type:
           type: string
           readOnly: true
         reference_id:
+          type: string
+          readOnly: true
+        reference_number:
           type: string
           readOnly: true
         description:
@@ -1451,7 +1611,7 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/Status14fEnum'
+          - $ref: '#/components/schemas/CompletionStatusEnum'
           readOnly: true
         created_by_name:
           type: string
@@ -1472,10 +1632,19 @@ components:
       - note
       - payment_method
       - reference_id
+      - reference_number
       - reference_type
       - status
       - transaction_number
       - type
+    ActiveStatusEnum:
+      enum:
+      - Active
+      - Inactive
+      type: string
+      description: |-
+        * `Active` - Active
+        * `Inactive` - Inactive
     AdjustmentTypeEnum:
       enum:
       - SET_EXACT
@@ -1486,53 +1655,14 @@ components:
         * `SET_EXACT` - SET_EXACT
         * `INCREMENT` - INCREMENT
         * `DECREMENT` - DECREMENT
-    AdminDashboard:
-      type: object
-      properties:
-        total_sales:
-          type: integer
-        total_revenue:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
-        total_collected:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
-        total_outstanding:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
-        total_profit:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
-        total_units_sold:
-          type: integer
-        low_stock_alerts:
-          type: integer
-        total_customers:
-          type: integer
-        active_debtors:
-          type: integer
-      required:
-      - active_debtors
-      - low_stock_alerts
-      - total_collected
-      - total_customers
-      - total_outstanding
-      - total_profit
-      - total_revenue
-      - total_sales
-      - total_units_sold
-    AssignedRoleEnum:
+    AvailabilityStatusEnum:
       enum:
-      - admin
-      - cashier
+      - Available
+      - Inactive
       type: string
       description: |-
-        * `admin` - Administrator
-        * `cashier` - Cashier
+        * `Available` - Available
+        * `Inactive` - Inactive
     CashbookSummary:
       type: object
       properties:
@@ -1548,36 +1678,33 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_transactions_count:
+          type: integer
+        sales_income:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        debt_payments_income:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        purchases_expense:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        other_expenses_expense:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
       required:
+      - debt_payments_income
       - net_movement
+      - other_expenses_expense
+      - purchases_expense
+      - sales_income
       - total_inflow
       - total_outflow
-    CashierDashboard:
-      type: object
-      properties:
-        total_checkouts:
-          type: integer
-        total_revenue:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
-        total_collected:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
-        total_units_dispensed:
-          type: integer
-        active_debtors:
-          type: integer
-        low_stock_alerts:
-          type: integer
-      required:
-      - active_debtors
-      - low_stock_alerts
-      - total_checkouts
-      - total_collected
-      - total_revenue
-      - total_units_dispensed
+      - total_transactions_count
     Category:
       type: object
       properties:
@@ -1705,6 +1832,14 @@ components:
           maxLength: 50
       required:
       - name
+    CompletionStatusEnum:
+      enum:
+      - COMPLETED
+      - CANCELLED
+      type: string
+      description: |-
+        * `COMPLETED` - Completed
+        * `CANCELLED` - Cancelled
     CreateExpenseInputRequest:
       type: object
       properties:
@@ -1715,7 +1850,7 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         payment_method:
-          $ref: '#/components/schemas/PaymentMethodDd1Enum'
+          $ref: '#/components/schemas/PaymentMethodEnum'
         description:
           type: string
           minLength: 1
@@ -1736,7 +1871,7 @@ components:
           items:
             $ref: '#/components/schemas/CreatePurchaseItemInputRequest'
         payment_method:
-          $ref: '#/components/schemas/PaymentMethodDd1Enum'
+          $ref: '#/components/schemas/PaymentMethodEnum'
         purchase_date:
           type: string
           format: date-time
@@ -1783,7 +1918,7 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         payment_method:
-          $ref: '#/components/schemas/PaymentMethodAb7Enum'
+          $ref: '#/components/schemas/SalePaymentMethodEnum'
         notes:
           type: string
           default: ''
@@ -1858,19 +1993,21 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/Status2d9Enum'
+          - $ref: '#/components/schemas/ActiveStatusEnum'
           readOnly: true
         outstanding_debt:
-          type: string
+          type: number
+          format: double
           readOnly: true
         total_purchases:
-          type: string
+          type: integer
           readOnly: true
         sales_count:
-          type: string
+          type: integer
           readOnly: true
         amount_paid:
-          type: string
+          type: number
+          format: double
           readOnly: true
         created_by:
           type: integer
@@ -1930,22 +2067,26 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/Status2d9Enum'
+          - $ref: '#/components/schemas/ActiveStatusEnum'
           readOnly: true
         outstanding_debt:
-          type: string
+          type: number
+          format: double
           readOnly: true
         total_purchases:
-          type: string
+          type: integer
           readOnly: true
         sales_count:
-          type: string
+          type: integer
           readOnly: true
         amount_paid:
-          type: string
+          type: number
+          format: double
           readOnly: true
         last_purchase_date:
           type: string
+          format: date-time
+          nullable: true
           readOnly: true
         created_at:
           type: string
@@ -1968,6 +2109,150 @@ components:
       - status
       - total_purchases
       - updated_at
+    DashboardData:
+      type: object
+      properties:
+        summary:
+          $ref: '#/components/schemas/DashboardSummary'
+        sales_trends:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        financial_movement_trends:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        top_products:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        recent_sales:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        recent_purchases:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        stock_alerts:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        low_stock_threshold:
+          type: integer
+        total_sales:
+          type: integer
+        total_revenue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        total_collected:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        total_outstanding:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        total_profit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        total_units_sold:
+          type: integer
+        total_checkouts:
+          type: integer
+        total_units_dispensed:
+          type: integer
+        low_stock_alerts:
+          type: integer
+        total_customers:
+          type: integer
+        active_debtors:
+          type: integer
+      required:
+      - financial_movement_trends
+      - low_stock_threshold
+      - recent_purchases
+      - recent_sales
+      - sales_trends
+      - stock_alerts
+      - summary
+      - top_products
+    DashboardSummary:
+      type: object
+      properties:
+        total_sales:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        total_profit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        transaction_count:
+          type: integer
+        items_sold:
+          type: integer
+        money_in:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        money_out:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        net_money_movement:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        outstanding_debt:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        debtor_count:
+          type: integer
+        inventory_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        total_stock_units:
+          type: integer
+        low_stock_count:
+          type: integer
+        out_of_stock_count:
+          type: integer
+        registered_customers_count:
+          type: integer
+        total_purchases_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        purchases_count:
+          type: integer
+      required:
+      - debtor_count
+      - inventory_value
+      - items_sold
+      - low_stock_count
+      - money_in
+      - money_out
+      - net_money_movement
+      - out_of_stock_count
+      - outstanding_debt
+      - purchases_count
+      - registered_customers_count
+      - total_profit
+      - total_purchases_amount
+      - total_sales
+      - total_stock_units
+      - transaction_count
     DebtPaymentInputRequest:
       type: object
       properties:
@@ -1978,7 +2263,7 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         payment_method:
-          $ref: '#/components/schemas/PaymentMethodDd1Enum'
+          $ref: '#/components/schemas/PaymentMethodEnum'
         reference_notes:
           type: string
           default: ''
@@ -2011,7 +2296,7 @@ components:
           readOnly: true
         payment_method:
           allOf:
-          - $ref: '#/components/schemas/PaymentMethodDd1Enum'
+          - $ref: '#/components/schemas/PaymentMethodEnum'
           readOnly: true
         balance_before:
           type: string
@@ -2053,6 +2338,19 @@ components:
     DebtReport:
       type: object
       properties:
+        summary:
+          type: object
+          additionalProperties: {}
+        debtors:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        trends:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
         total_debtors:
           type: integer
         total_outstanding:
@@ -2064,9 +2362,12 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
       required:
+      - debtors
+      - summary
       - total_debt_payments
       - total_debtors
       - total_outstanding
+      - trends
     DirectionEnum:
       enum:
       - IN
@@ -2106,6 +2407,24 @@ components:
     FinancialMovementReport:
       type: object
       properties:
+        summary:
+          type: object
+          additionalProperties: {}
+        trends:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        money_in_breakdown:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        money_out_breakdown:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
         total_inflow:
           type: string
           format: decimal
@@ -2123,9 +2442,13 @@ components:
           items: {}
       required:
       - by_type
+      - money_in_breakdown
+      - money_out_breakdown
       - net_movement
+      - summary
       - total_inflow
       - total_outflow
+      - trends
     InventoryItem:
       type: object
       properties:
@@ -2179,7 +2502,7 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/Status980Enum'
+          - $ref: '#/components/schemas/AvailabilityStatusEnum'
           readOnly: true
         updated_at:
           type: string
@@ -2272,14 +2595,38 @@ components:
     InventoryMovementReport:
       type: object
       properties:
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        total_opening_stock:
+          type: integer
         total_stock_in:
           type: integer
         total_stock_out:
           type: integer
+        total_current_stock:
+          type: integer
+        stock_in_purchases:
+          type: integer
+        stock_in_adjustments:
+          type: integer
+        stock_out_sales:
+          type: integer
+        stock_out_adjustments:
+          type: integer
         total_adjustments:
           type: integer
       required:
+      - items
+      - stock_in_adjustments
+      - stock_in_purchases
+      - stock_out_adjustments
+      - stock_out_sales
       - total_adjustments
+      - total_current_stock
+      - total_opening_stock
       - total_stock_in
       - total_stock_out
     LoginRequest:
@@ -2296,6 +2643,16 @@ components:
       required:
       - email
       - password
+    ManualExpenseCreateOutput:
+      type: object
+      properties:
+        expense:
+          $ref: '#/components/schemas/ManualExpenseOutput'
+        transaction:
+          $ref: '#/components/schemas/AccountabilityTransactionOutput'
+      required:
+      - expense
+      - transaction
     ManualExpenseOutput:
       type: object
       properties:
@@ -2316,7 +2673,7 @@ components:
           readOnly: true
         payment_method:
           allOf:
-          - $ref: '#/components/schemas/PaymentMethodDd1Enum'
+          - $ref: '#/components/schemas/PaymentMethodEnum'
           readOnly: true
         description:
           type: string
@@ -2374,13 +2731,61 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_profit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        profit_margin_percentage:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+        money_in:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        money_out:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        net_money_movement:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_transactions:
+          type: integer
+        total_units_sold:
+          type: integer
+        total_units_purchased:
+          type: integer
+        average_sale_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        date_range:
+          type: string
+        start_date:
+          type: string
+        end_date:
+          type: string
       required:
+      - average_sale_value
+      - date_range
+      - end_date
+      - money_in
+      - money_out
+      - net_money_movement
+      - profit_margin_percentage
+      - start_date
       - total_collected
       - total_outstanding
+      - total_profit
       - total_purchase_spend
       - total_purchases_count
       - total_revenue
       - total_sales_count
+      - total_transactions
+      - total_units_purchased
+      - total_units_sold
     PatchedCustomerCreateUpdateRequest:
       type: object
       properties:
@@ -2437,7 +2842,7 @@ components:
           format: binary
           nullable: true
         status:
-          $ref: '#/components/schemas/Status2d9Enum'
+          $ref: '#/components/schemas/ActiveStatusEnum'
         variants:
           type: array
           items:
@@ -2483,16 +2888,58 @@ components:
           type: boolean
         require_customer_for_credit:
           type: boolean
+        require_sale_confirmation:
+          type: boolean
         low_stock_threshold:
           type: integer
           maximum: 9223372036854775807
-          minimum: -9223372036854775808
+          minimum: 0
           format: int64
         allow_negative_stock:
+          type: boolean
+        require_admin_stock_adjustment:
+          type: boolean
+        receipt_logo:
+          type: boolean
+        receipt_phone:
+          type: boolean
+        receipt_address:
+          type: boolean
+        receipt_cashier:
+          type: boolean
+        receipt_customer:
+          type: boolean
+        receipt_datetime:
+          type: boolean
+        receipt_number:
           type: boolean
         receipt_footer:
           type: string
           minLength: 1
+        low_stock_notifications:
+          type: boolean
+        out_of_stock_notifications:
+          type: boolean
+        new_debt_notifications:
+          type: boolean
+        large_transaction_alert:
+          type: boolean
+        large_transaction_threshold:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        theme:
+          $ref: '#/components/schemas/ThemeEnum'
+        language:
+          type: string
+          minLength: 1
+          maxLength: 20
+        session_timeout:
+          $ref: '#/components/schemas/SessionTimeoutEnum'
+        clear_logo:
+          type: boolean
+          writeOnly: true
+          default: false
     PatchedVariantUpdateRequest:
       type: object
       properties:
@@ -2523,20 +2970,8 @@ components:
           minimum: 0
           default: 10
         status:
-          $ref: '#/components/schemas/Status980Enum'
-    PaymentMethodAb7Enum:
-      enum:
-      - CASH
-      - TRANSFER
-      - POS
-      - CREDIT
-      type: string
-      description: |-
-        * `CASH` - Cash
-        * `TRANSFER` - Bank Transfer
-        * `POS` - Card / POS
-        * `CREDIT` - Credit
-    PaymentMethodDd1Enum:
+          $ref: '#/components/schemas/AvailabilityStatusEnum'
+    PaymentMethodEnum:
       enum:
       - CASH
       - TRANSFER
@@ -2687,7 +3122,7 @@ components:
           format: binary
           nullable: true
         status:
-          $ref: '#/components/schemas/Status2d9Enum'
+          $ref: '#/components/schemas/ActiveStatusEnum'
         variants:
           type: array
           items:
@@ -2730,7 +3165,7 @@ components:
           format: uri
           nullable: true
         status:
-          $ref: '#/components/schemas/Status2d9Enum'
+          $ref: '#/components/schemas/ActiveStatusEnum'
         variants:
           type: array
           items:
@@ -2794,7 +3229,7 @@ components:
           format: uri
           nullable: true
         status:
-          $ref: '#/components/schemas/Status2d9Enum'
+          $ref: '#/components/schemas/ActiveStatusEnum'
         variants:
           type: array
           items:
@@ -2818,6 +3253,38 @@ components:
       - name
       - updated_at
       - variants
+    ProductPerformanceReport:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        fast_moving_count:
+          type: integer
+        slow_moving_count:
+          type: integer
+        zero_movement_count:
+          type: integer
+        total_units_sold:
+          type: integer
+        total_revenue:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_profit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+      required:
+      - fast_moving_count
+      - items
+      - slow_moving_count
+      - total_profit
+      - total_revenue
+      - total_units_sold
+      - zero_movement_count
     ProductVariant:
       type: object
       properties:
@@ -2854,7 +3321,7 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/Status980Enum'
+          - $ref: '#/components/schemas/AvailabilityStatusEnum'
           readOnly: true
         created_at:
           type: string
@@ -2912,7 +3379,7 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/Status980Enum'
+          - $ref: '#/components/schemas/AvailabilityStatusEnum'
           readOnly: true
         created_at:
           type: string
@@ -2978,6 +3445,29 @@ components:
     ProfitReport:
       type: object
       properties:
+        summary:
+          type: object
+          additionalProperties: {}
+        trends:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        profit_by_category:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        profit_by_company:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        top_profitable_products:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
         total_revenue:
           type: string
           format: decimal
@@ -2996,9 +3486,14 @@ components:
           pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
       required:
       - margin_percentage
+      - profit_by_category
+      - profit_by_company
+      - summary
+      - top_profitable_products
       - total_cost
       - total_profit
       - total_revenue
+      - trends
     PurchaseItemOutput:
       type: object
       properties:
@@ -3035,9 +3530,43 @@ components:
       - subtotal
       - unit_purchase_price
       - variant_id
+    PurchaseItemSummary:
+      type: object
+      properties:
+        product_name:
+          type: string
+          readOnly: true
+        company_name:
+          type: string
+          readOnly: true
+        quantity:
+          type: integer
+          readOnly: true
+      required:
+      - company_name
+      - product_name
+      - quantity
     PurchasesReport:
       type: object
       properties:
+        summary:
+          type: object
+          additionalProperties: {}
+        trends:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        purchases_by_company:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        top_purchased_products:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
         total_purchases:
           type: integer
         total_spend:
@@ -3049,8 +3578,12 @@ components:
           items: {}
       required:
       - by_payment_method
+      - purchases_by_company
+      - summary
+      - top_purchased_products
       - total_purchases
       - total_spend
+      - trends
     ReferenceTypeEnum:
       enum:
       - SALE
@@ -3087,14 +3620,6 @@ components:
       - full_name
       - password
       - phone
-    RoleEnum:
-      enum:
-      - admin
-      - cashier
-      type: string
-      description: |-
-        * `admin` - Administrator
-        * `cashier` - Cashier
     SaleCancelRequest:
       type: object
       properties:
@@ -3151,11 +3676,11 @@ components:
           readOnly: true
         payment_method:
           allOf:
-          - $ref: '#/components/schemas/PaymentMethodAb7Enum'
+          - $ref: '#/components/schemas/SalePaymentMethodEnum'
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/Status14fEnum'
+          - $ref: '#/components/schemas/CompletionStatusEnum'
           readOnly: true
         notes:
           type: string
@@ -3301,17 +3826,17 @@ components:
           readOnly: true
         payment_method:
           allOf:
-          - $ref: '#/components/schemas/PaymentMethodAb7Enum'
+          - $ref: '#/components/schemas/SalePaymentMethodEnum'
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/Status14fEnum'
+          - $ref: '#/components/schemas/CompletionStatusEnum'
           readOnly: true
         served_by_name:
           type: string
           readOnly: true
         items_count:
-          type: string
+          type: integer
           readOnly: true
         created_at:
           type: string
@@ -3363,7 +3888,7 @@ components:
           readOnly: true
         payment_method:
           allOf:
-          - $ref: '#/components/schemas/PaymentMethodAb7Enum'
+          - $ref: '#/components/schemas/SalePaymentMethodEnum'
           readOnly: true
         created_at:
           type: string
@@ -3378,6 +3903,18 @@ components:
       - payment_method
       - payment_status
       - total_amount
+    SalePaymentMethodEnum:
+      enum:
+      - CASH
+      - TRANSFER
+      - POS
+      - CREDIT
+      type: string
+      description: |-
+        * `CASH` - Cash
+        * `TRANSFER` - Bank Transfer
+        * `POS` - Card / POS
+        * `CREDIT` - Credit
     SaleReceipt:
       type: object
       properties:
@@ -3433,11 +3970,11 @@ components:
           readOnly: true
         payment_method:
           allOf:
-          - $ref: '#/components/schemas/PaymentMethodAb7Enum'
+          - $ref: '#/components/schemas/SalePaymentMethodEnum'
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/Status14fEnum'
+          - $ref: '#/components/schemas/CompletionStatusEnum'
           readOnly: true
         notes:
           type: string
@@ -3476,6 +4013,29 @@ components:
     SalesReport:
       type: object
       properties:
+        summary:
+          type: object
+          additionalProperties: {}
+        trends:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        sales_by_payment_method:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        sales_by_category:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        sales_by_company:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
         total_sales:
           type: integer
         total_revenue:
@@ -3495,34 +4055,27 @@ components:
           items: {}
       required:
       - by_payment_method
+      - sales_by_category
+      - sales_by_company
+      - sales_by_payment_method
+      - summary
       - total_collected
       - total_outstanding
       - total_revenue
       - total_sales
-    Status14fEnum:
+      - trends
+    SessionTimeoutEnum:
       enum:
-      - COMPLETED
-      - CANCELLED
+      - 15m
+      - 30m
+      - 60m
+      - never
       type: string
       description: |-
-        * `COMPLETED` - Completed
-        * `CANCELLED` - Cancelled
-    Status2d9Enum:
-      enum:
-      - Active
-      - Inactive
-      type: string
-      description: |-
-        * `Active` - Active
-        * `Inactive` - Inactive
-    Status980Enum:
-      enum:
-      - Available
-      - Inactive
-      type: string
-      description: |-
-        * `Available` - Available
-        * `Inactive` - Inactive
+        * `15m` - 15 minutes
+        * `30m` - 30 minutes
+        * `60m` - 60 minutes
+        * `never` - Never
     StockAdjustmentInputRequest:
       type: object
       properties:
@@ -3572,11 +4125,11 @@ components:
           readOnly: true
         payment_method:
           allOf:
-          - $ref: '#/components/schemas/PaymentMethodDd1Enum'
+          - $ref: '#/components/schemas/PaymentMethodEnum'
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/Status14fEnum'
+          - $ref: '#/components/schemas/CompletionStatusEnum'
           readOnly: true
         note:
           type: string
@@ -3590,7 +4143,7 @@ components:
             $ref: '#/components/schemas/PurchaseItemOutput'
           readOnly: true
         total_units:
-          type: string
+          type: integer
           readOnly: true
         created_at:
           type: string
@@ -3633,23 +4186,25 @@ components:
           readOnly: true
         payment_method:
           allOf:
-          - $ref: '#/components/schemas/PaymentMethodDd1Enum'
+          - $ref: '#/components/schemas/PaymentMethodEnum'
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/Status14fEnum'
+          - $ref: '#/components/schemas/CompletionStatusEnum'
           readOnly: true
         recorded_by_name:
           type: string
           readOnly: true
         items_count:
-          type: string
+          type: integer
           readOnly: true
         items_summary:
-          type: string
+          type: array
+          items:
+            $ref: '#/components/schemas/PurchaseItemSummary'
           readOnly: true
         total_units:
-          type: string
+          type: integer
           readOnly: true
         created_at:
           type: string
@@ -3705,22 +4260,64 @@ components:
           type: boolean
         require_customer_for_credit:
           type: boolean
+        require_sale_confirmation:
+          type: boolean
         low_stock_threshold:
           type: integer
           maximum: 9223372036854775807
-          minimum: -9223372036854775808
+          minimum: 0
           format: int64
         allow_negative_stock:
           type: boolean
+        require_admin_stock_adjustment:
+          type: boolean
+        receipt_logo:
+          type: boolean
+        receipt_phone:
+          type: boolean
+        receipt_address:
+          type: boolean
+        receipt_cashier:
+          type: boolean
+        receipt_customer:
+          type: boolean
+        receipt_datetime:
+          type: boolean
+        receipt_number:
+          type: boolean
         receipt_footer:
           type: string
+        low_stock_notifications:
+          type: boolean
+        out_of_stock_notifications:
+          type: boolean
+        new_debt_notifications:
+          type: boolean
+        large_transaction_alert:
+          type: boolean
+        large_transaction_threshold:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        theme:
+          $ref: '#/components/schemas/ThemeEnum'
+        language:
+          type: string
+          maxLength: 20
+        session_timeout:
+          $ref: '#/components/schemas/SessionTimeoutEnum'
         updated_at:
           type: string
           format: date-time
           readOnly: true
+        updated_by_name:
+          type: string
+          readOnly: true
+          nullable: true
       required:
       - id
       - updated_at
+      - updated_by_name
     SystemSettingsUpdateRequest:
       type: object
       properties:
@@ -3762,30 +4359,93 @@ components:
           type: boolean
         require_customer_for_credit:
           type: boolean
+        require_sale_confirmation:
+          type: boolean
         low_stock_threshold:
           type: integer
           maximum: 9223372036854775807
-          minimum: -9223372036854775808
+          minimum: 0
           format: int64
         allow_negative_stock:
+          type: boolean
+        require_admin_stock_adjustment:
+          type: boolean
+        receipt_logo:
+          type: boolean
+        receipt_phone:
+          type: boolean
+        receipt_address:
+          type: boolean
+        receipt_cashier:
+          type: boolean
+        receipt_customer:
+          type: boolean
+        receipt_datetime:
+          type: boolean
+        receipt_number:
           type: boolean
         receipt_footer:
           type: string
           minLength: 1
+        low_stock_notifications:
+          type: boolean
+        out_of_stock_notifications:
+          type: boolean
+        new_debt_notifications:
+          type: boolean
+        large_transaction_alert:
+          type: boolean
+        large_transaction_threshold:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        theme:
+          $ref: '#/components/schemas/ThemeEnum'
+        language:
+          type: string
+          minLength: 1
+          maxLength: 20
+        session_timeout:
+          $ref: '#/components/schemas/SessionTimeoutEnum'
+        clear_logo:
+          type: boolean
+          writeOnly: true
+          default: false
+    ThemeEnum:
+      enum:
+      - light
+      - dark
+      - system
+      type: string
+      description: |-
+        * `light` - Light
+        * `dark` - Dark
+        * `system` - System Default
+    TokenBlacklistRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - refresh
     TokenRefresh:
       type: object
       properties:
         access:
           type: string
           readOnly: true
+        refresh:
+          type: string
       required:
       - access
+      - refresh
     TokenRefreshRequest:
       type: object
       properties:
         refresh:
           type: string
-          writeOnly: true
           minLength: 1
       required:
       - refresh
@@ -3819,7 +4479,7 @@ components:
           readOnly: true
         role:
           allOf:
-          - $ref: '#/components/schemas/RoleEnum'
+          - $ref: '#/components/schemas/UserRoleEnum'
           readOnly: true
         status:
           allOf:
@@ -3898,7 +4558,7 @@ components:
       properties:
         assigned_role:
           allOf:
-          - $ref: '#/components/schemas/AssignedRoleEnum'
+          - $ref: '#/components/schemas/UserRoleEnum'
           default: cashier
     UserActionRejectRequest:
       type: object
@@ -3909,6 +4569,14 @@ components:
           maxLength: 500
       required:
       - reason
+    UserRoleEnum:
+      enum:
+      - admin
+      - cashier
+      type: string
+      description: |-
+        * `admin` - Administrator
+        * `cashier` - Cashier
     UserStatusEnum:
       enum:
       - PENDING
@@ -3951,7 +4619,7 @@ components:
           minimum: 0
           default: 10
         status:
-          $ref: '#/components/schemas/Status980Enum'
+          $ref: '#/components/schemas/AvailabilityStatusEnum'
       required:
       - base_price
       - default_selling_price

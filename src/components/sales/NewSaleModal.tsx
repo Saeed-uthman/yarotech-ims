@@ -23,6 +23,7 @@ import {
   SalePaymentMethod,
   UserRole,
   Sale,
+  SystemSettings,
 } from '../../types';
 import { productService } from '../../services/productService';
 import { customerService } from '../../services/customerService';
@@ -33,6 +34,7 @@ interface NewSaleModalProps {
   onClose: () => void;
   onSuccess: (newSale: Sale) => void;
   role: UserRole;
+  settings: SystemSettings;
 }
 
 interface CartItem {
@@ -56,6 +58,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   onClose,
   onSuccess,
   role,
+  settings,
 }) => {
   // Cart & items
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -115,7 +118,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
     if (isOpen) {
       setCart([]);
       setProductSearch('');
-      setCustomerType('walking');
+      setCustomerType(settings.allowWalkingSales ? 'walking' : 'registered');
       setSelectedCustomerId('');
       setCustomerSearch('');
       setDiscount(0);
@@ -124,19 +127,20 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
       setNotes('');
       setFormError(null);
     }
-  }, [isOpen]);
+  }, [isOpen, settings.allowWalkingSales]);
 
   // Calculations
   const subtotal = cart.reduce((sum, item) => sum + (item.actualSellingPrice || item.sellingPrice) * item.quantity, 0);
   const numericDiscount = Math.max(0, Number(discount) || 0);
   const grandTotal = Math.max(0, subtotal - numericDiscount);
 
-  // Set default amountPaid when grandTotal changes if not edited
+  // Keep checkout fully paid by default. Selecting a partial/credit option
+  // afterwards is preserved until the cart total changes again.
   useEffect(() => {
-    if (isOpen && (amountPaid === '' || Number(amountPaid) === 0)) {
+    if (isOpen) {
       setAmountPaid(String(grandTotal));
     }
-  }, [grandTotal, isOpen, amountPaid]);
+  }, [grandTotal, isOpen]);
 
   if (!isOpen) return null;
 
@@ -281,6 +285,16 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
       return;
     }
 
+    if (customerType === 'walking' && !settings.allowWalkingSales) {
+      setFormError('Walk-in sales are disabled. Please select a registered customer.');
+      return;
+    }
+
+    if (outstandingBalance > 0 && !settings.allowCreditSales) {
+      setFormError('Credit and partial payments are disabled. The sale must be paid in full.');
+      return;
+    }
+
     if (customerType === 'walking' && outstandingBalance > 0) {
       setFormError(
         'Walking Customers cannot be given credit. Please record full payment or select a Registered Customer.'
@@ -308,6 +322,13 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
       notes: notes.trim() || undefined,
       servedBy: role === 'admin' ? 'Pharm. Abdullahi (Admin)' : 'Cashier Zainab',
     };
+
+    if (
+      settings.requireSaleConfirmation
+      && !window.confirm(`Complete this sale for ${formatNaira(grandTotal)}?`)
+    ) {
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -576,7 +597,11 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
               {/* Walking Customer Option */}
               <label
                 id="select-walking-customer-option"
-                className={`p-3.5 rounded-xl border cursor-pointer flex items-start gap-3 transition-all ${
+                className={`p-3.5 rounded-xl border flex items-start gap-3 transition-all ${
+                  !settings.allowWalkingSales
+                    ? 'cursor-not-allowed border-slate-200 bg-slate-100 opacity-60'
+                    : 'cursor-pointer'
+                } ${
                   customerType === 'walking'
                     ? 'border-blue-500 bg-blue-50/50 shadow-xs ring-1 ring-blue-500'
                     : 'border-slate-200 bg-white hover:bg-slate-50'
@@ -585,6 +610,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                 <input
                   type="radio"
                   name="customerType"
+                  disabled={!settings.allowWalkingSales}
                   checked={customerType === 'walking'}
                   onChange={() => {
                     setCustomerType('walking');
@@ -595,7 +621,9 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                 <div>
                   <div className="font-bold text-xs text-slate-900">Walking Customer</div>
                   <p className="text-[11px] text-slate-500 mt-0.5">
-                    Anonymous counter customer. Requires 100% payment at checkout.
+                    {settings.allowWalkingSales
+                      ? 'Anonymous counter customer. Requires 100% payment at checkout.'
+                      : 'Disabled by the current system sales policy.'}
                   </p>
                 </div>
               </label>
@@ -673,7 +701,11 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                     Payment Method:
                   </label>
                   <div className="grid grid-cols-2 gap-2">
-                    {(['CASH', 'TRANSFER', 'POS', 'CREDIT'] as SalePaymentMethod[]).map((m) => (
+                    {(
+                      settings.allowCreditSales
+                        ? (['CASH', 'TRANSFER', 'POS', 'CREDIT'] as SalePaymentMethod[])
+                        : (['CASH', 'TRANSFER', 'POS'] as SalePaymentMethod[])
+                    ).map((m) => (
                       <button
                         key={m}
                         type="button"
@@ -744,6 +776,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                       type="number"
                       min="0"
                       max={grandTotal}
+                      disabled={!settings.allowCreditSales}
                       value={amountPaid}
                       onChange={(e) => setAmountPaid(e.target.value)}
                       className="w-32 px-2 py-1 bg-white border border-slate-300 rounded text-right text-xs font-bold text-emerald-700 focus:ring-2 focus:ring-emerald-500"
@@ -759,7 +792,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                     >
                       Full Amount
                     </button>
-                    {customerType === 'registered' && (
+                    {settings.allowCreditSales && customerType === 'registered' && (
                       <>
                         <button
                           type="button"

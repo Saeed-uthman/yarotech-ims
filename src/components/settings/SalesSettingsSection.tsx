@@ -177,14 +177,14 @@ export const SalesSettingsSection: React.FC<SalesSettingsSectionProps> = ({
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-              Strictly prevents anonymous "Walking Customers" from being given credit. Debts can only be attached to verified customer names and phone numbers.
+              Enforced by the live debt ledger: credit must stay attached to a verified customer so it can be collected and audited.
             </p>
           </div>
-          <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
+          <label className="relative inline-flex items-center cursor-not-allowed shrink-0 mt-1" title="Required by the debt ledger">
             <input
               id="settings-require-customer-for-credit"
               type="checkbox"
-              disabled={isReadOnly}
+              disabled
               checked={formData.requireCustomerForCredit}
               onChange={(e) => onChange('requireCustomerForCredit', e.target.checked)}
               className="sr-only peer"

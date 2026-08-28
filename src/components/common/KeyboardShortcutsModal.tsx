@@ -3,13 +3,8 @@ import {
   X, 
   Keyboard, 
   Search, 
-  Plus, 
-  ScanBarcode, 
   Compass, 
-  UserCheck, 
-  CornerDownLeft,
-  Sparkles,
-  Command
+  Sparkles
 } from 'lucide-react';
 
 interface KeyboardShortcutsModalProps {
@@ -91,25 +86,13 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
       shortcuts: [
         { keys: ['Alt', '1'], label: 'Dashboard', description: 'Executive metrics and revenue graphs' },
         { keys: ['Alt', '2'], label: 'Products', description: 'Master pharmaceutical catalog' },
-        { keys: ['Alt', '3'], label: 'Inventory', description: 'Batches, stock levels, and expiry matrix' },
+        { keys: ['Alt', '3'], label: 'Inventory', description: 'Stock levels and movement history' },
         { keys: ['Alt', '4'], label: 'Stock Purchases', description: 'Supplier orders and invoices' },
         { keys: ['Alt', '5'], label: 'Customers', description: 'Patient directory and debt ledger' },
         { keys: ['Alt', '6'], label: 'Sales & POS', description: 'Dispensing terminal and receipt issuance' },
         { keys: ['Alt', '7'], label: 'Reports', description: 'Financial analytics and movement audits' },
-        { keys: ['Alt', '8'], label: 'Accountability', description: 'Cryptographic handover audit trail' },
+        { keys: ['Alt', '8'], label: 'Accountability', description: 'Financial postings and audit records' },
         { keys: ['Alt', '9'], label: 'Settings', description: 'Pharmacy profile and backup preferences' },
-      ],
-    },
-    {
-      title: 'Security & Operations',
-      icon: UserCheck,
-      shortcuts: [
-        {
-          keys: [metaKeyLabel, 'Alt', 'R'],
-          label: 'Switch Active Role',
-          description: 'Fast toggle between Admin and Cashier modes',
-          actionId: 'toggle-role',
-        },
       ],
     },
   ];

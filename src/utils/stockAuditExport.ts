@@ -507,7 +507,7 @@ export function generateStockAuditPrintHTML(
         <th style="width: 60px; text-align: center; background-color: #1e3a8a;">Variance (+/-)</th>
         <th style="width: 65px; text-align: right;">Unit Price</th>
         ${isAdmin ? '<th style="width: 70px; text-align: right;">Cost Value</th>' : ''}
-        <th style="width: 100px;">Auditor Notes / Expiry Batch</th>
+        <th style="width: 100px;">Auditor Notes / Storage Location</th>
       </tr>
     </thead>
     <tbody>

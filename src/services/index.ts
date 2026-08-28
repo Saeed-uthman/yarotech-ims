@@ -1,5 +1,4 @@
 export * from './apiCache';
-export * from './mockRepository';
 export * from './categoryService';
 export * from './companyService';
 export * from './productVariantService';

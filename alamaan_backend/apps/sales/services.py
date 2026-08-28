@@ -5,9 +5,12 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.accountability.models import AccountabilityTransaction
+from apps.accountability.sequences import next_accountability_transaction_number
+from apps.common.sequences import next_document_number
 from apps.inventory.models import InventoryMovement
 from apps.inventory.services import record_stock_movement
 from apps.products.models import ProductVariant
+from apps.settings_app.models import SystemSettings
 
 from .models import Sale, SaleItem
 
@@ -15,41 +18,22 @@ from .models import Sale, SaleItem
 def _generate_invoice_number():
     today = timezone.now()
     prefix = f'SAL-{today:%Y%m%d}-'
-    last_sale = (
-        Sale.objects.filter(invoice_number__startswith=prefix)
-        .order_by('-invoice_number')
-        .first()
+    return next_document_number(
+        sequence_name=f'sale:{today:%Y%m%d}',
+        prefix=prefix,
+        queryset=Sale.objects.all(),
+        field_name='invoice_number',
+        width=6,
     )
-    if last_sale:
-        last_seq = int(last_sale.invoice_number.split('-')[-1])
-        next_seq = last_seq + 1
-    else:
-        next_seq = 1
-    return f'{prefix}{next_seq:06d}'
-
-
-def _generate_transaction_number():
-    now = timezone.now()
-    prefix = f'ACC-{now:%Y%m}-'
-    last_tx = (
-        AccountabilityTransaction.objects.filter(transaction_number__startswith=prefix)
-        .order_by('-transaction_number')
-        .first()
-    )
-    if last_tx:
-        last_seq = int(last_tx.transaction_number.split('-')[-1])
-        next_seq = last_seq + 1
-    else:
-        next_seq = 1
-    return f'{prefix}{next_seq:06d}'
 
 
 @transaction.atomic
 def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'), amount_paid, payment_method, notes=''):
+    system_settings = SystemSettings.load()
     variant_ids = [item['product_variant_id'] for item in items]
     variants = {
         v.id: v
-        for v in ProductVariant.objects.select_for_update().filter(id__in=variant_ids)
+        for v in ProductVariant.objects.select_for_update().filter(id__in=variant_ids).order_by('id')
     }
 
     for item in items:
@@ -90,6 +74,11 @@ def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'),
     outstanding_amount = total_amount - amount_paid
     if outstanding_amount < 0:
         raise ValidationError({'amount_paid': 'Amount paid cannot exceed total amount.'})
+
+    if customer_id is None and not system_settings.allow_walking_sales:
+        raise ValidationError({'customer_id': 'Walk-in sales are disabled in system settings.'})
+    if outstanding_amount > 0 and not system_settings.allow_credit_sales:
+        raise ValidationError({'amount_paid': 'Credit and partial-payment sales are disabled in system settings.'})
 
     if outstanding_amount == 0:
         payment_status = Sale.PaymentStatus.PAID
@@ -162,7 +151,7 @@ def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'),
 
     if amount_paid > 0:
         AccountabilityTransaction.objects.create(
-            transaction_number=_generate_transaction_number(),
+            transaction_number=next_accountability_transaction_number(),
             direction=AccountabilityTransaction.Direction.IN,
             type=AccountabilityTransaction.TxType.SALE,
             category='Sales Revenue',
@@ -188,8 +177,10 @@ def cancel_sale(*, sale, cancelled_by, reason=''):
     sale_items = list(sale.items.select_related('variant').all())
     locked_variants = {
         variant.id: variant
-        for variant in ProductVariant.objects.select_for_update().filter(
-            id__in=[item.variant_id for item in sale_items]
+        for variant in (
+            ProductVariant.objects.select_for_update()
+            .filter(id__in=[item.variant_id for item in sale_items])
+            .order_by('id')
         )
     }
 

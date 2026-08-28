@@ -9,7 +9,9 @@ from .models import Sale
 
 
 def list_sales(*, search='', date_range=None, payment_status=None, customer_type=None, ordering='-date'):
-    queryset = Sale.objects.select_related('customer', 'served_by')
+    queryset = Sale.objects.select_related('customer', 'served_by').annotate(
+        list_items_count=Count('items'),
+    )
 
     if search:
         queryset = queryset.filter(

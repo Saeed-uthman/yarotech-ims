@@ -2,18 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   User, 
   UserCheck, 
-  ShieldAlert, 
   ChevronDown, 
   Settings, 
   ShieldCheck, 
-  Wifi, 
-  WifiOff, 
-  Check, 
-  Sparkles,
-  HelpCircle,
   LogOut,
   Users,
-  Clock,
   Keyboard
 } from 'lucide-react';
 import { UserRole } from '../../types';
@@ -21,7 +14,6 @@ import { useAuth } from '../../hooks';
 
 interface HeaderUserMenuProps {
   currentRole: UserRole;
-  onRoleChange: (role: UserRole) => void;
   onNavigate?: (nav: string) => void;
   onOpenShortcuts?: () => void;
   isOnline?: boolean;
@@ -29,7 +21,6 @@ interface HeaderUserMenuProps {
 
 export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
   currentRole,
-  onRoleChange,
   onNavigate,
   onOpenShortcuts,
   isOnline = true,
@@ -71,11 +62,6 @@ export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen]);
-
-  const handleRoleSelect = (newRole: UserRole) => {
-    onRoleChange(newRole);
-    setIsOpen(false);
-  };
 
   const handleNavClick = (nav: string) => {
     if (onNavigate) {
@@ -126,7 +112,7 @@ export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
             className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-slate-900 ${
               isOnline ? 'bg-emerald-500' : 'bg-rose-500'
             }`} 
-            title={isOnline ? 'Online - Live Sync Active' : 'Offline Mode'}
+            title={isOnline ? 'Online - Django API available' : 'Offline Mode'}
           />
         </div>
 
@@ -206,71 +192,6 @@ export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
                   {pendingCount} Pending Approvals
                 </span>
               )}
-            </div>
-          </div>
-
-          {/* Quick Role Switcher Section */}
-          <div className="p-3">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-2">
-              Switch Active Role (Testing Mode)
-            </label>
-            
-            <div className="space-y-1.5">
-              {/* Admin Option */}
-              <button
-                role="menuitem"
-                onClick={() => handleRoleSelect('admin')}
-                className={`w-full flex items-start gap-3 p-2.5 rounded-lg text-left transition-colors ${
-                  currentRole === 'admin'
-                    ? 'bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800'
-                    : 'hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent'
-                }`}
-              >
-                <div className="p-1.5 rounded-md bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 shrink-0 mt-0.5">
-                  <UserCheck className="w-4 h-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">
-                      Administrator
-                    </span>
-                    {currentRole === 'admin' && (
-                      <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    )}
-                  </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    Full access to costs, catalog, user approvals, and accounting.
-                  </p>
-                </div>
-              </button>
-
-              {/* Cashier Option */}
-              <button
-                role="menuitem"
-                onClick={() => handleRoleSelect('cashier')}
-                className={`w-full flex items-start gap-3 p-2.5 rounded-lg text-left transition-colors ${
-                  currentRole === 'cashier'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800'
-                    : 'hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent'
-                }`}
-              >
-                <div className="p-1.5 rounded-md bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 shrink-0 mt-0.5">
-                  <User className="w-4 h-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">
-                      Cashier Mode
-                    </span>
-                    {currentRole === 'cashier' && (
-                      <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    )}
-                  </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    Streamlined POS sales view. Wholesale base costs securely masked.
-                  </p>
-                </div>
-              </button>
             </div>
           </div>
 

@@ -14,7 +14,6 @@ export interface AuthContextType {
   login: (input: LoginInput) => Promise<AuthResponse>;
   register: (input: RegisterInput) => Promise<AuthResponse>;
   logout: () => void;
-  switchRole: (newRole: UserRole) => void;
   refreshUser: () => Promise<void>;
   refreshPendingCount: () => Promise<void>;
   setUserDirectly: (user: UserAccount | null) => void;
@@ -107,18 +106,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = useCallback(() => {
     localStorage.removeItem(AUTH_STORAGE_KEY);
-    clearTokens();
     setUser(null);
-  }, []);
-
-  // Quick switch role (for development/testing only)
-  const switchRole = useCallback((newRole: UserRole) => {
-    setUser((prev) => {
-      if (!prev) return null;
-      const updated = { ...prev, role: newRole };
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updated));
-      return updated;
-    });
+    void authService.logout();
   }, []);
 
   const refreshUser = useCallback(async () => {
@@ -162,7 +151,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         login,
         register,
         logout,
-        switchRole,
         refreshUser,
         refreshPendingCount,
         setUserDirectly,

@@ -3,8 +3,9 @@ from rest_framework import status
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
-from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.views import TokenBlacklistView, TokenRefreshView
 
 from apps.common.permissions import IsAdminUserRole
 from apps.common.pagination import paginated_response
@@ -25,6 +26,8 @@ from .services import approve_user, reactivate_user, reject_user, suspend_user
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_register'
 
     @extend_schema(request=RegisterSerializer, responses={201: UserSerializer})
     def post(self, request):
@@ -39,6 +42,8 @@ class RegisterView(APIView):
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_login'
 
     @extend_schema(request=LoginSerializer, responses={200: None})
     def post(self, request):
@@ -48,9 +53,23 @@ class LoginView(APIView):
 
 
 class RefreshTokenView(TokenRefreshView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_refresh'
+
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         response.data = success_response(response.data, 'Token refreshed successfully.')
+        return response
+
+
+class LogoutView(TokenBlacklistView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_refresh'
+
+    @extend_schema(responses={200: None})
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        response.data = success_response(message='Signed out successfully.')
         return response
 
 
@@ -66,7 +85,7 @@ class MeView(APIView):
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(request=ChangePasswordSerializer)
+    @extend_schema(request=ChangePasswordSerializer, responses={200: None})
     def post(self, request):
         serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
@@ -127,7 +146,7 @@ class UserRejectView(APIView):
 class UserSuspendView(APIView):
     permission_classes = [IsAdminUserRole]
 
-    @extend_schema(responses={200: UserSerializer})
+    @extend_schema(request=None, responses={200: UserSerializer})
     def post(self, request, pk):
         user = get_object_or_404(User, pk=pk)
         user = suspend_user(user=user, suspended_by=request.user)
@@ -137,7 +156,7 @@ class UserSuspendView(APIView):
 class UserReactivateView(APIView):
     permission_classes = [IsAdminUserRole]
 
-    @extend_schema(responses={200: UserSerializer})
+    @extend_schema(request=None, responses={200: UserSerializer})
     def post(self, request, pk):
         user = get_object_or_404(User, pk=pk)
         user = reactivate_user(user=user, reactivated_by=request.user)

@@ -131,7 +131,7 @@ export const InventorySettingsSection: React.FC<InventorySettingsSectionProps> =
               )}
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">
-              When enabled, cashiers can complete sales even when the recorded on-hand quantity is zero or less. When disabled (default), the system strictly blocks checkout of out-of-stock items to prevent physical inventory variance.
+              The live inventory database enforces non-negative stock, so out-of-stock checkout is always blocked to prevent physical inventory variance.
             </p>
 
             {formData.allowNegativeStock && (
@@ -144,11 +144,11 @@ export const InventorySettingsSection: React.FC<InventorySettingsSectionProps> =
             )}
           </div>
 
-          <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
+          <label className="relative inline-flex items-center cursor-not-allowed shrink-0 mt-1" title="Enforced by the inventory database">
             <input
               id="settings-allow-negative-stock"
               type="checkbox"
-              disabled={isReadOnly}
+              disabled
               checked={formData.allowNegativeStock}
               onChange={(e) => onChange('allowNegativeStock', e.target.checked)}
               className="sr-only peer"
@@ -171,15 +171,15 @@ export const InventorySettingsSection: React.FC<InventorySettingsSectionProps> =
               </span>
             </div>
             <p className="text-xs text-slate-500 leading-relaxed">
-              When enabled, manual stock count corrections (damaged packs, expired batches, or audit write-offs) are restricted strictly to users with the Administrator role.
+              Manual stock corrections are always restricted to Administrators so every adjustment remains authorized and auditable.
             </p>
           </div>
 
-          <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
+          <label className="relative inline-flex items-center cursor-not-allowed shrink-0 mt-1" title="Enforced by role-based access control">
             <input
               id="settings-require-admin-stock-adj"
               type="checkbox"
-              disabled={isReadOnly}
+              disabled
               checked={formData.requireAdminStockAdjustment}
               onChange={(e) => onChange('requireAdminStockAdjustment', e.target.checked)}
               className="sr-only peer"

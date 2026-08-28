@@ -21,7 +21,6 @@ import { useAuth, usePermissions } from '../../hooks';
 
 export interface SidebarProps {
   currentRole: UserRole;
-  onRoleChange: (role: UserRole) => void;
   activeNav: string;
   onNavChange: (nav: string) => void;
   isMobileOpen?: boolean;
@@ -32,7 +31,6 @@ export interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentRole,
-  onRoleChange,
   activeNav,
   onNavChange,
   isMobileOpen = false,
@@ -226,7 +224,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
-      {/* User Role Card & Switcher in Sidebar Footer */}
+      {/* Authenticated user summary */}
       <div className="p-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80">
         <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2.5">
           <div className="flex items-center justify-between">
@@ -258,32 +256,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               aria-label="Sign out of system"
             >
               <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Quick Role Toggle Bar */}
-          <div className="flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg text-xs font-semibold">
-            <button
-              id="role-select-admin-btn"
-              onClick={() => onRoleChange('admin')}
-              className={`flex-1 py-1.5 rounded-md text-center transition-all min-h-[32px] ${
-                currentRole === 'admin' 
-                  ? 'bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-400 shadow-xs font-bold' 
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              Admin
-            </button>
-            <button
-              id="role-select-cashier-btn"
-              onClick={() => onRoleChange('cashier')}
-              className={`flex-1 py-1.5 rounded-md text-center transition-all min-h-[32px] ${
-                currentRole === 'cashier' 
-                  ? 'bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 shadow-xs font-bold' 
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-            >
-              Cashier
             </button>
           </div>
         </div>

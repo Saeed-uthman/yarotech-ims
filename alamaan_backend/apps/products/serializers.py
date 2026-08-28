@@ -112,7 +112,7 @@ class ProductVariantSerializer(serializers.ModelSerializer):
             fields.pop('base_price', None)
         return fields
 
-    def get_stock_status(self, obj):
+    def get_stock_status(self, obj) -> str:
         if obj.current_stock == 0:
             return 'out'
         if obj.current_stock <= obj.reorder_level:

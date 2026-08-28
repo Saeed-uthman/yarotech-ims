@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  UserRole, 
   Product, 
   ProductCreateInput, 
   ProductFilterParams,
@@ -46,28 +45,12 @@ import { SettingsModule } from './components/settings';
 import { DashboardModule } from './components/dashboard';
 import { UserManagementModule } from './components/users';
 import { WifiOff, Activity, RefreshCw, Loader2, HeartPulse } from 'lucide-react';
-import { productService } from './services/productService';
 import { downloadProductCsvTemplate } from './utils/productCsvTemplate';
 import { useSettings } from './hooks/useSettings';
 import { useInventoryKPIs } from './hooks/useInventory';
 
 function MainPharmacyApp() {
-  const { isAuthenticated, isLoading: isAuthLoading, user, role: authRole, switchRole } = useAuth();
-
-  // User Role (Administrator vs Cashier)
-  const [currentRole, setCurrentRole] = useState<UserRole>(authRole || 'admin');
-
-  // Sync role when auth role changes
-  useEffect(() => {
-    if (authRole) {
-      setCurrentRole(authRole);
-    }
-  }, [authRole]);
-
-  const handleRoleChange = (newRole: UserRole) => {
-    setCurrentRole(newRole);
-    switchRole(newRole);
-  };
+  const { isAuthenticated, isLoading: isAuthLoading, user, role: currentRole } = useAuth();
 
   // Navigation & View Mode
   const [activeNav, setActiveNav] = useState<string>('dashboard');
@@ -89,7 +72,7 @@ function MainPharmacyApp() {
   });
 
   // Network status hook
-  const { isOnline } = useNetworkStatus();
+  const { isOnline, browserOnline } = useNetworkStatus();
 
   // Custom Hooks Layer
   const {
@@ -291,13 +274,6 @@ function MainPharmacyApp() {
     productToEdit,
   ]);
 
-  // Fast testing role toggle handler (Ctrl+Alt+R)
-  const handleQuickRoleToggle = useCallback(() => {
-    const nextRole: UserRole = currentRole === 'admin' ? 'cashier' : 'admin';
-    handleRoleChange(nextRole);
-    addToast('info', 'Role Switched', `Active role switched to ${nextRole.toUpperCase()}`);
-  }, [currentRole, addToast]);
-
   // Global Keyboard Shortcuts Listener
   useKeyboardShortcuts({
     onOpenAddProduct: handleOpenAddProduct,
@@ -311,7 +287,6 @@ function MainPharmacyApp() {
       if (nav === 'products') setViewMode('list');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
-    onQuickRoleToggle: handleQuickRoleToggle,
     isEnabled: isAuthenticated && user?.status === 'ACTIVE',
   });
 
@@ -435,15 +410,6 @@ function MainPharmacyApp() {
     }));
   };
 
-  const handleResetData = async () => {
-    if (window.confirm('Reset all demo data and inventory back to seed state? This will reset custom modifications.')) {
-      productService.resetToDefaults();
-      refetchProducts(true);
-      refetchKPIs();
-      addToast('info', 'System Reset', 'Data restored to factory seed state.');
-    }
-  };
-
   // Auth Loading State
   if (isAuthLoading) {
     return (
@@ -469,7 +435,7 @@ function MainPharmacyApp() {
     return (
       <AuthContainer
         pharmacyName={settings?.pharmacyName || 'Al-Amaan Medicine Store'}
-        pharmacyLogo={settings?.pharmacyLogo}
+        pharmacyLogo={settings?.logo}
       />
     );
   }
@@ -484,14 +450,13 @@ function MainPharmacyApp() {
           className="bg-amber-600 dark:bg-amber-700 text-white text-xs py-1.5 px-4 text-center font-medium flex items-center justify-center gap-2 fixed top-0 left-0 right-0 z-50 shadow-md"
         >
           <WifiOff className="w-3.5 h-3.5" />
-          <span>Offline Mode Active - Changes will sync when network returns.</span>
+          <span>You are offline. Live API actions are unavailable until the connection returns.</span>
         </div>
       )}
 
       {/* Main Persistent Sidebar */}
       <Sidebar
         currentRole={currentRole}
-        onRoleChange={handleRoleChange}
         activeNav={activeNav}
         onNavChange={(nav) => {
           setActiveNav(nav);
@@ -501,7 +466,7 @@ function MainPharmacyApp() {
         isMobileOpen={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
         pharmacyName={settings?.pharmacyName}
-        pharmacyLogo={settings?.pharmacyLogo}
+        pharmacyLogo={settings?.logo}
       />
 
       {/* Content Area Wrapper */}
@@ -514,16 +479,14 @@ function MainPharmacyApp() {
             if (nav === 'products') setViewMode('list');
           }}
           pharmacyName={settings?.pharmacyName}
-          pharmacyLogo={settings?.pharmacyLogo}
+          pharmacyLogo={settings?.logo}
           currentRole={currentRole}
-          onRoleChange={handleRoleChange}
           searchQuery={filters.search || ''}
           onSearchChange={(search) => setFilters((prev) => ({ ...prev, search, page: 1 }))}
           onOpenAddProduct={handleOpenAddProduct}
           onOpenBarcodeScanner={() => setIsBarcodeScannerOpen(true)}
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
           onOpenShortcuts={() => setIsShortcutsModalOpen(true)}
-          onResetData={handleResetData}
           isOnline={isOnline}
           onOpenLowStockAlerts={() => setIsLowStockModalOpen(true)}
           lowStockCount={totalLowStockAlerts}
@@ -559,6 +522,7 @@ function MainPharmacyApp() {
             ) : activeNav === 'sales' ? (
               <SalesModule
                 role={currentRole}
+                settings={settings}
                 onNavigateToCustomer={(customerId) => {
                   setActiveNav('customers');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -792,11 +756,11 @@ function MainPharmacyApp() {
                   )}
                 </div>
 
-                {/* Network & Simulation Floating Trigger */}
+                {/* Live API connection and client-cache controls */}
                 <div className="flex items-center justify-between pt-4 text-xs text-slate-400 dark:text-slate-500 border-t border-slate-200 dark:border-slate-800">
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-                    <span>REST Service Mock Layer Active</span>
+                    <span className={`w-2 h-2 rounded-full inline-block ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+                    <span>{isOnline ? 'Browser online — Django API configured' : 'Browser offline'}</span>
                     {isStale && <span className="text-blue-500 font-mono">(Syncing...)</span>}
                   </div>
                   <button
@@ -804,7 +768,7 @@ function MainPharmacyApp() {
                     className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 dark:hover:text-white font-medium px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     <Activity className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Network & Latency Settings</span>
+                    <span>Connection & Cache</span>
                   </button>
                 </div>
               </div>
@@ -835,6 +799,7 @@ function MainPharmacyApp() {
       {/* Barcode Scanner Modal */}
       <BarcodeScannerModal
         isOpen={isBarcodeScannerOpen}
+        currentRole={currentRole}
         onClose={() => setIsBarcodeScannerOpen(false)}
         onSelectProduct={(product) => {
           setSelectedProduct(product);
@@ -842,9 +807,11 @@ function MainPharmacyApp() {
         }}
       />
 
-      {/* Network & Test Latency Config Modal */}
+      {/* Live API and client-cache information */}
       <NetworkConfigModal
         isOpen={isNetworkConfigOpen}
+        isOnline={isOnline}
+        browserOnline={browserOnline}
         onClose={() => setIsNetworkConfigOpen(false)}
         onRefresh={() => {
           refetchProducts(true);

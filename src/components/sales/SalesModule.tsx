@@ -15,6 +15,7 @@ import {
   SalesFilterParams,
   SalesDateRange,
   UserRole,
+  SystemSettings,
 } from '../../types';
 import {
   useSales,
@@ -32,11 +33,13 @@ import { NewSaleModal } from './NewSaleModal';
 
 interface SalesModuleProps {
   role: UserRole;
+  settings: SystemSettings;
   onNavigateToCustomer?: (customerId: string) => void;
 }
 
 export const SalesModule: React.FC<SalesModuleProps> = ({
   role,
+  settings,
   onNavigateToCustomer,
 }) => {
   // Filter state
@@ -274,6 +277,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
         onClose={() => setIsNewSaleOpen(false)}
         onSuccess={handleSaleCreated}
         role={role}
+        settings={settings}
       />
     </div>
   );

@@ -30,7 +30,7 @@ import { SecuritySettingsSection } from './SecuritySettingsSection';
 
 interface SettingsModuleProps {
   role: UserRole;
-  onSettingsUpdated?: (updated: SystemSettings) => void;
+  onSettingsUpdated?: () => void;
 }
 
 type SettingsTab =
@@ -158,9 +158,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
     const res = await updateSettings(payload);
     if (res.success) {
       setSaveSuccessMsg(res.message || 'System preferences saved successfully.');
-      if (onSettingsUpdated && settings) {
-        onSettingsUpdated(formData);
-      }
+      onSettingsUpdated?.();
       setTimeout(() => setSaveSuccessMsg(null), 4000);
     }
   };
@@ -170,6 +168,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
     const res = await resetSettings();
     if (res.success) {
       setSaveSuccessMsg('System preferences have been reset to default values.');
+      onSettingsUpdated?.();
       setTimeout(() => setSaveSuccessMsg(null), 4000);
     }
   };

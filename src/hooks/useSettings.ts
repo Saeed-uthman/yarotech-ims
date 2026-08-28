@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { SystemSettings, UpdateSettingsInput, ChangePasswordInput, UserRole } from '../types';
 import { settingsService } from '../services/settingsService';
-import { DEFAULT_MOCK_SETTINGS } from '../data/mock/settings';
+import { DEFAULT_SYSTEM_SETTINGS } from '../data/defaultSettings';
 
 export function useSettings(role: UserRole = 'admin') {
-  const [settings, setSettings] = useState<SystemSettings>(DEFAULT_MOCK_SETTINGS);
+  const [settings, setSettings] = useState<SystemSettings>(DEFAULT_SYSTEM_SETTINGS);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isResetting, setIsResetting] = useState<boolean>(false);

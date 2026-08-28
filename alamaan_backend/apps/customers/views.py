@@ -94,7 +94,7 @@ class CustomerDetailView(APIView):
 class CustomerToggleStatusView(APIView):
     permission_classes = [IsAdminUserRole]
 
-    @extend_schema(responses={200: CustomerDetailSerializer})
+    @extend_schema(request=None, responses={200: CustomerDetailSerializer})
     def post(self, request, pk):
         customer = get_object_or_404(Customer, pk=pk)
         customer = toggle_customer_status(customer=customer, toggled_by=request.user)

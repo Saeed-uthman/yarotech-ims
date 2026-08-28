@@ -152,7 +152,9 @@ class SaleListSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_items_count(self, obj):
+    def get_items_count(self, obj) -> int:
+        if hasattr(obj, 'list_items_count'):
+            return obj.list_items_count
         return obj.items.count()
 
 

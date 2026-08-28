@@ -5,6 +5,8 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.accountability.models import AccountabilityTransaction
+from apps.accountability.sequences import next_accountability_transaction_number
+from apps.common.sequences import next_document_number
 from apps.inventory.models import InventoryMovement
 from apps.inventory.services import record_stock_movement
 from apps.products.models import ProductVariant
@@ -15,33 +17,13 @@ from .models import PurchaseItem, StockPurchase
 def _generate_purchase_number():
     now = timezone.now()
     prefix = f'PUR-{now:%Y%m}-'
-    last_purchase = (
-        StockPurchase.objects.filter(purchase_number__startswith=prefix)
-        .order_by('-purchase_number')
-        .first()
+    return next_document_number(
+        sequence_name=f'purchase:{now:%Y%m}',
+        prefix=prefix,
+        queryset=StockPurchase.objects.all(),
+        field_name='purchase_number',
+        width=5,
     )
-    if last_purchase:
-        last_seq = int(last_purchase.purchase_number.split('-')[-1])
-        next_seq = last_seq + 1
-    else:
-        next_seq = 1
-    return f'{prefix}{next_seq:05d}'
-
-
-def _generate_transaction_number():
-    now = timezone.now()
-    prefix = f'ACC-{now:%Y%m}-'
-    last_tx = (
-        AccountabilityTransaction.objects.filter(transaction_number__startswith=prefix)
-        .order_by('-transaction_number')
-        .first()
-    )
-    if last_tx:
-        last_seq = int(last_tx.transaction_number.split('-')[-1])
-        next_seq = last_seq + 1
-    else:
-        next_seq = 1
-    return f'{prefix}{next_seq:06d}'
 
 
 @transaction.atomic
@@ -49,7 +31,7 @@ def create_stock_purchase(*, user, items, payment_method, purchase_date=None, no
     variant_ids = [item['product_variant_id'] for item in items]
     variants = {
         v.id: v
-        for v in ProductVariant.objects.select_for_update().filter(id__in=variant_ids)
+        for v in ProductVariant.objects.select_for_update().filter(id__in=variant_ids).order_by('id')
     }
 
     total_amount = Decimal('0.00')
@@ -124,7 +106,7 @@ def create_stock_purchase(*, user, items, payment_method, purchase_date=None, no
         )
 
     AccountabilityTransaction.objects.create(
-        transaction_number=_generate_transaction_number(),
+        transaction_number=next_accountability_transaction_number(),
         direction=AccountabilityTransaction.Direction.OUT,
         type=AccountabilityTransaction.TxType.STOCK_PURCHASE,
         category='Stock Purchase',
@@ -149,8 +131,10 @@ def cancel_purchase(*, purchase, cancelled_by, reason=''):
     purchase_items = list(purchase.items.select_related('variant').all())
     locked_variants = {
         variant.id: variant
-        for variant in ProductVariant.objects.select_for_update().filter(
-            id__in=[item.variant_id for item in purchase_items]
+        for variant in (
+            ProductVariant.objects.select_for_update()
+            .filter(id__in=[item.variant_id for item in purchase_items])
+            .order_by('id')
         )
     }
 

@@ -8,6 +8,7 @@ from apps.common.responses import success_response
 
 from .models import SystemSettings
 from .serializers import SystemSettingsOutputSerializer, SystemSettingsUpdateSerializer
+from .services import reset_system_settings
 
 
 class SystemSettingsView(APIView):
@@ -19,20 +20,30 @@ class SystemSettingsView(APIView):
     @extend_schema(responses={200: SystemSettingsOutputSerializer})
     def get(self, request):
         settings = SystemSettings.load()
-        return Response(success_response(SystemSettingsOutputSerializer(settings).data))
+        return Response(success_response(SystemSettingsOutputSerializer(settings, context={'request': request}).data))
 
     @extend_schema(request=SystemSettingsUpdateSerializer, responses={200: SystemSettingsOutputSerializer})
     def put(self, request):
         settings = SystemSettings.load()
         serializer = SystemSettingsUpdateSerializer(settings, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(success_response(SystemSettingsOutputSerializer(settings).data, 'Settings updated successfully.'))
+        serializer.save(updated_by=request.user)
+        return Response(success_response(SystemSettingsOutputSerializer(settings, context={'request': request}).data, 'Settings updated successfully.'))
 
     @extend_schema(request=SystemSettingsUpdateSerializer, responses={200: SystemSettingsOutputSerializer})
     def patch(self, request):
         settings = SystemSettings.load()
         serializer = SystemSettingsUpdateSerializer(settings, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(success_response(SystemSettingsOutputSerializer(settings).data, 'Settings updated successfully.'))
+        serializer.save(updated_by=request.user)
+        return Response(success_response(SystemSettingsOutputSerializer(settings, context={'request': request}).data, 'Settings updated successfully.'))
+
+
+class SystemSettingsResetView(APIView):
+    permission_classes = [IsAdminUserRole]
+
+    @extend_schema(request=None, responses={200: SystemSettingsOutputSerializer})
+    def post(self, request):
+        settings = reset_system_settings(reset_by=request.user)
+        data = SystemSettingsOutputSerializer(settings, context={'request': request}).data
+        return Response(success_response(data, 'Settings reset to system defaults.'))

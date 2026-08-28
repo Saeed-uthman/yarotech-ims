@@ -10,13 +10,38 @@ import {
   AuthResponse,
   ApiResponse,
 } from '../types';
-import { api, ApiError, toCamelCaseKeys, setTokens, clearTokens } from './apiClient';
+import {
+  api,
+  ApiError,
+  toCamelCaseKeys,
+  setTokens,
+  clearTokens,
+  getRefreshToken,
+  apiRequest,
+  mapPaginationMeta,
+} from './apiClient';
 
 /**
  * Authentication & User Management Service
  * Calls Django REST Framework backend via apiClient.
  */
 class AuthService {
+  public async logout(): Promise<void> {
+    const refresh = getRefreshToken();
+    clearTokens();
+    try {
+      if (refresh) {
+        await apiRequest('/auth/logout/', {
+          method: 'POST',
+          body: { refresh },
+          skipAuth: true,
+        });
+      }
+    } catch {
+      // Local sign-out must still complete if the token is expired or offline.
+    }
+  }
+
   /**
    * Submit user login credentials.
    * Backend returns { success, data: { refresh, access, user }, message }
@@ -117,15 +142,30 @@ class AuthService {
    */
   public async getUsers(params?: UserFilterParams): Promise<ApiResponse<UserAccount[]>> {
     try {
-      const queryParams: Record<string, any> = {};
+      const queryParams: Record<string, any> = { page: 1, per_page: 100 };
       if (params?.search) queryParams.search = params.search;
       if (params?.status && params.status !== 'all') queryParams.status = params.status;
       if (params?.role && params.role !== 'all') queryParams.role = params.role;
 
-      const res = await api.get<any>('/users/', queryParams);
-      const data = Array.isArray(res.data) ? res.data.map(toCamelCaseKeys) : [];
+      const firstPage = await api.get<any>('/users/', queryParams);
+      const totalPages = Math.max(Number(firstPage.meta?.total_pages || 1), 1);
+      const remainingPages = totalPages > 1
+        ? await Promise.all(
+            Array.from({ length: totalPages - 1 }, (_, index) =>
+              api.get<any>('/users/', { ...queryParams, page: index + 2 })
+            )
+          )
+        : [];
+      const data = [firstPage, ...remainingPages].flatMap((page) =>
+        Array.isArray(page.data) ? page.data.map(toCamelCaseKeys) : []
+      );
 
-      return { success: true, data: data as UserAccount[], message: res.message };
+      return {
+        success: true,
+        data: data as UserAccount[],
+        message: firstPage.message,
+        meta: mapPaginationMeta(firstPage.meta),
+      };
     } catch (err) {
       if (err instanceof ApiError) {
         return { success: false, message: err.message, error: err.message };
@@ -228,28 +268,11 @@ class AuthService {
    */
   public async getPendingUserCount(): Promise<number> {
     try {
-      const res = await api.get<any>('/users/', { status: 'PENDING' });
-      if (Array.isArray(res.data)) {
-        return res.data.length;
-      }
-      return 0;
+      const res = await api.get<any>('/users/', { status: 'PENDING', per_page: 1 });
+      return Number(res.meta?.total ?? (Array.isArray(res.data) ? res.data.length : 0));
     } catch {
       return 0;
     }
-  }
-
-  /**
-   * Simulate Password Reset Request (not yet implemented in backend).
-   */
-  public async requestPasswordReset(email: string): Promise<{ success: boolean; message: string }> {
-    const normalized = (email || '').trim().toLowerCase();
-    if (!normalized) {
-      return { success: false, message: 'Please enter your registered email address.' };
-    }
-    return {
-      success: true,
-      message: `If an account with email ${normalized} exists, password reset instructions have been forwarded to the system administrator.`,
-    };
   }
 
   /**

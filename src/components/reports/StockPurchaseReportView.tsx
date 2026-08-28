@@ -71,7 +71,7 @@ export const StockPurchaseReportView: React.FC<StockPurchaseReportViewProps> = (
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200/90 p-4 shadow-xs">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Purchase Batches</span>
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Purchase Records</span>
           <p className="text-xl font-bold text-gray-900 mt-1">
             {summary.totalPurchasesCount} orders
           </p>

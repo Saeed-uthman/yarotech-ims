@@ -1,6 +1,8 @@
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.accounts.models import User
 
@@ -78,3 +80,63 @@ class AccountsApiTests(APITestCase):
         response = self.client.get(reverse('users-list'))
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_authenticated_user_can_change_password(self):
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(
+            reverse('auth-change-password'),
+            {
+                'current_password': 'StrongPass123!',
+                'new_password': 'NewStrongPass456!',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.admin.refresh_from_db()
+        self.assertTrue(self.admin.check_password('NewStrongPass456!'))
+
+    def test_change_password_rejects_wrong_current_password(self):
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(
+            reverse('auth-change-password'),
+            {
+                'current_password': 'WrongPassword123!',
+                'new_password': 'NewStrongPass456!',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_logout_blacklists_refresh_token(self):
+        refresh = RefreshToken.for_user(self.admin)
+
+        response = self.client.post(
+            reverse('auth-logout'),
+            {'refresh': str(refresh)},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        with self.assertRaises(TokenError):
+            RefreshToken(str(refresh)).check_blacklist()
+
+    def test_refresh_rotates_and_blacklists_submitted_token(self):
+        refresh = RefreshToken.for_user(self.admin)
+
+        response = self.client.post(
+            reverse('token-refresh'),
+            {'refresh': str(refresh)},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('access', response.data['data'])
+        self.assertIn('refresh', response.data['data'])
+        replay_response = self.client.post(
+            reverse('token-refresh'),
+            {'refresh': str(refresh)},
+            format='json',
+        )
+        self.assertEqual(replay_response.status_code, status.HTTP_401_UNAUTHORIZED)

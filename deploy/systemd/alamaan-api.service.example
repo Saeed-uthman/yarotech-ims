@@ -1,0 +1,20 @@
+[Unit]
+Description=Al-Amaan Pharmacy Django API
+After=network.target postgresql.service
+
+[Service]
+Type=notify
+User=alamaan
+Group=www-data
+WorkingDirectory=/srv/alamaan/pharmacy-ims/alamaan_backend
+EnvironmentFile=/etc/alamaan/alamaan-api.env
+ExecStart=/srv/alamaan/venv/bin/gunicorn config.wsgi:application --config gunicorn.conf.py
+ExecReload=/bin/kill -s HUP $MAINPID
+KillSignal=SIGQUIT
+TimeoutStopSec=30
+PrivateTmp=true
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

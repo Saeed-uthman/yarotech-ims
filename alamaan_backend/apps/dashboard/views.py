@@ -6,13 +6,13 @@ from rest_framework.views import APIView
 from apps.common.responses import success_response
 
 from .selectors import get_admin_dashboard, get_cashier_dashboard
-from .serializers import AdminDashboardSerializer, CashierDashboardSerializer
+from .serializers import DashboardDataSerializer
 
 
 class DashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(responses={200: AdminDashboardSerializer})
+    @extend_schema(responses={200: DashboardDataSerializer})
     def get(self, request):
         # `period` is the canonical public contract. Keep `date_range` as a
         # temporary compatibility alias for clients integrated before Phase A.
@@ -20,20 +20,33 @@ class DashboardView(APIView):
         user = request.user
 
         if getattr(user, 'role', None) == 'admin':
-            data = get_admin_dashboard(date_range=date_range)
-            serializer = AdminDashboardSerializer(data)
+            data = get_admin_dashboard(
+                user=user,
+                date_range=date_range,
+                start_date=request.query_params.get('start_date'),
+                end_date=request.query_params.get('end_date'),
+            )
         else:
-            data = get_cashier_dashboard(user=user, date_range=date_range)
-            serializer = CashierDashboardSerializer(data)
+            data = get_cashier_dashboard(
+                user=user,
+                date_range=date_range,
+                start_date=request.query_params.get('start_date'),
+                end_date=request.query_params.get('end_date'),
+            )
 
-        return Response(success_response(serializer.data))
+        return Response(success_response(data))
 
 
 class CashierDashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(responses={200: CashierDashboardSerializer})
+    @extend_schema(responses={200: DashboardDataSerializer})
     def get(self, request):
         date_range = request.query_params.get('period') or request.query_params.get('date_range')
-        data = get_cashier_dashboard(user=request.user, date_range=date_range)
-        return Response(success_response(CashierDashboardSerializer(data).data))
+        data = get_cashier_dashboard(
+            user=request.user,
+            date_range=date_range,
+            start_date=request.query_params.get('start_date'),
+            end_date=request.query_params.get('end_date'),
+        )
+        return Response(success_response(data))

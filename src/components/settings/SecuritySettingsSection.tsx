@@ -41,8 +41,8 @@ export const SecuritySettingsSection: React.FC<SecuritySettingsSectionProps> = (
       setFeedback({ type: 'error', message: 'Please enter your current password.' });
       return;
     }
-    if (newPassword.length < 6) {
-      setFeedback({ type: 'error', message: 'New password must be at least 6 characters.' });
+    if (newPassword.length < 8) {
+      setFeedback({ type: 'error', message: 'New password must be at least 8 characters.' });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -158,7 +158,7 @@ export const SecuritySettingsSection: React.FC<SecuritySettingsSectionProps> = (
                 htmlFor="security-new-password"
                 className="block text-xs font-semibold text-slate-700 mb-1"
               >
-                New Password (minimum 6 characters)
+                New Password (minimum 8 characters)
               </label>
               <div className="relative">
                 <input

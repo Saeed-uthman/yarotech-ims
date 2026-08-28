@@ -446,13 +446,6 @@ export class ProductService {
     }
   }
 
-  // ==========================================
-  // Dev & Reset utilities
-  // ==========================================
-
-  public resetToDefaults(): void {
-    apiCache.clear();
-  }
 }
 
 export const productService = new ProductService();

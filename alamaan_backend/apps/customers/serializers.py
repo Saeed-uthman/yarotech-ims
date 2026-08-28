@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 
 from django.db.models import Sum
@@ -73,7 +74,9 @@ class CustomerListSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_outstanding_debt(self, obj):
+    def get_outstanding_debt(self, obj) -> Decimal:
+        if hasattr(obj, 'metric_outstanding_debt'):
+            return obj.metric_outstanding_debt
         result = (
             Sale.objects
             .filter(
@@ -85,16 +88,22 @@ class CustomerListSerializer(serializers.ModelSerializer):
         )
         return result['total'] or Decimal('0.00')
 
-    def get_total_purchases(self, obj):
+    def get_total_purchases(self, obj) -> int:
+        if hasattr(obj, 'metric_total_purchases'):
+            return obj.metric_total_purchases
         return Sale.objects.filter(customer=obj, status=Sale.Status.COMPLETED).count()
 
-    def get_sales_count(self, obj):
+    def get_sales_count(self, obj) -> int:
+        if hasattr(obj, 'metric_sales_count'):
+            return obj.metric_sales_count
         return Sale.objects.filter(
             customer=obj,
             status=Sale.Status.COMPLETED,
         ).count()
 
-    def get_amount_paid(self, obj):
+    def get_amount_paid(self, obj) -> Decimal:
+        if hasattr(obj, 'metric_amount_paid'):
+            return obj.metric_amount_paid
         result = (
             Sale.objects
             .filter(
@@ -105,7 +114,9 @@ class CustomerListSerializer(serializers.ModelSerializer):
         )
         return result['total'] or Decimal('0.00')
 
-    def get_last_purchase_date(self, obj):
+    def get_last_purchase_date(self, obj) -> datetime | None:
+        if hasattr(obj, 'metric_last_purchase_date'):
+            return obj.metric_last_purchase_date
         last_sale = (
             Sale.objects
             .filter(customer=obj, status=Sale.Status.COMPLETED)
@@ -146,7 +157,9 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_outstanding_debt(self, obj):
+    def get_outstanding_debt(self, obj) -> Decimal:
+        if hasattr(obj, 'metric_outstanding_debt'):
+            return obj.metric_outstanding_debt
         result = (
             Sale.objects
             .filter(
@@ -158,16 +171,22 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         )
         return result['total'] or Decimal('0.00')
 
-    def get_total_purchases(self, obj):
+    def get_total_purchases(self, obj) -> int:
+        if hasattr(obj, 'metric_total_purchases'):
+            return obj.metric_total_purchases
         return Sale.objects.filter(customer=obj, status=Sale.Status.COMPLETED).count()
 
-    def get_sales_count(self, obj):
+    def get_sales_count(self, obj) -> int:
+        if hasattr(obj, 'metric_sales_count'):
+            return obj.metric_sales_count
         return Sale.objects.filter(
             customer=obj,
             status=Sale.Status.COMPLETED,
         ).count()
 
-    def get_amount_paid(self, obj):
+    def get_amount_paid(self, obj) -> Decimal:
+        if hasattr(obj, 'metric_amount_paid'):
+            return obj.metric_amount_paid
         result = (
             Sale.objects
             .filter(

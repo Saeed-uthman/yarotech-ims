@@ -3,39 +3,22 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 
+from apps.common.sequences import next_document_number
+
 from .models import AccountabilityTransaction, ManualExpense
+from .sequences import next_accountability_transaction_number
 
 
 def _generate_expense_number():
     now = timezone.now()
     prefix = f'EXP-{now:%Y%m}-'
-    last_expense = (
-        ManualExpense.objects.filter(expense_number__startswith=prefix)
-        .order_by('-expense_number')
-        .first()
+    return next_document_number(
+        sequence_name=f'expense:{now:%Y%m}',
+        prefix=prefix,
+        queryset=ManualExpense.objects.all(),
+        field_name='expense_number',
+        width=5,
     )
-    if last_expense:
-        last_seq = int(last_expense.expense_number.split('-')[-1])
-        next_seq = last_seq + 1
-    else:
-        next_seq = 1
-    return f'{prefix}{next_seq:05d}'
-
-
-def _generate_transaction_number():
-    now = timezone.now()
-    prefix = f'ACC-{now:%Y%m}-'
-    last_tx = (
-        AccountabilityTransaction.objects.filter(transaction_number__startswith=prefix)
-        .order_by('-transaction_number')
-        .first()
-    )
-    if last_tx:
-        last_seq = int(last_tx.transaction_number.split('-')[-1])
-        next_seq = last_seq + 1
-    else:
-        next_seq = 1
-    return f'{prefix}{next_seq:06d}'
 
 
 @transaction.atomic
@@ -60,7 +43,7 @@ def record_manual_expense(*, user, category, amount, payment_method, description
     )
 
     AccountabilityTransaction.objects.create(
-        transaction_number=_generate_transaction_number(),
+        transaction_number=next_accountability_transaction_number(),
         direction=AccountabilityTransaction.Direction.OUT,
         type=AccountabilityTransaction.TxType.OTHER_EXPENSE,
         category=category,

@@ -8,7 +8,6 @@ export interface KeyboardShortcutsConfig {
   onCloseCurrentModal?: () => void;
   onOpenExportAudit?: () => void;
   onNavigate?: (nav: string) => void;
-  onQuickRoleToggle?: () => void;
   isEnabled?: boolean;
 }
 
@@ -20,7 +19,6 @@ export function useKeyboardShortcuts({
   onCloseCurrentModal,
   onOpenExportAudit,
   onNavigate,
-  onQuickRoleToggle,
   isEnabled = true,
 }: KeyboardShortcutsConfig) {
   useEffect(() => {
@@ -130,13 +128,6 @@ export function useKeyboardShortcuts({
         }
       }
 
-      // 7. Role Switcher Quick Shortcut: Ctrl+Alt+R or Cmd+Alt+R
-      if (isCtrlOrMeta && isAlt && key === 'r' && onQuickRoleToggle) {
-        e.preventDefault();
-        e.stopPropagation();
-        onQuickRoleToggle();
-        return;
-      }
     };
 
     window.addEventListener('keydown', handleKeyDown, { capture: true });
@@ -151,6 +142,5 @@ export function useKeyboardShortcuts({
     onOpenShortcutsModal,
     onCloseCurrentModal,
     onNavigate,
-    onQuickRoleToggle,
   ]);
 }

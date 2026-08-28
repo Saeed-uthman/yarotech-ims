@@ -44,3 +44,16 @@ class IdempotencyRecord(TimeStampedModel):
 
     def __str__(self):
         return f'{self.user_id}:{self.scope}:{self.key}'
+
+
+class DocumentSequence(TimeStampedModel):
+    """Concurrency-safe counters for human-readable business references."""
+
+    name = models.CharField(max_length=100, unique=True)
+    value = models.PositiveBigIntegerField(default=0)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return f'{self.name}:{self.value}'

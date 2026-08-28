@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from apps.products.models import ProductVariant
@@ -48,14 +50,14 @@ class InventoryItemSerializer(serializers.ModelSerializer):
             fields.pop('inventory_cost_value', None)
         return fields
 
-    def get_stock_status(self, obj):
+    def get_stock_status(self, obj) -> str:
         if obj.current_stock == 0:
             return 'out'
         if obj.current_stock <= obj.reorder_level:
             return 'low'
         return 'available'
 
-    def get_inventory_cost_value(self, obj):
+    def get_inventory_cost_value(self, obj) -> Decimal:
         return obj.current_stock * obj.base_price
 
 

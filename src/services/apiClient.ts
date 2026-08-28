@@ -4,7 +4,7 @@
  * and automatic token refresh on 401.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
 const TOKEN_KEY = 'stitch_pharmacy_auth_token';
 const REFRESH_TOKEN_KEY = 'stitch_pharmacy_refresh_token';
 
@@ -45,6 +45,15 @@ export function toSnakeCaseKeys(obj: any): any {
 
 export function toCamelCaseKeys(obj: any): any {
   return convertKeys(obj, toCamelCase);
+}
+
+export function resolveApiAssetUrl(value?: string | null): string {
+  if (!value || value.startsWith('data:') || /^https?:\/\//i.test(value)) return value || '';
+  try {
+    return new URL(value, new URL(API_BASE_URL).origin).toString();
+  } catch {
+    return value;
+  }
 }
 
 export function mapPaginationMeta(meta?: BackendPaginationMeta | null) {
@@ -113,8 +122,9 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const { skipAuth = false, body, headers: customHeaders, ...rest } = options;
 
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...((customHeaders as Record<string, string>) || {}),
   };
 
@@ -131,7 +141,7 @@ export async function apiRequest<T>(
   };
 
   if (body !== undefined) {
-    config.body = JSON.stringify(toSnakeCaseKeys(body));
+    config.body = isFormData ? body : JSON.stringify(toSnakeCaseKeys(body));
   }
 
   let response = await fetch(`${API_BASE_URL}${endpoint}`, config);
@@ -187,8 +197,9 @@ async function attemptTokenRefresh(): Promise<boolean> {
 
       const data = await response.json();
       const newAccess = data.access || data.data?.access;
+      const newRefresh = data.refresh || data.data?.refresh;
       if (newAccess) {
-        setTokens(newAccess);
+        setTokens(newAccess, newRefresh);
         return true;
       }
       return false;
@@ -249,6 +260,10 @@ export const api = {
   },
 
   patch<T>(endpoint: string, body?: any): Promise<T> {
+    return apiRequest<T>(endpoint, { method: 'PATCH', body });
+  },
+
+  patchForm<T>(endpoint: string, body: FormData): Promise<T> {
     return apiRequest<T>(endpoint, { method: 'PATCH', body });
   },
 

@@ -10,7 +10,7 @@ import {
   UserRole,
   ApiResponse,
 } from '../types';
-import { mockRepository } from './mockRepository';
+import { api, ApiError, toCamelCaseKeys } from './apiClient';
 import { apiCache } from './apiCache';
 
 export class DashboardService {
@@ -25,10 +25,85 @@ export class DashboardService {
     const key = apiCache.generateKey('dashboard:overview', { ...params, role });
 
     return apiCache.deduplicate(key, async () => {
-      const response = await mockRepository.getDashboardData(params, role);
-      // Cache for 30s
-      apiCache.set(key, response, 30 * 1000);
-      return response;
+      try {
+        const response = await api.get<any>('/dashboard/', {
+          period: params.period,
+          start_date: params.period === 'custom' ? params.startDate : undefined,
+          end_date: params.period === 'custom' ? params.endDate : undefined,
+        });
+        const payload = toCamelCaseKeys(response.data || {});
+        const summary = payload.summary || {};
+        const result: ApiResponse<DashboardData> = {
+          success: true,
+          data: {
+            summary: {
+              totalSales: Number(summary.totalSales || 0),
+              totalProfit: Number(summary.totalProfit || 0),
+              transactionCount: Number(summary.transactionCount || 0),
+              itemsSold: Number(summary.itemsSold || 0),
+              moneyIn: Number(summary.moneyIn || 0),
+              moneyOut: Number(summary.moneyOut || 0),
+              netMoneyMovement: Number(summary.netMoneyMovement || 0),
+              outstandingDebt: Number(summary.outstandingDebt || 0),
+              debtorCount: Number(summary.debtorCount || 0),
+              inventoryValue: Number(summary.inventoryValue || 0),
+              totalStockUnits: Number(summary.totalStockUnits || 0),
+              lowStockCount: Number(summary.lowStockCount || 0),
+              outOfStockCount: Number(summary.outOfStockCount || 0),
+              registeredCustomersCount: Number(summary.registeredCustomersCount || 0),
+              totalPurchasesAmount: Number(summary.totalPurchasesAmount || 0),
+              purchasesCount: Number(summary.purchasesCount || 0),
+            },
+            salesTrends: (payload.salesTrends || []).map((row: any) => ({
+              ...row,
+              sales: Number(row.sales || 0),
+              profit: Number(row.profit || 0),
+              transactions: Number(row.transactions || 0),
+            })),
+            financialMovementTrends: (payload.financialMovementTrends || []).map((row: any) => ({
+              ...row,
+              moneyIn: Number(row.moneyIn || 0),
+              moneyOut: Number(row.moneyOut || 0),
+              netMovement: Number(row.netMovement || 0),
+            })),
+            topProducts: (payload.topProducts || []).map((row: any) => ({
+              ...row,
+              productId: String(row.productId),
+              variantId: String(row.variantId),
+              unitsSold: Number(row.unitsSold || 0),
+              revenue: Number(row.revenue || 0),
+              profit: Number(row.profit || 0),
+              currentStock: Number(row.currentStock || 0),
+            })),
+            recentSales: (payload.recentSales || []).map((row: any) => ({
+              ...row,
+              id: String(row.id),
+              totalAmount: Number(row.totalAmount || 0),
+              itemCount: Number(row.itemCount || 0),
+            })),
+            recentPurchases: (payload.recentPurchases || []).map((row: any) => ({
+              ...row,
+              id: String(row.id),
+              totalAmount: Number(row.totalAmount || 0),
+              itemsCount: Number(row.itemsCount || 0),
+            })),
+            stockAlerts: (payload.stockAlerts || []).map((row: any) => ({
+              ...row,
+              productId: String(row.productId),
+              variantId: String(row.variantId),
+              currentStock: Number(row.currentStock || 0),
+              reorderLevel: Number(row.reorderLevel || 0),
+            })),
+            lowStockThreshold: Number(payload.lowStockThreshold || 0),
+          },
+          message: response.message,
+        };
+        apiCache.set(key, result, 30 * 1000);
+        return result;
+      } catch (error) {
+        if (error instanceof ApiError) throw error;
+        throw new Error('Failed to load dashboard data.');
+      }
     });
   }
 

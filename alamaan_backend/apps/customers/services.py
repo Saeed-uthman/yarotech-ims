@@ -5,6 +5,8 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.accountability.models import AccountabilityTransaction
+from apps.accountability.sequences import next_accountability_transaction_number
+from apps.common.sequences import next_document_number
 from apps.sales.models import Sale
 
 from .models import Customer, CustomerDebtPayment
@@ -13,33 +15,13 @@ from .models import Customer, CustomerDebtPayment
 def _generate_receipt_number():
     now = timezone.now()
     prefix = f'RCT-{now:%Y%m}-'
-    last_payment = (
-        CustomerDebtPayment.objects.filter(receipt_number__startswith=prefix)
-        .order_by('-receipt_number')
-        .first()
+    return next_document_number(
+        sequence_name=f'debt-receipt:{now:%Y%m}',
+        prefix=prefix,
+        queryset=CustomerDebtPayment.objects.all(),
+        field_name='receipt_number',
+        width=6,
     )
-    if last_payment:
-        last_seq = int(last_payment.receipt_number.split('-')[-1])
-        next_seq = last_seq + 1
-    else:
-        next_seq = 1
-    return f'{prefix}{next_seq:06d}'
-
-
-def _generate_transaction_number():
-    now = timezone.now()
-    prefix = f'ACC-{now:%Y%m}-'
-    last_tx = (
-        AccountabilityTransaction.objects.filter(transaction_number__startswith=prefix)
-        .order_by('-transaction_number')
-        .first()
-    )
-    if last_tx:
-        last_seq = int(last_tx.transaction_number.split('-')[-1])
-        next_seq = last_seq + 1
-    else:
-        next_seq = 1
-    return f'{prefix}{next_seq:06d}'
 
 
 @transaction.atomic
@@ -144,7 +126,7 @@ def record_customer_debt_payment(*, user, customer, amount, payment_method, note
     )
 
     AccountabilityTransaction.objects.create(
-        transaction_number=_generate_transaction_number(),
+        transaction_number=next_accountability_transaction_number(),
         direction=AccountabilityTransaction.Direction.IN,
         type=AccountabilityTransaction.TxType.DEBT_PAYMENT,
         category='Customer Debt Recovery',

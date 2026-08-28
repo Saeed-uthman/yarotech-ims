@@ -2,7 +2,6 @@ import React from 'react';
 import { 
   Plus, 
   Menu, 
-  RefreshCw,
   LayoutDashboard,
   Package,
   Boxes,
@@ -25,14 +24,12 @@ export interface HeaderProps {
   pharmacyName?: string;
   pharmacyLogo?: string;
   currentRole: UserRole;
-  onRoleChange?: (role: UserRole) => void;
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
   onOpenAddProduct?: () => void;
   onOpenBarcodeScanner?: () => void;
   onOpenMobileMenu: () => void;
   onOpenShortcuts?: () => void;
-  onResetData?: () => void;
   isOnline?: boolean;
   onOpenLowStockAlerts?: () => void;
   lowStockCount?: number;
@@ -76,7 +73,7 @@ const MODULE_META: Record<string, { title: string; subtitle: string; icon: React
   },
   accountability: {
     title: 'Accountability Audit Feed',
-    subtitle: 'Cryptographically sealed audit trail and shift handovers.',
+    subtitle: 'Financial postings, manual expenses, and operational audit records.',
     icon: ShieldCheck,
   },
   users: {
@@ -86,7 +83,7 @@ const MODULE_META: Record<string, { title: string; subtitle: string; icon: React
   },
   settings: {
     title: 'System Preferences',
-    subtitle: 'Pharmacy profiles, role permissions, and database backup.',
+    subtitle: 'Pharmacy profile, receipt, tax, currency, and inventory preferences.',
     icon: SettingsIcon,
   },
 };
@@ -97,12 +94,10 @@ export const Header: React.FC<HeaderProps> = ({
   pharmacyName = 'Al-Amaan Medicine Store',
   pharmacyLogo,
   currentRole,
-  onRoleChange,
   onOpenAddProduct,
   onOpenBarcodeScanner,
   onOpenMobileMenu,
   onOpenShortcuts,
-  onResetData,
   isOnline = true,
   onOpenLowStockAlerts,
   lowStockCount = 0,
@@ -234,33 +229,18 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {/* 5. Reset Demo Data Button (Desktop XL only) */}
-            {onResetData && (
-              <button
-                id="reset-demo-data-btn"
-                type="button"
-                onClick={onResetData}
-                title="Reset to initial mock data"
-                className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-colors hidden xl:flex shadow-2xs min-h-[42px] min-w-[42px] items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                aria-label="Reset demo data"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
-            )}
-
-            {/* 6. Notifications Menu Popover */}
+            {/* 5. Notifications Menu Popover */}
             <HeaderNotifications
               currentRole={currentRole}
               onNavigate={onNavChange}
               onOpenLowStockAlerts={onOpenLowStockAlerts}
+              lowStockCount={lowStockCount}
+              isOnline={isOnline}
             />
 
-            {/* 7. User Profile & Role Switcher Menu */}
+            {/* 6. Authenticated user menu */}
             <HeaderUserMenu
               currentRole={currentRole}
-              onRoleChange={(newRole) => {
-                if (onRoleChange) onRoleChange(newRole);
-              }}
               onNavigate={onNavChange}
               onOpenShortcuts={onOpenShortcuts}
               isOnline={isOnline}

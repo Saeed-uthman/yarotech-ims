@@ -1,15 +1,31 @@
 from decimal import Decimal
 
-from django.db.models import Q, Sum, Count, F
+from django.db.models import Count, F, Prefetch, Q, Sum
 from django.utils import timezone
 
 from datetime import timedelta
 
-from .models import StockPurchase
+from .models import PurchaseItem, StockPurchase
 
 
 def list_purchases(*, search='', date_range=None, payment_method=None, status=None, ordering='-date'):
-    queryset = StockPurchase.objects.select_related('recorded_by')
+    queryset = (
+        StockPurchase.objects.select_related('recorded_by')
+        .annotate(
+            list_items_count=Count('items'),
+            list_total_units=Sum('items__quantity'),
+        )
+        .prefetch_related(
+            Prefetch(
+                'items',
+                queryset=PurchaseItem.objects.select_related(
+                    'variant__product',
+                    'variant__company',
+                ).order_by('id'),
+                to_attr='list_items',
+            )
+        )
+    )
 
     if search:
         queryset = queryset.filter(

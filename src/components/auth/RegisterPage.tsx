@@ -174,7 +174,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onGoToLogin }) => {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 onBlur={() => setTouched({ ...touched, email: true })}
-                placeholder="staff@alamaan.test"
+                placeholder="staff@example.com"
                 className={`w-full pl-9 pr-3 py-2 text-xs bg-white dark:bg-slate-900 border rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 ${
                   touched.email && validationErrors.email
                     ? 'border-rose-300 dark:border-rose-700 focus:ring-rose-500'

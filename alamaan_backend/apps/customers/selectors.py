@@ -1,4 +1,4 @@
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Max, Q, Sum
 from django.utils import timezone
 
 from datetime import timedelta
@@ -10,15 +10,24 @@ from .models import Customer, CustomerDebtPayment
 NINETY_DAYS = timedelta(days=90)
 
 
-def list_customers(*, search='', status=None, ordering='name'):
-    queryset = Customer.objects.annotate(
-        sort_purchases=Count('sales'),
-        sort_debt=Sum(
+def _with_customer_metrics(queryset):
+    completed_sales = Q(sales__status=Sale.Status.COMPLETED)
+    outstanding_sales = completed_sales & Q(sales__outstanding_amount__gt=0)
+    return queryset.annotate(
+        metric_outstanding_debt=Sum(
             'sales__outstanding_amount',
-            filter=Q(sales__status=Sale.Status.COMPLETED),
+            filter=outstanding_sales,
             default=0,
         ),
+        metric_total_purchases=Count('sales', filter=completed_sales, distinct=True),
+        metric_sales_count=Count('sales', filter=completed_sales, distinct=True),
+        metric_amount_paid=Sum('sales__amount_paid', filter=completed_sales, default=0),
+        metric_last_purchase_date=Max('sales__created_at', filter=completed_sales),
     )
+
+
+def list_customers(*, search='', status=None, ordering='name'):
+    queryset = _with_customer_metrics(Customer.objects.all())
 
     if search:
         queryset = queryset.filter(
@@ -31,8 +40,8 @@ def list_customers(*, search='', status=None, ordering='name'):
 
     ordering_map = {
         'name': 'name',
-        'debt': 'sort_debt',
-        'purchases': 'sort_purchases',
+        'debt': 'metric_outstanding_debt',
+        'purchases': 'metric_total_purchases',
         'date': 'created_at',
     }
     descending = ordering.startswith('-')
@@ -44,19 +53,13 @@ def list_customers(*, search='', status=None, ordering='name'):
 
 
 def get_customer_detail(*, customer_id):
-    return Customer.objects.get(pk=customer_id)
+    return _with_customer_metrics(Customer.objects.all()).get(pk=customer_id)
 
 
 def list_debtors(*, search=''):
     queryset = (
-        Customer.objects
-        .filter(
-            sales__status=Sale.Status.COMPLETED,
-            sales__payment_status__in=[Sale.PaymentStatus.PARTIAL, Sale.PaymentStatus.UNPAID],
-        )
-        .annotate(outstanding_debt=Sum('sales__outstanding_amount'))
-        .filter(outstanding_debt__gt=0)
-        .distinct()
+        _with_customer_metrics(Customer.objects.all())
+        .filter(metric_outstanding_debt__gt=0)
     )
 
     if search:
@@ -65,7 +68,7 @@ def list_debtors(*, search=''):
             | Q(phone__icontains=search)
         )
 
-    return queryset.order_by('-outstanding_debt')
+    return queryset.order_by('-metric_outstanding_debt')
 
 
 def get_customer_debt_ledger(*, customer_id):

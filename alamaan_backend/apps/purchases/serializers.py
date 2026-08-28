@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.db.models import Sum
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.products.models import ProductVariant
@@ -101,14 +102,21 @@ class StockPurchaseListSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_items_count(self, obj):
+    def get_items_count(self, obj) -> int:
+        if hasattr(obj, 'list_items_count'):
+            return obj.list_items_count
         return obj.items.count()
 
+    @extend_schema_field(PurchaseItemSummarySerializer(many=True))
     def get_items_summary(self, obj):
+        if hasattr(obj, 'list_items'):
+            return PurchaseItemSummarySerializer(obj.list_items[:3], many=True).data
         items = obj.items.select_related('variant__product', 'variant__company')[:3]
         return PurchaseItemSummarySerializer(items, many=True).data
 
-    def get_total_units(self, obj):
+    def get_total_units(self, obj) -> int:
+        if hasattr(obj, 'list_total_units'):
+            return obj.list_total_units or 0
         return obj.items.aggregate(total=Sum('quantity'))['total'] or 0
 
 
@@ -135,7 +143,7 @@ class StockPurchaseDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_total_units(self, obj):
+    def get_total_units(self, obj) -> int:
         return sum(item.quantity for item in obj.items.all())
 
 
