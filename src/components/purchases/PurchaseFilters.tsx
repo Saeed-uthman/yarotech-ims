@@ -26,6 +26,17 @@ interface PurchaseFiltersProps {
   isLoading: boolean;
 }
 
+function localToday(): string {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 10);
+}
+
+function localMonthStart(): string {
+  const today = localToday();
+  return `${today.slice(0, 8)}01`;
+}
+
 export const PurchaseFilters: React.FC<PurchaseFiltersProps> = ({
   filters,
   onFilterChange,
@@ -39,8 +50,8 @@ export const PurchaseFilters: React.FC<PurchaseFiltersProps> = ({
   const [showCustomRange, setShowCustomRange] = useState(
     filters.dateRange === 'custom'
   );
-  const [customStart, setCustomStart] = useState(filters.startDate || '2026-08-01');
-  const [customEnd, setCustomEnd] = useState(filters.endDate || '2026-08-19');
+  const [customStart, setCustomStart] = useState(filters.startDate || localMonthStart);
+  const [customEnd, setCustomEnd] = useState(filters.endDate || localToday);
   const [dateError, setDateError] = useState<string | null>(null);
 
   const handleDateRangeSelect = (range: PurchaseDateRange) => {

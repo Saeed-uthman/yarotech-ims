@@ -57,6 +57,7 @@ function mapBackendSale(raw: any): Sale {
     rawDate: createdAt,
     customerId: s.customer ? String(s.customer) : null,
     customerName: s.customerName || 'Walk-in',
+    customerPhone: s.customerPhone || '',
     items: (s.items || []).map(mapBackendSaleItem),
     itemCount: s.items?.length || Number(s.itemsCount || 0),
     subtotal: Number(s.subtotal || 0),
@@ -69,7 +70,7 @@ function mapBackendSale(raw: any): Sale {
     paymentStatus: s.paymentStatus || 'PAID',
     paymentMethod: s.paymentMethod || 'CASH',
     profit: 0,
-    servedBy: s.servedBy || '',
+    servedBy: s.servedByName || s.servedBy || '',
     notes: s.notes || '',
     status: s.status || 'COMPLETED',
   };
@@ -78,7 +79,21 @@ function mapBackendSale(raw: any): Sale {
 function mapDateRange(params?: Partial<SalesFilterParams>): string | undefined {
   if (!params?.dateRange || params.dateRange === 'overall') return undefined;
   if (params.dateRange === 'custom') return undefined; // handled separately
+  if (params.dateRange === 'this_week') return 'week';
+  if (params.dateRange === 'this_month') return 'month';
   return params.dateRange;
+}
+
+function moneyValue(value: number | undefined, field: string): string {
+  const amount = Number(value ?? 0);
+  if (!Number.isFinite(amount)) throw new Error(`${field} must be a valid amount.`);
+  return amount.toFixed(2);
+}
+
+function numericId(value: string, field: string): number {
+  const id = Number(value);
+  if (!Number.isInteger(id) || id <= 0) throw new Error(`${field} is invalid. Refresh the page and select it again.`);
+  return id;
 }
 
 // ==========================================
@@ -171,6 +186,31 @@ export class SalesService {
   }
 
   /**
+   * Fetch the print-ready receipt payload, including every purchased item.
+   */
+  public async getSaleReceipt(
+    id: string,
+    role: UserRole = 'admin'
+  ): Promise<ApiResponse<Sale>> {
+    const key = apiCache.generateKey('sales:receipt', { id, role });
+
+    return apiCache.deduplicate(key, async () => {
+      try {
+        const res = await api.get<any>(`/sales/${id}/receipt/`);
+        const response: ApiResponse<Sale> = {
+          success: true,
+          data: mapBackendSale(res.data),
+        };
+        apiCache.set(key, response, 30 * 1000);
+        return response;
+      } catch (err) {
+        if (err instanceof ApiError) throw err;
+        throw new Error('Failed to load the complete sale receipt.');
+      }
+    });
+  }
+
+  /**
    * Get summary KPIs from backend
    */
   public async getSalesSummaryKPIs(
@@ -192,7 +232,7 @@ export class SalesService {
         const kpis: SalesSummaryKPIs = {
           totalRevenue: Number(d.totalRevenue || 0),
           totalProfit: Number(d.totalProfit || 0),
-          totalTransactions: Number(d.totalTransactions || 0),
+          totalTransactions: Number(d.totalTransactions ?? d.totalSales ?? 0),
           totalOutstanding: Number(d.totalOutstanding || 0),
           averageSaleValue: Number(d.averageSaleValue || 0),
           paidCount: Number(d.paidCount || 0),
@@ -260,14 +300,14 @@ export class SalesService {
   ): Promise<ApiResponse<Sale>> {
     try {
       const payload = {
-        customer_id: input.customerId ? Number(input.customerId) : null,
+        customer_id: input.customerId ? numericId(input.customerId, 'Customer') : null,
         items: input.items.map((item) => ({
-          product_variant_id: Number(item.productVariantId),
+          product_variant_id: numericId(item.productVariantId, 'Product variant'),
           quantity: item.quantity,
-          actual_selling_price: item.unitPrice || item.actualSellingPrice || 0,
+          actual_selling_price: moneyValue(item.unitPrice ?? item.actualSellingPrice, 'Selling price'),
         })),
-        discount: input.discount || 0,
-        amount_paid: input.amountPaid,
+        discount: moneyValue(input.discount, 'Discount'),
+        amount_paid: moneyValue(input.amountPaid, 'Amount paid'),
         payment_method: input.paymentMethod,
         notes: input.notes || '',
       };

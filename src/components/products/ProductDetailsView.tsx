@@ -20,7 +20,7 @@ import {
   Check,
   QrCode
 } from 'lucide-react';
-import { Product, UserRole, CompanyVariant } from '../../types';
+import { Product, UserRole, CompanyVariant, ProductVariantInput } from '../../types';
 import { formatNaira, formatNumber } from '../../utils/formatters';
 import { ProductPriceHistoryTab } from './ProductPriceHistoryTab';
 import { ProductLowStockBanner } from './ProductLowStockBanner';
@@ -32,15 +32,12 @@ interface ProductDetailsViewProps {
   onBack: () => void;
   onEdit: () => void;
   onToggleStatus: (id: string) => void;
-  onAddVariant: (productId: string, variant: {
-    companyName: string;
-    basePrice: number;
-    sellingPrice: number;
-    currentStock: number;
-    reorderLevel: number;
-    status: 'Available' | 'Inactive';
-  }) => void;
-  onUpdateVariant: (productId: string, variantId: string, updates: Partial<CompanyVariant>) => void;
+  onAddVariant: (productId: string, variant: ProductVariantInput) => Promise<boolean>;
+  onUpdateVariant: (
+    productId: string,
+    variantId: string,
+    updates: Partial<CompanyVariant>
+  ) => Promise<boolean>;
   onDeleteVariant: (productId: string, variantId: string) => void;
   onUpdateImage?: (productId: string, newImageUrl: string) => void;
   onNavigateToPurchases?: (productId?: string) => void;
@@ -66,6 +63,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
   const [newImageInput, setNewImageInput] = useState(product.image || '');
   const [showQRCodeModal, setShowQRCodeModal] = useState(false);
   const [selectedQRVariant, setSelectedQRVariant] = useState<CompanyVariant | null>(null);
+  const [isSavingVariant, setIsSavingVariant] = useState(false);
 
   const handleOpenQRCode = (variant?: CompanyVariant) => {
     setSelectedQRVariant(variant || null);
@@ -80,24 +78,25 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
     defaultSellingPrice: 0,
     maxSellingPrice: 0,
     sellingPrice: 0,
-    currentStock: 100,
-    reorderLevel: 50,
+    currentStock: 0,
+    reorderLevel: 10,
     status: 'Available' as 'Available' | 'Inactive',
   });
 
   const isAdmin = currentRole === 'admin';
 
-  const handleAddVariantSubmit = (e: React.FormEvent) => {
+  const handleAddVariantSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!variantForm.companyName.trim()) return;
+    if (!variantForm.companyName.trim() || isSavingVariant) return;
 
     const basePrice = Number(variantForm.basePrice);
     const defaultSellingPrice = Number(variantForm.defaultSellingPrice) || Number(variantForm.sellingPrice);
     const minSellingPrice = Number(variantForm.minSellingPrice) || (basePrice > 0 ? Math.max(basePrice + 10, Math.round(basePrice * 1.15)) : defaultSellingPrice);
     const maxSellingPrice = Number(variantForm.maxSellingPrice) || Math.max(defaultSellingPrice, Math.round(defaultSellingPrice * 1.25));
 
-    onAddVariant(product.id, {
-      companyName: variantForm.companyName.trim().toUpperCase(),
+    setIsSavingVariant(true);
+    const wasSaved = await onAddVariant(product.id, {
+      companyName: variantForm.companyName.trim(),
       basePrice,
       minSellingPrice,
       defaultSellingPrice,
@@ -106,7 +105,10 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
       currentStock: Number(variantForm.currentStock),
       reorderLevel: Number(variantForm.reorderLevel),
       status: variantForm.status,
-    } as any);
+    });
+    setIsSavingVariant(false);
+
+    if (!wasSaved) return;
 
     setVariantForm({
       companyName: '',
@@ -115,23 +117,24 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
       defaultSellingPrice: 0,
       maxSellingPrice: 0,
       sellingPrice: 0,
-      currentStock: 100,
-      reorderLevel: 50,
+      currentStock: 0,
+      reorderLevel: 10,
       status: 'Available',
     });
     setShowAddVariantModal(false);
   };
 
-  const handleSaveEditedVariant = (e: React.FormEvent) => {
+  const handleSaveEditedVariant = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingVariant) return;
+    if (!editingVariant || isSavingVariant) return;
 
     const basePrice = Number(editingVariant.basePrice);
     const defaultSellingPrice = Number(editingVariant.defaultSellingPrice) || Number(editingVariant.sellingPrice);
     const minSellingPrice = Number(editingVariant.minSellingPrice) || (basePrice > 0 ? Math.max(basePrice + 10, Math.round(basePrice * 1.15)) : defaultSellingPrice);
     const maxSellingPrice = Number(editingVariant.maxSellingPrice) || Math.max(defaultSellingPrice, Math.round(defaultSellingPrice * 1.25));
 
-    onUpdateVariant(product.id, editingVariant.id, {
+    setIsSavingVariant(true);
+    const wasSaved = await onUpdateVariant(product.id, editingVariant.id, {
       companyName: editingVariant.companyName,
       basePrice,
       minSellingPrice,
@@ -142,7 +145,8 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
       reorderLevel: Number(editingVariant.reorderLevel),
       status: editingVariant.status,
     });
-    setEditingVariant(null);
+    setIsSavingVariant(false);
+    if (wasSaved) setEditingVariant(null);
   };
 
   const totalStock = product.variants.reduce((acc, v) => acc + v.currentStock, 0);
@@ -853,9 +857,10 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold shadow-xs"
+                  disabled={isSavingVariant}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold shadow-xs disabled:opacity-60 disabled:cursor-wait"
                 >
-                  Save Variant
+                  {isSavingVariant ? 'Saving...' : 'Save Variant'}
                 </button>
               </div>
             </form>
@@ -994,9 +999,10 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold shadow-xs"
+                  disabled={isSavingVariant}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-semibold shadow-xs disabled:opacity-60 disabled:cursor-wait"
                 >
-                  Update Variant
+                  {isSavingVariant ? 'Saving...' : 'Update Variant'}
                 </button>
               </div>
             </form>

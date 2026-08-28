@@ -27,7 +27,12 @@ import {
 } from '../../types';
 import { productService } from '../../services/productService';
 import { customerService } from '../../services/customerService';
+import { salesService } from '../../services/salesService';
 import { formatNaira } from '../../utils/formatters';
+
+function roundMoney(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
 
 interface NewSaleModalProps {
   isOpen: boolean;
@@ -130,9 +135,11 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   }, [isOpen, settings.allowWalkingSales]);
 
   // Calculations
-  const subtotal = cart.reduce((sum, item) => sum + (item.actualSellingPrice || item.sellingPrice) * item.quantity, 0);
-  const numericDiscount = Math.max(0, Number(discount) || 0);
-  const grandTotal = Math.max(0, subtotal - numericDiscount);
+  const subtotal = roundMoney(
+    cart.reduce((sum, item) => sum + (item.actualSellingPrice || item.sellingPrice) * item.quantity, 0)
+  );
+  const numericDiscount = roundMoney(Math.max(0, Number(discount) || 0));
+  const grandTotal = roundMoney(Math.max(0, subtotal - numericDiscount));
 
   // Keep checkout fully paid by default. Selecting a partial/credit option
   // afterwards is preserved until the cart total changes again.
@@ -163,8 +170,10 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
     );
   });
 
-  const numericAmountPaid = amountPaid === '' ? grandTotal : Number(amountPaid);
-  const outstandingBalance = Math.max(0, grandTotal - numericAmountPaid);
+  const numericAmountPaid = amountPaid === '' ? grandTotal : roundMoney(Number(amountPaid));
+  const outstandingBalance = Number.isFinite(numericAmountPaid)
+    ? roundMoney(Math.max(0, grandTotal - numericAmountPaid))
+    : 0;
 
   // Add item to cart
   const handleAddToCart = (product: Product, variant: CompanyVariant) => {
@@ -290,6 +299,16 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
       return;
     }
 
+    if (numericDiscount > subtotal) {
+      setFormError(`Discount cannot exceed the subtotal (${formatNaira(subtotal)}).`);
+      return;
+    }
+
+    if (!Number.isFinite(numericAmountPaid) || numericAmountPaid < 0) {
+      setFormError('Please enter a valid non-negative amount paid.');
+      return;
+    }
+
     if (outstandingBalance > 0 && !settings.allowCreditSales) {
       setFormError('Credit and partial payments are disabled. The sale must be paid in full.');
       return;
@@ -320,7 +339,6 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
       amountPaid: numericAmountPaid,
       paymentMethod,
       notes: notes.trim() || undefined,
-      servedBy: role === 'admin' ? 'Pharm. Abdullahi (Admin)' : 'Cashier Zainab',
     };
 
     if (
@@ -333,7 +351,6 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      const { salesService } = await import('../../services/salesService');
       const response = await salesService.createSale(payload, role);
       if (response.success && response.data) {
         onSuccess(response.data);
@@ -535,7 +552,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                                   type="number"
                                   min={item.minSellingPrice}
                                   max={item.maxSellingPrice}
-                                  step="1"
+                                  step="0.01"
                                   value={item.actualSellingPrice}
                                   onChange={(e) =>
                                     handleUpdatePrice(
@@ -756,6 +773,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                     type="number"
                     min="0"
                     max={subtotal}
+                    step="0.01"
                     value={discount || ''}
                     onChange={(e) => setDiscount(Math.max(0, Number(e.target.value)))}
                     placeholder="0"
@@ -776,6 +794,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                       type="number"
                       min="0"
                       max={grandTotal}
+                      step="0.01"
                       disabled={!settings.allowCreditSales}
                       value={amountPaid}
                       onChange={(e) => setAmountPaid(e.target.value)}

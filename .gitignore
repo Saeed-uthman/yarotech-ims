@@ -12,3 +12,4 @@ __pycache__/
 !.env.example
 alamaan_backend/staticfiles/*
 !alamaan_backend/staticfiles/.gitkeep
+backups/

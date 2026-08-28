@@ -101,6 +101,9 @@ When PostgreSQL is enabled, follow `alamaan_backend/DEPLOYMENT.md` and run:
 python manage.py test apps.common.tests.ConcurrentTransactionTests -v 2
 ```
 
+
+
+
 All three concurrency tests must pass with no skips before production release.
 Record the final database backup and restore rehearsal separately.
 

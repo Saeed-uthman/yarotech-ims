@@ -2,6 +2,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
+from corsheaders.defaults import default_headers
 from django.core.exceptions import ImproperlyConfigured
 
 
@@ -29,9 +30,10 @@ if not DEBUG and not env.str('DJANGO_ALLOWED_HOSTS', default='').strip():
 
 CORS_ALLOWED_ORIGINS = env.list(
     'CORS_ALLOWED_ORIGINS',
-    default=['http://localhost:3000', 'http://127.0.0.1:5173'],
+    default=['http://localhost:3000', 'http://127.0.0.1:5173', 'http://localhost:3000'],
 )
 CORS_ALLOW_CREDENTIALS = False
+CORS_ALLOW_HEADERS = (*default_headers, 'idempotency-key')
 CORS_EXPOSE_HEADERS = ['Idempotency-Replayed']
 CSRF_TRUSTED_ORIGINS = env.list(
     'CSRF_TRUSTED_ORIGINS',

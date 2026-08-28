@@ -170,6 +170,7 @@ export interface Product extends Omit<ProductEntity, 'categoryId'> {
 // ==========================================
 
 export interface ProductVariantInput {
+  variantId?: string;
   companyId?: string;
   companyName: string;
   basePrice: number;

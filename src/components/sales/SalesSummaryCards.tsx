@@ -30,11 +30,11 @@ export const SalesSummaryCards: React.FC<SalesSummaryCardsProps> = ({
   const getTimeframeLabel = (tf: string) => {
     switch (tf) {
       case 'today':
-        return 'Today (19 Aug 2026)';
+        return `Today (${new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })})`;
       case 'this_week':
         return 'This Week';
       case 'this_month':
-        return 'This Month (August 2026)';
+        return `This Month (${new Date().toLocaleDateString('en-NG', { month: 'long', year: 'numeric' })})`;
       case 'custom':
         return filters.startDate && filters.endDate
           ? `${filters.startDate} to ${filters.endDate}`

@@ -2,12 +2,12 @@ import {
   CompanyVariant,
   Product,
   ProductVariantInput,
-  ProductVariantEntity,
   UserRole,
   ApiResponse,
 } from '../types';
 import { api, ApiError, toCamelCaseKeys } from './apiClient';
 import { apiCache } from './apiCache';
+import { companyService } from './companyService';
 
 function mapBackendVariant(raw: any): CompanyVariant {
   const v = toCamelCaseKeys(raw);
@@ -88,8 +88,16 @@ export class ProductVariantService {
     _role: UserRole = 'admin'
   ): Promise<ApiResponse<Product>> {
     try {
+      const company = input.companyId
+        ? null
+        : await companyService.getOrCreateCompany(input.companyName);
+      const companyId = Number(input.companyId || company?.id);
+      if (!Number.isInteger(companyId) || companyId <= 0) {
+        throw new Error('A valid company/manufacturer is required.');
+      }
+
       const payload = {
-        company_id: input.companyId ? Number(input.companyId) : undefined,
+        company_id: companyId,
         base_price: input.basePrice,
         min_selling_price: input.minSellingPrice,
         default_selling_price: input.defaultSellingPrice,
@@ -104,6 +112,7 @@ export class ProductVariantService {
       return refetchProduct(productId);
     } catch (err) {
       if (err instanceof ApiError) throw err;
+      if (err instanceof Error) throw err;
       throw new Error('Failed to add variant.');
     }
   }
@@ -114,11 +123,17 @@ export class ProductVariantService {
   public async updateVariant(
     productId: string,
     variantId: string,
-    updates: Partial<ProductVariantEntity>,
+    updates: Partial<CompanyVariant>,
     _role: UserRole = 'admin'
   ): Promise<ApiResponse<Product>> {
     try {
       const payload: any = {};
+      if (updates.companyName) {
+        const company = await companyService.getOrCreateCompany(updates.companyName);
+        payload.company_id = Number(company.id);
+      } else if (updates.companyId) {
+        payload.company_id = Number(updates.companyId);
+      }
       if (updates.basePrice !== undefined) payload.base_price = updates.basePrice;
       if (updates.minSellingPrice !== undefined) payload.min_selling_price = updates.minSellingPrice;
       if (updates.defaultSellingPrice !== undefined) payload.default_selling_price = updates.defaultSellingPrice;
@@ -135,6 +150,7 @@ export class ProductVariantService {
       return refetchProduct(productId);
     } catch (err) {
       if (err instanceof ApiError) throw err;
+      if (err instanceof Error) throw err;
       throw new Error('Failed to update variant.');
     }
   }

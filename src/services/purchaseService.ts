@@ -91,6 +91,35 @@ function buildChartDateRange(
   return { startDate, endDate };
 }
 
+function moneyValue(value: number, field: string): string {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) throw new Error(`${field} must be a valid amount.`);
+  return amount.toFixed(2);
+}
+
+function numericId(value: string): number {
+  const id = Number(value);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error('Product variant is invalid. Refresh the page and select it again.');
+  }
+  return id;
+}
+
+function purchaseDateTime(value?: string): string | null {
+  if (!value) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return `${value}T12:00:00`;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) throw new Error('Purchase date is invalid.');
+  return parsed.toISOString();
+}
+
+function mapPurchaseDateRange(value?: PurchaseDateRange): string | undefined {
+  if (!value || value === 'overall' || value === 'custom') return undefined;
+  if (value === 'this_week') return 'week';
+  if (value === 'this_month') return 'month';
+  return value;
+}
+
 function groupPurchasesForChart(
   purchases: StockPurchase[],
   dateRange: PurchaseDateRange
@@ -220,9 +249,8 @@ export class PurchaseService {
     return apiCache.deduplicate(key, async () => {
       try {
         const queryParams: Record<string, any> = {};
-        if (params?.dateRange && params.dateRange !== 'overall') {
-          queryParams.date_range = params.dateRange;
-        }
+        const dateRange = mapPurchaseDateRange(params?.dateRange);
+        if (dateRange) queryParams.date_range = dateRange;
 
         const res = await api.get<any>('/purchases/summary-kpis/', queryParams);
         const d = res.data;
@@ -256,9 +284,8 @@ export class PurchaseService {
     return apiCache.deduplicate(key, async () => {
       try {
         const queryParams: Record<string, any> = {};
-        if (dateRange !== 'overall') {
-          queryParams.date_range = dateRange;
-        }
+        const apiDateRange = mapPurchaseDateRange(dateRange);
+        if (apiDateRange) queryParams.date_range = apiDateRange;
 
         const res = await api.get<any>('/purchases/', queryParams);
         const purchases: StockPurchase[] = (res.data || []).map(mapBackendPurchase);
@@ -280,12 +307,12 @@ export class PurchaseService {
     try {
       const payload = {
         items: input.items.map((it) => ({
-          product_variant_id: Number(it.productVariantId),
+          product_variant_id: numericId(it.productVariantId),
           quantity: it.quantity,
-          unit_purchase_price: it.unitPurchasePrice,
+          unit_purchase_price: moneyValue(it.unitPurchasePrice, 'Unit purchase price'),
         })),
         payment_method: input.paymentMethod,
-        purchase_date: input.purchaseDate || null,
+        purchase_date: purchaseDateTime(input.purchaseDate),
         note: input.note || '',
       };
 

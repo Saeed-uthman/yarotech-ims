@@ -4,7 +4,7 @@ import {
   ProductCreateInput,
   ProductUpdateInput,
   ProductVariantInput,
-  ProductVariantEntity,
+  CompanyVariant,
   UserRole,
 } from '../types';
 import { productService, productVariantService } from '../services';
@@ -127,7 +127,7 @@ export function useProductMutations() {
   const updateVariant = async (
     productId: string,
     variantId: string,
-    updates: Partial<ProductVariantEntity>,
+    updates: Partial<CompanyVariant>,
     role: UserRole = 'admin'
   ): Promise<Product> => {
     setIsMutating(true);

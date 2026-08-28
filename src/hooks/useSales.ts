@@ -296,6 +296,53 @@ export function useSaleDetails(saleId: string | null, role: UserRole = 'admin') 
 }
 
 /**
+ * Fetch the dedicated receipt representation. Sales-list rows only contain an
+ * item count, so they must never be used directly as printable receipts.
+ */
+export function useSaleReceipt(saleId: string | null, role: UserRole = 'admin') {
+  const [sale, setSale] = useState<Sale | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
+
+  const fetchReceipt = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+
+    if (!saleId) {
+      setSale(null);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
+    setSale(null);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const res = await salesService.getSaleReceipt(saleId, role);
+      if (requestId === requestIdRef.current) {
+        setSale(res.data);
+      }
+    } catch (err: any) {
+      if (requestId === requestIdRef.current) {
+        setError(err.message || 'Failed to load the complete sale receipt.');
+      }
+    } finally {
+      if (requestId === requestIdRef.current) {
+        setIsLoading(false);
+      }
+    }
+  }, [saleId, role]);
+
+  useEffect(() => {
+    fetchReceipt();
+  }, [fetchReceipt]);
+
+  return { sale, isLoading, error, refetch: fetchReceipt };
+}
+
+/**
  * Hook for sales mutations with submission locking (double-click protection)
  */
 export function useSalesMutations(role: UserRole = 'admin') {

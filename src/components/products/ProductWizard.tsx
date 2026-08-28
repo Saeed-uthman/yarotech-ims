@@ -13,7 +13,14 @@ import {
   Sparkles,
   AlertCircle
 } from 'lucide-react';
-import { Product, ProductCategory, Company, ProductCreateInput, ProductDosageForm } from '../../types';
+import {
+  Product,
+  ProductCategory,
+  Company,
+  ProductCreateInput,
+  ProductDosageForm,
+  ProductVariantInput,
+} from '../../types';
 import { formatNaira, formatNumber } from '../../utils/formatters';
 
 interface ProductWizardProps {
@@ -71,26 +78,17 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
   const [status, setStatus] = useState<'Active' | 'Inactive'>('Active');
 
   // Step 2: Company Variants State
-  const [variants, setVariants] = useState<Array<{
-    companyName: string;
-    basePrice: number;
-    minSellingPrice: number;
-    defaultSellingPrice: number;
-    maxSellingPrice: number;
-    sellingPrice: number;
-    currentStock: number;
-    reorderLevel: number;
-    status: 'Available' | 'Inactive';
-  }>>([
+  const [variants, setVariants] = useState<ProductVariantInput[]>([
     {
-      companyName: 'DANA',
-      basePrice: 350,
-      minSellingPrice: 400,
-      defaultSellingPrice: 500,
-      maxSellingPrice: 570,
-      sellingPrice: 500,
-      currentStock: 100,
-      reorderLevel: 50,
+      companyName: companies.find((company) => company.status === 'Active')?.name || '',
+      companyId: companies.find((company) => company.status === 'Active')?.id,
+      basePrice: 0,
+      minSellingPrice: 0,
+      defaultSellingPrice: 0,
+      maxSellingPrice: 0,
+      sellingPrice: 0,
+      currentStock: 0,
+      reorderLevel: 10,
       status: 'Available',
     },
   ]);
@@ -119,6 +117,8 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
             const minSellingPrice = Number(v.minSellingPrice) || (basePrice > 0 ? Math.max(basePrice + 10, Math.round((basePrice + (defaultSellingPrice - basePrice) * 0.4) / 10) * 10) : defaultSellingPrice);
             const maxSellingPrice = Number(v.maxSellingPrice) || Math.max(defaultSellingPrice, Math.round((defaultSellingPrice * 1.2) / 10) * 10);
             return {
+              variantId: v.id,
+              companyId: v.companyId,
               companyName: v.companyName,
               basePrice,
               minSellingPrice,
@@ -131,13 +131,40 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
             };
           })
         );
+      } else {
+        const defaultCompany = companies.find((company) => company.status === 'Active');
+        setVariants([{
+          companyId: defaultCompany?.id,
+          companyName: defaultCompany?.name || '',
+          basePrice: 0,
+          minSellingPrice: 0,
+          defaultSellingPrice: 0,
+          maxSellingPrice: 0,
+          sellingPrice: 0,
+          currentStock: 0,
+          reorderLevel: 10,
+          status: 'Available',
+        }]);
       }
     } else {
       // Default initial values
       setCategory(categories[0]?.name || 'Analgesics');
       setBarcode(`${Math.floor(1000000000000 + Math.random() * 9000000000000)}`);
+      const defaultCompany = companies.find((company) => company.status === 'Active');
+      setVariants([{
+        companyId: defaultCompany?.id,
+        companyName: defaultCompany?.name || '',
+        basePrice: 0,
+        minSellingPrice: 0,
+        defaultSellingPrice: 0,
+        maxSellingPrice: 0,
+        sellingPrice: 0,
+        currentStock: 0,
+        reorderLevel: 10,
+        status: 'Available',
+      }]);
     }
-  }, [initialProduct, categories]);
+  }, [initialProduct, categories, companies]);
 
   const handleGenerateBarcode = () => {
     const generated = `${Math.floor(1000000000000 + Math.random() * 9000000000000)}`;
@@ -162,21 +189,21 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
     // Find next company name not in current variants (preferring Active companies)
     const usedCompanies = new Set(variants.map(v => v.companyName));
     const activeCompanies = companies.filter(c => c.status === 'Active');
-    const availableCompany = activeCompanies.find(c => !usedCompanies.has(c.name))?.name 
-      || activeCompanies[0]?.name 
-      || 'EMZOR';
+    const availableCompany = activeCompanies.find(c => !usedCompanies.has(c.name))
+      || activeCompanies[0];
 
     setVariants([
       ...variants,
       {
-        companyName: availableCompany,
-        basePrice: 400,
-        minSellingPrice: 480,
-        defaultSellingPrice: 600,
-        maxSellingPrice: 680,
-        sellingPrice: 600,
-        currentStock: 100,
-        reorderLevel: 50,
+        companyId: availableCompany?.id,
+        companyName: availableCompany?.name || '',
+        basePrice: 0,
+        minSellingPrice: 0,
+        defaultSellingPrice: 0,
+        maxSellingPrice: 0,
+        sellingPrice: 0,
+        currentStock: 0,
+        reorderLevel: 10,
         status: 'Available',
       },
     ]);
@@ -197,6 +224,19 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
       current.sellingPrice = value;
     }
     updated[index] = current;
+    setVariants(updated);
+  };
+
+  const updateVariantCompany = (index: number, companyName: string) => {
+    const matchingCompany = companies.find(
+      (company) => company.name.toLocaleLowerCase() === companyName.trim().toLocaleLowerCase()
+    );
+    const updated = [...variants];
+    updated[index] = {
+      ...updated[index],
+      companyName,
+      companyId: matchingCompany?.id,
+    };
     setVariants(updated);
   };
 
@@ -687,19 +727,22 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
                   <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
                     {variants.map((v, index) => (
                       <tr key={index} className="hover:bg-slate-50">
-                        {/* Company select */}
+                        {/* Existing company selection or a new manufacturer name */}
                         <td className="py-2 px-3">
-                          <select
+                          <input
+                            list={`wizard-company-options-${index}`}
                             value={v.companyName}
-                            onChange={(e) => updateVariantRow(index, 'companyName', e.target.value)}
+                            onChange={(e) => updateVariantCompany(index, e.target.value)}
+                            placeholder="Select or enter company"
                             className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-bold text-slate-900 focus:ring-1 focus:ring-blue-500"
-                          >
+                          />
+                          <datalist id={`wizard-company-options-${index}`}>
                             {companies.map((c) => (
                               <option key={c.id} value={c.name}>
                                 {c.name}
                               </option>
                             ))}
-                          </select>
+                          </datalist>
                         </td>
 
                         {/* Base Price */}

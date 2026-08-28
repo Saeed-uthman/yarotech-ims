@@ -35,7 +35,10 @@ export function mapBackendProduct(raw: any): Product {
     subtitle: p.subtitle || '',
     image: p.image || undefined,
     status: p.status === 'Active' ? 'Active' : 'Inactive',
-    variants: (p.variants || []).map(mapBackendVariant),
+    variants: (p.variants || []).map((variant: any) => ({
+      ...mapBackendVariant(variant),
+      productId: String(p.id),
+    })),
     createdAt: p.createdAt || '',
     updatedAt: p.updatedAt || '',
   };
@@ -238,9 +241,25 @@ export class ProductService {
         if (match) categoryId = Number(match.id);
       }
 
-      // Resolve company IDs from names for variants
-      const companiesRes = await companyService.getCompanies();
-      const companies = companiesRes.data || [];
+      // Resolve existing manufacturers or create explicitly entered new ones.
+      const variants = await Promise.all((input.variants || []).map(async (variant) => {
+        const company = variant.companyId
+          ? null
+          : await companyService.getOrCreateCompany(variant.companyName);
+        const companyId = Number(variant.companyId || company?.id);
+        if (!Number.isInteger(companyId) || companyId <= 0) {
+          throw new Error(`A valid company is required for ${variant.companyName || 'the product variant'}.`);
+        }
+        return {
+          company_id: companyId,
+          base_price: variant.basePrice,
+          min_selling_price: variant.minSellingPrice,
+          default_selling_price: variant.defaultSellingPrice,
+          max_selling_price: variant.maxSellingPrice,
+          current_stock: variant.currentStock,
+          reorder_level: variant.reorderLevel,
+        };
+      }));
 
       const payload: any = {
         name: input.name,
@@ -252,22 +271,7 @@ export class ProductService {
         description: input.description || '',
         subtitle: input.subtitle || '',
         status: input.status === 'Active' ? 'Active' : 'Inactive',
-        variants: (input.variants || []).map((v) => {
-          let companyId = v.companyId ? Number(v.companyId) : undefined;
-          if (!companyId && v.companyName) {
-            const comp = companies.find((c) => c.name === v.companyName);
-            if (comp) companyId = Number(comp.id);
-          }
-          return {
-            company_id: companyId,
-            base_price: v.basePrice,
-            min_selling_price: v.minSellingPrice,
-            default_selling_price: v.defaultSellingPrice,
-            max_selling_price: v.maxSellingPrice,
-            current_stock: v.currentStock,
-            reorder_level: v.reorderLevel,
-          };
-        }),
+        variants,
       };
 
       const res = await api.post<any>('/products/', payload);
@@ -277,6 +281,7 @@ export class ProductService {
       return { success: true, data: product, message: res.message };
     } catch (err) {
       if (err instanceof ApiError) throw err;
+      if (err instanceof Error) throw err;
       throw new Error('Failed to create product.');
     }
   }
@@ -293,7 +298,16 @@ export class ProductService {
       const payload: any = {};
       if (updates.name !== undefined) payload.name = updates.name;
       if (updates.genericName !== undefined) payload.generic_name = updates.genericName;
-      if (updates.categoryId !== undefined) payload.category_id = Number(updates.categoryId);
+      if (updates.categoryId !== undefined) {
+        payload.category_id = Number(updates.categoryId);
+      } else if (updates.category !== undefined) {
+        const categoriesResponse = await categoryService.getCategories();
+        const category = (categoriesResponse.data || []).find(
+          (item) => item.name.toLocaleLowerCase() === updates.category?.trim().toLocaleLowerCase()
+        );
+        if (!category) throw new Error(`Category "${updates.category}" was not found.`);
+        payload.category_id = Number(category.id);
+      }
       if (updates.dosage !== undefined) payload.dosage = updates.dosage;
       if (updates.form !== undefined) payload.dosage_form = updates.form;
       if (updates.barcode !== undefined) payload.barcode = updates.barcode;
@@ -302,12 +316,72 @@ export class ProductService {
       if (updates.status !== undefined) payload.status = updates.status === 'Active' ? 'Active' : 'Inactive';
 
       const res = await api.patch<any>(`/products/${id}/`, payload);
-      const product = mapBackendProduct(res.data);
+      let product = mapBackendProduct(res.data);
+
+      // Product metadata and company variants have separate Django endpoints.
+      // Explicitly synchronize submitted variants instead of silently dropping
+      // them from the product PATCH request.
+      if (updates.variants !== undefined) {
+        for (const variant of updates.variants) {
+          const company = variant.companyId
+            ? null
+            : await companyService.getOrCreateCompany(variant.companyName);
+          const companyId = Number(variant.companyId || company?.id);
+          if (!Number.isInteger(companyId) || companyId <= 0) {
+            throw new Error(`A valid company is required for ${variant.companyName || 'the product variant'}.`);
+          }
+
+          const existingVariant = variant.variantId
+            ? product.variants.find((item) => item.id === variant.variantId)
+            : product.variants.find(
+                (item) =>
+                  item.companyId === String(companyId)
+                  || item.companyName.toLocaleLowerCase() === variant.companyName.trim().toLocaleLowerCase()
+              );
+          const variantPayload: any = {
+            company_id: companyId,
+            base_price: variant.basePrice,
+            min_selling_price: variant.minSellingPrice,
+            default_selling_price: variant.defaultSellingPrice,
+            max_selling_price: variant.maxSellingPrice,
+            current_stock: variant.currentStock,
+            reorder_level: variant.reorderLevel,
+          };
+          if (variant.status !== undefined) {
+            variantPayload.status = variant.status === 'Available' ? 'Available' : 'Inactive';
+          }
+
+          if (existingVariant) {
+            const hasChanges = (
+              existingVariant.companyId !== String(companyId)
+              || Number(existingVariant.basePrice) !== Number(variant.basePrice)
+              || Number(existingVariant.minSellingPrice) !== Number(variant.minSellingPrice)
+              || Number(existingVariant.defaultSellingPrice) !== Number(variant.defaultSellingPrice)
+              || Number(existingVariant.maxSellingPrice) !== Number(variant.maxSellingPrice)
+              || Number(existingVariant.currentStock) !== Number(variant.currentStock)
+              || Number(existingVariant.reorderLevel) !== Number(variant.reorderLevel)
+              || (variant.status !== undefined && existingVariant.status !== variant.status)
+            );
+            if (hasChanges) {
+              await api.patch<any>(`/products/variants/${existingVariant.id}/`, variantPayload);
+            }
+          } else {
+            delete variantPayload.status;
+            await api.post<any>(`/products/${id}/variants/`, variantPayload);
+          }
+        }
+
+        const refreshed = await api.get<any>(`/products/${id}/`);
+        product = mapBackendProduct(refreshed.data);
+      }
+
       apiCache.invalidateByPrefix('products:');
       apiCache.invalidateByPrefix('kpi:');
+      apiCache.invalidateByPrefix(`product:${id}`);
       return { success: true, data: product, message: res.message };
     } catch (err) {
       if (err instanceof ApiError) throw err;
+      if (err instanceof Error) throw err;
       throw new Error('Failed to update product.');
     }
   }
@@ -377,8 +451,16 @@ export class ProductService {
     _role: UserRole = 'admin'
   ): Promise<ApiResponse<Product>> {
     try {
+      const company = input.companyId
+        ? null
+        : await companyService.getOrCreateCompany(input.companyName);
+      const companyId = Number(input.companyId || company?.id);
+      if (!Number.isInteger(companyId) || companyId <= 0) {
+        throw new Error('A valid company/manufacturer is required.');
+      }
+
       const payload = {
-        company_id: input.companyId ? Number(input.companyId) : undefined,
+        company_id: companyId,
         base_price: input.basePrice,
         min_selling_price: input.minSellingPrice,
         default_selling_price: input.defaultSellingPrice,
@@ -395,6 +477,7 @@ export class ProductService {
       return this.getProductById(productId);
     } catch (err) {
       if (err instanceof ApiError) throw err;
+      if (err instanceof Error) throw err;
       throw new Error('Failed to add variant.');
     }
   }

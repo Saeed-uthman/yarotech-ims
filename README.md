@@ -266,6 +266,12 @@ src/
    ```
    The application will be running at `http://localhost:3000`.
 
+   On Windows, after the frontend and Django setup are complete, you can also
+   double-click `Start Pharmacy System.cmd` to back up the local SQLite data,
+   start both services, and open the application. See
+   [`LOCAL_AND_DEPLOYMENT_GUIDE.md`](./LOCAL_AND_DEPLOYMENT_GUIDE.md) for the
+   local database, restoration, PostgreSQL migration, and deployment plan.
+
 ---
 
 ## 📜 Available Scripts
@@ -276,6 +282,8 @@ src/
 | `npm run build` | Compiles TypeScript and builds the production static assets in `dist/`. |
 | `npm run preview` | Serves the production build locally for verification. |
 | `npm run lint` | Runs TypeScript compiler checks (`tsc --noEmit`) to validate type safety. |
+| `Start Pharmacy System.cmd` | Windows double-click launcher for the current local environment. |
+| `Backup Pharmacy Data.cmd` | Creates a verified SQLite and uploaded-media backup. |
 
 ---
 
@@ -291,6 +299,40 @@ Additional operational references:
 
 - **Deployment and PostgreSQL gate**: [`alamaan_backend/DEPLOYMENT.md`](./alamaan_backend/DEPLOYMENT.md)
 - **End-to-end release acceptance**: [`RELEASE_ACCEPTANCE.md`](./RELEASE_ACCEPTANCE.md)
+
+### Nigerian generic medicine starter catalogue
+
+The backend includes an idempotent catalogue command with 132 generic medicine
+records across 17 categories. The dataset is informed by Nigeria's Essential
+Medicines Lists and is intended to reduce initial data entry; it is not a
+substitute for verifying the exact commercial pack in the current
+[NAFDAC Greenbook](https://greenbook.nafdac.gov.ng/).
+
+From `alamaan_backend/`, preview the import without changing the database:
+
+```powershell
+python manage.py seed_nigerian_medicines --dry-run
+```
+
+Load the complete starter catalogue:
+
+```powershell
+python manage.py seed_nigerian_medicines
+```
+
+Useful optional forms include:
+
+```powershell
+python manage.py seed_nigerian_medicines --limit 10
+python manage.py seed_nigerian_medicines --category "Antimalarial Medicines"
+python manage.py seed_nigerian_medicines --admin-email owner@example.com
+```
+
+Running the command again is safe: matching generic name, strength, and dosage
+form records are skipped. It deliberately creates no company/manufacturer
+variant, price, barcode, NAFDAC registration number, or opening stock. After
+importing, open a product in the admin UI and use **Add Variant** to attach the
+verified manufacturer and actual purchase/retail data from the physical pack.
 
 ### Key Highlights of the Backend:
 - **Project Structure**: Clean separation across Django apps (`accounts`, `products`, `inventory`, `customers`, `sales`, `purchases`, `accountability`, `reports`, `settings_app`, `dashboard`, `common`).

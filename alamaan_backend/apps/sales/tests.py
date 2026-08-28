@@ -96,6 +96,33 @@ class SalesApiTests(APITestCase):
         self.assertEqual(movement.previous_stock, 50)
         self.assertEqual(movement.new_stock, 48)
 
+    def test_sales_summary_matches_created_transactions(self):
+        self.client.force_authenticate(self.cashier)
+        create_response = self.client.post(reverse('sales-list'), self._sale_payload(), format='json')
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+
+        summary_response = self.client.get(reverse('sales-summary-kpis'), {'date_range': 'today'})
+        self.assertEqual(summary_response.status_code, status.HTTP_200_OK)
+        data = summary_response.data['data']
+        self.assertEqual(data['total_transactions'], 1)
+        self.assertEqual(data['paid_count'], 1)
+        self.assertEqual(data['partial_count'], 0)
+        self.assertEqual(data['unpaid_count'], 0)
+        self.assertEqual(Decimal(data['total_revenue']), Decimal('3600.00'))
+        self.assertEqual(Decimal(data['total_outstanding']), Decimal('0.00'))
+
+    def test_transaction_preflight_allows_idempotency_header(self):
+        response = self.client.options(
+            reverse('sales-list'),
+            HTTP_ORIGIN='http://localhost:3000',
+            HTTP_ACCESS_CONTROL_REQUEST_METHOD='POST',
+            HTTP_ACCESS_CONTROL_REQUEST_HEADERS='authorization, content-type, idempotency-key',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        allowed_headers = response['Access-Control-Allow-Headers'].lower()
+        self.assertIn('idempotency-key', allowed_headers)
+
     def test_sale_idempotency_key_replays_without_duplicate_stock_deduction(self):
         self.client.force_authenticate(self.cashier)
         headers = {'HTTP_IDEMPOTENCY_KEY': 'sale-checkout-test-key'}

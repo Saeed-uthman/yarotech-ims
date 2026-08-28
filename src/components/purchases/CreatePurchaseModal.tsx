@@ -25,6 +25,13 @@ import {
 import { productService } from '../../services/productService';
 import { purchaseService } from '../../services/purchaseService';
 import { formatNaira, formatNumber } from '../../utils/formatters';
+import { useAuth } from '../../hooks/useAuth';
+
+function localToday(): string {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 10);
+}
 
 interface CreatePurchaseModalProps {
   isOpen: boolean;
@@ -53,6 +60,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
   onSuccess,
   role,
 }) => {
+  const { user } = useAuth();
   // Selected items draft
   const [items, setItems] = useState<PurchaseDraftItem[]>([]);
   const [productSearch, setProductSearch] = useState('');
@@ -60,10 +68,10 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
 
   // Purchase metadata
-  const [purchaseDate, setPurchaseDate] = useState('2026-08-19');
+  const [purchaseDate, setPurchaseDate] = useState(localToday);
   const [paymentMethod, setPaymentMethod] = useState<PurchasePaymentMethod>('TRANSFER');
   const [note, setNote] = useState('');
-  const [recordedBy, setRecordedBy] = useState('Pharm. Abdullahi (Admin)');
+  const recordedBy = user?.fullName || 'Current administrator';
 
   // Form states & submission
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,6 +80,12 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
   // Fetch available products and their company variants on mount / when open
   useEffect(() => {
     if (!isOpen) return;
+    setItems([]);
+    setProductSearch('');
+    setPurchaseDate(localToday());
+    setPaymentMethod('TRANSFER');
+    setNote('');
+    setFormError(null);
     async function loadProducts() {
       setIsLoadingProducts(true);
       try {
@@ -164,8 +178,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
   const totalUnits = items.reduce((sum, item) => sum + item.quantity, 0);
 
   // Submit stock purchase
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (isSubmitting) return;
 
     if (items.length === 0) {
@@ -193,7 +206,6 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
         purchaseDate,
         paymentMethod,
         note: note.trim() || undefined,
-        recordedBy,
         items: items.map((it) => ({
           productVariantId: it.variantId,
           quantity: it.quantity,
@@ -231,7 +243,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
                 Record Stock Purchase (Restock)
               </h2>
               <p className="text-xs text-slate-300">
-                Log procurement of medicines, increment live inventory, and update unit base costs.
+                Log medicine procurement, increment live inventory, and post the capital outflow.
               </p>
             </div>
           </div>
@@ -304,9 +316,8 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
                 id="purchase-input-recorded-by"
                 type="text"
                 value={recordedBy}
-                onChange={(e) => setRecordedBy(e.target.value)}
-                placeholder="Staff / Pharmacist Name"
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                readOnly
+                className="w-full px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg text-xs font-medium text-slate-700"
               />
             </div>
           </div>
@@ -458,7 +469,8 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
                           </label>
                           <input
                             type="number"
-                            min="1"
+                            min="0.01"
+                            step="0.01"
                             value={item.unitPurchasePrice}
                             onChange={(e) =>
                               handleUpdatePrice(index, parseFloat(e.target.value))
@@ -523,7 +535,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
                 </strong>
               </div>
               <p className="text-[11px] text-indigo-200">
-                Saving this order will immediately update the live stock count and reset variant base cost.
+                Saving this order will immediately update live stock and create the matching accountability entry.
               </p>
             </div>
 

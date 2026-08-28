@@ -2,6 +2,7 @@ import React from 'react';
 import { Printer, Store, Phone, MapPin, User, Calendar, Hash } from 'lucide-react';
 import { SystemSettings } from '../../types';
 import { formatNaira } from '../../utils/formatters';
+import { ReceiptBarcode } from '../common/ReceiptBarcode';
 
 interface SettingsReceiptPreviewProps {
   settings: SystemSettings;
@@ -21,7 +22,7 @@ export const SettingsReceiptPreview: React.FC<SettingsReceiptPreviewProps> = ({ 
       </div>
 
       {/* Simulated Thermal Paper */}
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5 font-mono text-[11px] text-slate-800 space-y-3 max-w-sm mx-auto select-none">
+      <div className="theme-light-preview bg-white dark:bg-white rounded-lg shadow-sm border border-slate-200 dark:border-slate-200 p-5 font-mono text-[11px] text-slate-800 dark:text-slate-800 space-y-3 max-w-sm mx-auto select-none">
         {/* Pharmacy Logo & Header */}
         <div className="text-center space-y-1 border-b border-dashed border-slate-300 pb-3">
           {settings.receiptLogo && settings.logo && (
@@ -136,9 +137,13 @@ export const SettingsReceiptPreview: React.FC<SettingsReceiptPreviewProps> = ({ 
 
         {/* Custom Footer */}
         <div className="text-center pt-1 space-y-1">
-          <div className="font-mono text-[9px] tracking-widest text-slate-400 bg-slate-50 py-1 rounded border border-slate-200">
-            ||| | ||||| || |||| ||| ||||| ||
-          </div>
+          <ReceiptBarcode
+            invoiceNumber="Sale #000428"
+            saleId="428"
+            total={3200}
+            date="2026-08-19T14:45:00+01:00"
+            compact
+          />
           {settings.receiptFooter ? (
             <p className="text-[9px] text-slate-600 font-sans italic leading-tight px-1">
               "{settings.receiptFooter}"

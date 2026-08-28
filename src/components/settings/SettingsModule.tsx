@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Settings,
   Building2,
@@ -27,6 +27,7 @@ import { ReceiptSettingsSection } from './ReceiptSettingsSection';
 import { NotificationSettingsSection } from './NotificationSettingsSection';
 import { AppearanceSettingsSection } from './AppearanceSettingsSection';
 import { SecuritySettingsSection } from './SecuritySettingsSection';
+import { applyDocumentTheme } from '../../hooks/useDocumentTheme';
 
 interface SettingsModuleProps {
   role: UserRole;
@@ -60,13 +61,24 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
   const [searchQuery, setSearchQuery] = useState('');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const savedThemeRef = useRef(settings.theme);
 
   // Sync formData with loaded settings
   useEffect(() => {
     if (settings) {
       setFormData(settings);
+      savedThemeRef.current = settings.theme;
+      applyDocumentTheme(settings.theme);
     }
   }, [settings]);
+
+  // If an unsaved preview is abandoned by navigating away, restore the saved theme.
+  useEffect(
+    () => () => {
+      applyDocumentTheme(savedThemeRef.current);
+    },
+    []
+  );
 
   // Check if form has unsaved modifications
   const isDirty = useMemo(() => {
@@ -75,6 +87,10 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
   }, [settings, formData]);
 
   const handleFieldChange = (field: keyof SystemSettings, value: any) => {
+    if (field === 'theme') {
+      // Preview the appearance across the entire application immediately.
+      applyDocumentTheme(value as SystemSettings['theme']);
+    }
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -92,6 +108,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
 
   const handleDiscard = () => {
     setFormData(settings);
+    applyDocumentTheme(settings.theme);
     setErrors({});
     setSaveSuccessMsg(null);
   };
@@ -236,21 +253,21 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
 
   if (isLoading && !formData) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 p-12 text-center max-w-xl mx-auto my-8">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center max-w-xl mx-auto my-8">
         <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <h3 className="text-sm font-semibold text-slate-800">Loading System Preferences...</h3>
+        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Loading System Preferences...</h3>
         <p className="text-xs text-slate-400 mt-1">Retrieving pharmacy configuration and security rules.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="space-y-6 animate-in fade-in duration-200 text-slate-900 dark:text-slate-100">
       {/* Header & Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
               System Preferences & Configurations
             </h2>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
@@ -270,7 +287,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
               id="reset-settings-trigger-btn"
               disabled={isResetting || isSaving}
               onClick={() => setIsResetConfirmOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-2xs disabled:opacity-50"
             >
               <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
               <span>Reset Defaults</span>
@@ -324,9 +341,9 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
       )}
 
       {/* Main Settings Card Layout (Sidebar Tabs + Section Content) */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col md:flex-row min-h-[580px]">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden flex flex-col md:flex-row min-h-[580px]">
         {/* Settings Navigation Sidebar */}
-        <div className="w-full md:w-64 bg-slate-50/60 border-b md:border-b-0 md:border-r border-slate-200 p-3 sm:p-4 space-y-3 shrink-0 select-none">
+        <div className="w-full md:w-64 bg-slate-50/60 dark:bg-slate-950/60 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 p-3 sm:p-4 space-y-3 shrink-0 select-none">
           {/* Quick Settings Search */}
           <div className="relative">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
@@ -336,7 +353,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
               placeholder="Search settings..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-white rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             {searchQuery && (
               <button
@@ -361,7 +378,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
                   className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                     isActive
                       ? 'bg-blue-600 text-white shadow-2xs'
-                      : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-500'}`} />
@@ -491,13 +508,13 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
       {/* Reset Confirmation Modal */}
       {isResetConfirmOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="w-12 h-12 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mx-auto">
               <RotateCcw className="w-6 h-6" />
             </div>
 
             <div className="text-center space-y-1">
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
                 Reset System Preferences to Defaults?
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
@@ -509,7 +526,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
               <button
                 type="button"
                 onClick={() => setIsResetConfirmOpen(false)}
-                className="px-3.5 py-2 rounded-lg text-xs font-semibold border border-slate-300 text-slate-700 hover:bg-slate-50"
+                className="px-3.5 py-2 rounded-lg text-xs font-semibold border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>

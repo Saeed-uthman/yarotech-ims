@@ -64,7 +64,7 @@ export const GeneralInfoSection: React.FC<GeneralInfoSectionProps> = ({
       {/* Section Header */}
       <div className="flex items-center justify-between border-b border-slate-200 pb-4">
         <div>
-          <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+          <h3 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
             <Building2 className="w-5 h-5 text-blue-600" />
             <span>Pharmacy Identity & Contact Details</span>
           </h3>
@@ -95,7 +95,7 @@ export const GeneralInfoSection: React.FC<GeneralInfoSectionProps> = ({
               value={formData.pharmacyName}
               onChange={(e) => onChange('pharmacyName', e.target.value)}
               placeholder="e.g. Al-Amaan Medicine Store"
-              className={`w-full px-3.5 py-2.5 text-sm rounded-lg border bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-colors disabled:bg-slate-50 disabled:text-slate-500 ${
+              className={`w-full px-3.5 py-2.5 text-sm text-slate-900 dark:text-white rounded-lg border bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500 disabled:bg-slate-50 dark:disabled:bg-slate-800 disabled:text-slate-500 dark:disabled:text-slate-400 ${
                 errors.pharmacyName ? 'border-rose-300 ring-2 ring-rose-500/10' : 'border-slate-300'
               }`}
             />
@@ -121,7 +121,7 @@ export const GeneralInfoSection: React.FC<GeneralInfoSectionProps> = ({
               value={formData.phone}
               onChange={(e) => onChange('phone', e.target.value)}
               placeholder="e.g. 0803 456 7890"
-              className="w-full pl-9 pr-3.5 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-colors disabled:bg-slate-50 disabled:text-slate-500"
+              className="w-full pl-9 pr-3.5 py-2.5 text-sm text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500 disabled:bg-slate-50 dark:disabled:bg-slate-800 disabled:text-slate-500 dark:disabled:text-slate-400"
             />
           </div>
         </div>
@@ -140,7 +140,7 @@ export const GeneralInfoSection: React.FC<GeneralInfoSectionProps> = ({
               value={formData.email}
               onChange={(e) => onChange('email', e.target.value)}
               placeholder="e.g. info@alamaanmedicine.ng"
-              className="w-full pl-9 pr-3.5 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-colors disabled:bg-slate-50 disabled:text-slate-500"
+              className="w-full pl-9 pr-3.5 py-2.5 text-sm text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500 disabled:bg-slate-50 dark:disabled:bg-slate-800 disabled:text-slate-500 dark:disabled:text-slate-400"
             />
           </div>
         </div>
@@ -159,7 +159,7 @@ export const GeneralInfoSection: React.FC<GeneralInfoSectionProps> = ({
               value={formData.address}
               onChange={(e) => onChange('address', e.target.value)}
               placeholder="e.g. Plot 14 Commercial Avenue, Sabon Gari, Kano, Nigeria"
-              className="w-full pl-9 pr-3.5 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-colors disabled:bg-slate-50 disabled:text-slate-500 resize-none"
+              className="w-full pl-9 pr-3.5 py-2 text-sm text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500 disabled:bg-slate-50 dark:disabled:bg-slate-800 disabled:text-slate-500 dark:disabled:text-slate-400 resize-none"
             />
           </div>
         </div>
@@ -178,7 +178,7 @@ export const GeneralInfoSection: React.FC<GeneralInfoSectionProps> = ({
               value={formData.businessDescription}
               onChange={(e) => onChange('businessDescription', e.target.value)}
               placeholder="e.g. Licensed Community & Retail Pharmacy Dispensing Services (PCN Reg: KN-2041)"
-              className="w-full pl-9 pr-3.5 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-colors disabled:bg-slate-50 disabled:text-slate-500"
+              className="w-full pl-9 pr-3.5 py-2.5 text-sm text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500 disabled:bg-slate-50 dark:disabled:bg-slate-800 disabled:text-slate-500 dark:disabled:text-slate-400"
             />
           </div>
         </div>

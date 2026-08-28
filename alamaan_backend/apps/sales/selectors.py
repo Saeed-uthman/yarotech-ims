@@ -85,11 +85,16 @@ def get_sales_kpis(*, date_range=None):
         total_sales=Count('id'),
         total_revenue=Sum('total_amount'),
         total_amount_paid=Sum('amount_paid'),
+        total_outstanding=Sum('outstanding_amount'),
+        paid_count=Count('id', filter=Q(payment_status=Sale.PaymentStatus.PAID)),
+        partial_count=Count('id', filter=Q(payment_status=Sale.PaymentStatus.PARTIAL)),
+        unpaid_count=Count('id', filter=Q(payment_status=Sale.PaymentStatus.UNPAID)),
     )
 
     total_sales = aggregates['total_sales'] or 0
     total_revenue = aggregates['total_revenue'] or Decimal('0.00')
     total_amount_paid = aggregates['total_amount_paid'] or Decimal('0.00')
+    total_outstanding = aggregates['total_outstanding'] or Decimal('0.00')
 
     from django.db.models import F
     total_profit = (
@@ -100,8 +105,13 @@ def get_sales_kpis(*, date_range=None):
 
     return {
         'total_sales': total_sales,
+        'total_transactions': total_sales,
         'total_revenue': total_revenue,
         'total_amount_paid': total_amount_paid,
+        'total_outstanding': total_outstanding,
+        'paid_count': aggregates['paid_count'],
+        'partial_count': aggregates['partial_count'],
+        'unpaid_count': aggregates['unpaid_count'],
         'total_profit': total_profit,
         'average_sale_value': total_revenue / total_sales if total_sales > 0 else Decimal('0.00'),
     }

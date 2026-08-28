@@ -3,7 +3,8 @@ import {
   Product, 
   ProductCreateInput, 
   ProductFilterParams,
-  CompanyVariant
+  CompanyVariant,
+  ProductVariantInput
 } from './types';
 import { 
   useProducts, 
@@ -48,6 +49,7 @@ import { WifiOff, Activity, RefreshCw, Loader2, HeartPulse } from 'lucide-react'
 import { downloadProductCsvTemplate } from './utils/productCsvTemplate';
 import { useSettings } from './hooks/useSettings';
 import { useInventoryKPIs } from './hooks/useInventory';
+import { useDocumentTheme } from './hooks/useDocumentTheme';
 
 function MainPharmacyApp() {
   const { isAuthenticated, isLoading: isAuthLoading, user, role: currentRole } = useAuth();
@@ -91,27 +93,13 @@ function MainPharmacyApp() {
 
   const { stats, isLoading: isKPIsLoading, refetch: refetchKPIs } = useKPIStats(currentRole);
   const { kpis: inventoryKPIs, refetch: refetchInventoryKPIs } = useInventoryKPIs(currentRole);
-  const { categories, companies } = useReferenceData();
+  const { categories, companies, refetch: refetchReferenceData } = useReferenceData();
   const { settings, refetch: refetchSettings } = useSettings(currentRole);
 
   const totalLowStockAlerts = (inventoryKPIs?.lowStockCount || 0) + (inventoryKPIs?.outOfStockCount || 0);
 
-  // Apply Theme Preference to Root Document
-  useEffect(() => {
-    if (!settings) return;
-    if (settings.theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else if (settings.theme === 'light') {
-      document.documentElement.classList.remove('dark');
-    } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-    }
-  }, [settings?.theme]);
+  // Keep the server preference synchronized with the document and OS changes.
+  useDocumentTheme(settings?.theme);
 
   const {
     isMutating,
@@ -361,23 +349,37 @@ function MainPharmacyApp() {
     }
   };
 
-  const handleAddVariant = async (productId: string, variant: Omit<CompanyVariant, 'id'>) => {
+  const handleAddVariant = async (productId: string, variant: ProductVariantInput): Promise<boolean> => {
     try {
       const updated = await addVariant(productId, variant, currentRole);
       addToast('success', 'Variant Added', `Added ${variant.companyName} variant.`);
       setSelectedProduct(updated);
+      refetchProducts(true);
+      refetchKPIs();
+      refetchReferenceData();
+      return true;
     } catch (err: any) {
       addToast('error', 'Failed to Add Variant', err?.message || 'Could not add variant.');
+      return false;
     }
   };
 
-  const handleUpdateVariant = async (productId: string, variantId: string, updates: Partial<CompanyVariant>) => {
+  const handleUpdateVariant = async (
+    productId: string,
+    variantId: string,
+    updates: Partial<CompanyVariant>
+  ): Promise<boolean> => {
     try {
       const updated = await updateVariant(productId, variantId, updates, currentRole);
       addToast('success', 'Variant Updated', 'Company pricing updated successfully.');
       setSelectedProduct(updated);
+      refetchProducts(true);
+      refetchKPIs();
+      refetchReferenceData();
+      return true;
     } catch (err: any) {
       addToast('error', 'Failed to Update Variant', err?.message || 'Could not update variant.');
+      return false;
     }
   };
 

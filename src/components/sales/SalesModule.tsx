@@ -21,6 +21,7 @@ import {
   useSales,
   useSalesSummary,
   useSalesChart,
+  useSaleReceipt,
 } from '../../hooks/useSales';
 import { SalesSummaryCards } from './SalesSummaryCards';
 import { SalesFilters } from './SalesFilters';
@@ -56,7 +57,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
 
   // Modal states
   const [selectedSaleForDetails, setSelectedSaleForDetails] = useState<Sale | null>(null);
-  const [selectedSaleForReceipt, setSelectedSaleForReceipt] = useState<Sale | null>(null);
+  const [selectedSaleIdForReceipt, setSelectedSaleIdForReceipt] = useState<string | null>(null);
   const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
@@ -85,6 +86,13 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
     isLoading: isLoadingChart,
     refetch: refetchChart,
   } = useSalesChart(filters.dateRange, role, filters.startDate, filters.endDate);
+
+  const {
+    sale: selectedSaleForReceipt,
+    isLoading: isLoadingReceipt,
+    error: receiptError,
+    refetch: refetchReceipt,
+  } = useSaleReceipt(selectedSaleIdForReceipt, role);
 
   // Filter change handlers
   const handleFilterChange = (updates: Partial<SalesFilterParams>) => {
@@ -118,7 +126,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
   };
 
   const handlePrintReceipt = (sale: Sale) => {
-    setSelectedSaleForReceipt(sale);
+    setSelectedSaleIdForReceipt(sale.id);
   };
 
   const handleSaleCreated = (newSale: Sale) => {
@@ -127,7 +135,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
     setSuccessToast(`Sale ${newSale.invoiceNumber} recorded successfully!`);
     setTimeout(() => setSuccessToast(null), 5000);
     // Optionally open receipt immediately
-    setSelectedSaleForReceipt(newSale);
+    setSelectedSaleIdForReceipt(newSale.id);
   };
 
   return (
@@ -267,8 +275,11 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
       {/* Sale Receipt Modal */}
       <SaleReceiptModal
         sale={selectedSaleForReceipt}
-        isOpen={!!selectedSaleForReceipt}
-        onClose={() => setSelectedSaleForReceipt(null)}
+        isOpen={!!selectedSaleIdForReceipt}
+        isLoading={isLoadingReceipt}
+        error={receiptError}
+        onRetry={refetchReceipt}
+        onClose={() => setSelectedSaleIdForReceipt(null)}
       />
 
       {/* New Sale POS Checkout Modal */}

@@ -25,11 +25,17 @@ export const PurchaseSummaryCards: React.FC<PurchaseSummaryCardsProps> = ({
   const getTimeframeLabel = (tf: string) => {
     switch (tf) {
       case 'today':
-        return 'Today (19 Aug 2026)';
-      case 'this_week':
-        return 'This Week (17–23 Aug)';
+        return `Today (${new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })})`;
+      case 'this_week': {
+        const today = new Date();
+        const start = new Date(today);
+        start.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        return `This Week (${start.toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}–${end.toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })})`;
+      }
       case 'this_month':
-        return 'This Month (August 2026)';
+        return `This Month (${new Date().toLocaleDateString('en-NG', { month: 'long', year: 'numeric' })})`;
       case 'custom':
         return filters.startDate && filters.endDate
           ? `${filters.startDate} to ${filters.endDate}`

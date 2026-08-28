@@ -107,6 +107,37 @@ interface BackendErrorResponse {
   errors?: Record<string, string[]> | string;
 }
 
+function firstValidationError(
+  value: unknown,
+  path: string[] = []
+): { path: string[]; message: string } | null {
+  if (typeof value === 'string') return { path, message: value };
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const result = firstValidationError(item, path);
+      if (result) return result;
+    }
+    return null;
+  }
+  if (value && typeof value === 'object') {
+    for (const [key, item] of Object.entries(value)) {
+      const result = firstValidationError(item, [...path, key]);
+      if (result) return result;
+    }
+  }
+  return null;
+}
+
+function validationErrorMessage(errors: unknown): string | null {
+  const result = firstValidationError(errors);
+  if (!result) return null;
+  const fieldPath = result.path
+    .filter((part) => part !== 'non_field_errors')
+    .map((part) => part.replaceAll('_', ' '))
+    .join(' › ');
+  return fieldPath ? `${fieldPath}: ${result.message}` : result.message;
+}
+
 // ==========================================
 // Core Fetch Wrapper
 // ==========================================
@@ -164,8 +195,11 @@ export async function apiRequest<T>(
   const data = isJson ? await response.json() : null;
 
   if (!response.ok) {
-    const errorMessage = data?.message || data?.detail || `Request failed (${response.status})`;
     const errors = data?.errors || null;
+    const errorMessage = validationErrorMessage(errors)
+      || data?.message
+      || data?.detail
+      || `Request failed (${response.status})`;
     const apiError = new ApiError(errorMessage, response.status, errors, data?.error);
     throw apiError;
   }
