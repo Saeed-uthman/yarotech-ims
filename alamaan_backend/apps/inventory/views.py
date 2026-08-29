@@ -9,7 +9,8 @@ from apps.common.pagination import paginated_response
 from apps.common.responses import success_response
 
 from .selectors import get_inventory_insights, get_inventory_kpis, list_inventory_items, list_inventory_movements
-from .serializers import InventoryItemSerializer, InventoryMovementSerializer, StockAdjustmentInputSerializer
+from .models import InventoryBatch
+from .serializers import InventoryBatchSerializer, InventoryItemSerializer, InventoryMovementSerializer, StockAdjustmentInputSerializer
 from .services import adjust_stock_manually
 
 
@@ -84,3 +85,20 @@ class InventoryInsightsView(APIView):
     @extend_schema(responses={200: None})
     def get(self, request):
         return Response(success_response(get_inventory_insights()))
+
+
+class InventoryBatchListView(APIView):
+    permission_classes = [IsAdminUserRole]
+
+    @extend_schema(responses={200: InventoryBatchSerializer(many=True)})
+    def get(self, request):
+        queryset = InventoryBatch.objects.select_related(
+            'variant__product', 'variant__company', 'supplier'
+        )
+        if request.query_params.get('variant_id'):
+            queryset = queryset.filter(variant_id=request.query_params['variant_id'])
+        if request.query_params.get('status'):
+            queryset = queryset.filter(status=request.query_params['status'])
+        if request.query_params.get('expiring_before'):
+            queryset = queryset.filter(expiry_date__lte=request.query_params['expiring_before'])
+        return paginated_response(request, queryset, InventoryBatchSerializer)

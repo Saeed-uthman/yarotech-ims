@@ -8,6 +8,7 @@ from .views import (
     CustomerSummaryKpisView,
     CustomerToggleStatusView,
     DebtPaymentReceiptView,
+    DebtPaymentReversalView,
     DebtPaymentView,
 )
 
@@ -20,4 +21,5 @@ urlpatterns = [
     path('customers/<int:pk>/payments/', CustomerPaymentsHistoryView.as_view(), name='customers-payments-history'),
     path('payments/debt-payment/', DebtPaymentView.as_view(), name='debt-payment-create'),
     path('payments/receipt/<int:pk>/', DebtPaymentReceiptView.as_view(), name='debt-payment-receipt'),
+    path('payments/<int:pk>/reverse/', DebtPaymentReversalView.as_view(), name='debt-payment-reverse'),
 ]

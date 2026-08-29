@@ -98,6 +98,34 @@ def get_dashboard_data(*, user, date_range=None, start_date=None, end_date=None)
     cash_agg = transactions.aggregate(
         money_in=Sum('amount', filter=Q(direction=AccountabilityTransaction.Direction.IN)),
         money_out=Sum('amount', filter=Q(direction=AccountabilityTransaction.Direction.OUT)),
+        sales_collected=Sum(
+            'amount',
+            filter=Q(
+                direction=AccountabilityTransaction.Direction.IN,
+                type=AccountabilityTransaction.TxType.SALE,
+            ),
+        ),
+        debt_recovered=Sum(
+            'amount',
+            filter=Q(
+                direction=AccountabilityTransaction.Direction.IN,
+                type=AccountabilityTransaction.TxType.DEBT_PAYMENT,
+            ),
+        ),
+        stock_purchase_spend=Sum(
+            'amount',
+            filter=Q(
+                direction=AccountabilityTransaction.Direction.OUT,
+                type=AccountabilityTransaction.TxType.STOCK_PURCHASE,
+            ),
+        ),
+        operating_expenses=Sum(
+            'amount',
+            filter=Q(
+                direction=AccountabilityTransaction.Direction.OUT,
+                type=AccountabilityTransaction.TxType.OTHER_EXPENSE,
+            ),
+        ),
     )
     purchase_agg = purchases.aggregate(
         purchases_count=Count('id'),
@@ -137,6 +165,16 @@ def get_dashboard_data(*, user, date_range=None, start_date=None, end_date=None)
     total_profit = (items_agg['total_profit'] or ZERO) if is_admin else ZERO
     money_in = cash_agg['money_in'] or ZERO
     money_out = cash_agg['money_out'] or ZERO
+    sales_collected = cash_agg['sales_collected'] or ZERO
+    debt_recovered = cash_agg['debt_recovered'] or ZERO
+    stock_purchase_spend = cash_agg['stock_purchase_spend'] or ZERO
+    operating_expenses = cash_agg['operating_expenses'] or ZERO
+    net_cash_generated = (
+        sales_collected
+        + debt_recovered
+        - stock_purchase_spend
+        - operating_expenses
+    )
 
     sales_daily = {
         row['date']: row
@@ -277,6 +315,11 @@ def get_dashboard_data(*, user, date_range=None, start_date=None, end_date=None)
         'money_in': money_in,
         'money_out': money_out,
         'net_money_movement': money_in - money_out,
+        'sales_collected': sales_collected,
+        'debt_recovered': debt_recovered,
+        'stock_purchase_spend': stock_purchase_spend,
+        'operating_expenses': operating_expenses,
+        'net_cash_generated': net_cash_generated,
         'outstanding_debt': outstanding_debt,
         'debtor_count': debtor_count,
         'inventory_value': (inventory_agg['inventory_value'] or ZERO) if is_admin else ZERO,

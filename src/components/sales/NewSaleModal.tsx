@@ -71,6 +71,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [productSearchError, setProductSearchError] = useState<string | null>(null);
 
   // Customer choice
   const [customerType, setCustomerType] = useState<'walking' | 'registered'>('walking');
@@ -87,26 +88,80 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Fetch products and registered customers on mount / when open
+  // Fetch registered customers when the form opens. Products are searched on
+  // demand so the sale form is not restricted to the first catalogue page.
   useEffect(() => {
     if (!isOpen) return;
     async function loadData() {
-      setIsLoadingProducts(true);
       try {
-        const [prodRes, custRes] = await Promise.all([
-          productService.getProducts({ page: 1, limit: 100 }, role),
-          customerService.getCustomers({ page: 1, limit: 100, status: 'active' }, role),
-        ]);
-        setAvailableProducts(prodRes.data);
+        const custRes = await customerService.getCustomers(
+          { page: 1, limit: 100, status: 'active' },
+          role
+        );
         setAllCustomers(custRes.data);
       } catch (err: any) {
-        setFormError('Failed to load products or customer list.');
-      } finally {
-        setIsLoadingProducts(false);
+        setFormError('Failed to load the customer list.');
       }
     }
     loadData();
   }, [role, isOpen]);
+
+  // Query Django after a short pause in typing. Fetch every result page so a
+  // partial query such as "pa" is not limited to the first 100 products.
+  useEffect(() => {
+    const query = productSearch.trim();
+    if (!isOpen || !query) {
+      setAvailableProducts([]);
+      setIsLoadingProducts(false);
+      setProductSearchError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingProducts(true);
+    setProductSearchError(null);
+
+    const timerId = window.setTimeout(async () => {
+      try {
+        const matches: Product[] = [];
+        let page = 1;
+        let lastPage = 1;
+
+        do {
+          const response = await productService.searchProducts(
+            query,
+            {
+              page,
+              limit: 100,
+              status: 'Active',
+              sortBy: 'name',
+              sortOrder: 'asc',
+            },
+            role
+          );
+
+          if (cancelled) return;
+          matches.push(...(response.data || []));
+          lastPage = response.meta?.lastPage || 1;
+          page += 1;
+        } while (page <= lastPage);
+
+        if (!cancelled) setAvailableProducts(matches);
+      } catch {
+        if (!cancelled) {
+          setAvailableProducts([]);
+          setProductSearchError('Product search failed. Check the API connection and try again.');
+        }
+      } finally {
+        if (!cancelled) setIsLoadingProducts(false);
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timerId);
+    };
+  }, [isOpen, productSearch, role]);
 
   // Filter customers based on search input
   const filteredCustomers = allCustomers.filter((c) => {
@@ -123,6 +178,8 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
     if (isOpen) {
       setCart([]);
       setProductSearch('');
+      setAvailableProducts([]);
+      setProductSearchError(null);
       setCustomerType(settings.allowWalkingSales ? 'walking' : 'registered');
       setSelectedCustomerId('');
       setCustomerSearch('');
@@ -162,10 +219,11 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   // Filtered variant search
   const filteredVariants = flatVariants.filter(({ product, variant }) => {
     if (!productSearch.trim()) return false;
-    const q = productSearch.toLowerCase();
+    const q = productSearch.toLowerCase().trim();
     return (
       product.name.toLowerCase().includes(q) ||
       product.genericName.toLowerCase().includes(q) ||
+      product.barcode.toLowerCase().includes(q) ||
       variant.companyName.toLowerCase().includes(q)
     );
   });
@@ -428,14 +486,25 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                 type="text"
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Search drug by brand name, generic name, or manufacturer..."
+                placeholder="Type any part of a brand, generic name, manufacturer, or barcode..."
+                autoComplete="off"
+                aria-autocomplete="list"
                 className="w-full pl-9.5 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
               />
 
               {/* Autocomplete Dropdown List */}
               {productSearch.trim() && (
                 <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100">
-                  {filteredVariants.length > 0 ? (
+                  {isLoadingProducts ? (
+                    <div className="p-4 flex items-center justify-center gap-2 text-xs text-slate-500">
+                      <RotateCw className="w-4 h-4 animate-spin text-blue-600" />
+                      <span>Searching the complete product catalogue...</span>
+                    </div>
+                  ) : productSearchError ? (
+                    <div className="p-4 text-center text-xs text-rose-600">
+                      {productSearchError}
+                    </div>
+                  ) : filteredVariants.length > 0 ? (
                     filteredVariants.map(({ product, variant }) => {
                       const isOutOfStock = variant.currentStock <= 0;
                       return (

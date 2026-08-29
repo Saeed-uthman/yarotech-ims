@@ -73,6 +73,14 @@ def reject_user(*, user, rejected_by, reason):
 def suspend_user(*, user, suspended_by):
     if user.status != User.Status.ACTIVE:
         raise ValidationError({'detail': 'Only active users can be suspended.'})
+    if user.pk == suspended_by.pk:
+        raise ValidationError({'detail': 'Administrators cannot suspend their own account.'})
+    if user.role == User.Role.ADMIN and not User.objects.filter(
+        role=User.Role.ADMIN,
+        status=User.Status.ACTIVE,
+        is_active=True,
+    ).exclude(pk=user.pk).exists():
+        raise ValidationError({'detail': 'The final active administrator cannot be suspended.'})
 
     user.status = User.Status.SUSPENDED
     user.is_active = False

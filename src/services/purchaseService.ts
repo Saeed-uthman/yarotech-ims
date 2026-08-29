@@ -8,6 +8,7 @@ import {
   CreatePurchaseInput,
   UserRole,
   ApiResponse,
+  Supplier,
 } from '../types';
 import { api, ApiError, createIdempotencyKey, mapPaginationMeta, toCamelCaseKeys } from './apiClient';
 import { apiCache } from './apiCache';
@@ -24,6 +25,8 @@ function mapBackendPurchaseItem(raw: any): PurchaseItemEntity {
     quantity: Number(i.quantity || 0),
     unitPurchasePrice: Number(i.unitPurchasePrice || 0),
     subtotal: Number(i.subtotal || 0),
+    batchNumber: i.batchNumber || '',
+    expiryDate: i.expiryDate || null,
   };
 }
 
@@ -47,6 +50,8 @@ function mapBackendPurchase(raw: any): StockPurchase {
     purchaseDate: dateStr,
     rawDate: purchaseDate,
     recordedBy: p.recordedByName || '',
+    supplierId: p.supplier ? String(p.supplier) : null,
+    supplierName: p.supplierName || '',
     totalAmount: Number(p.totalAmount || 0),
     paymentMethod: p.paymentMethod || 'CASH',
     status: p.status || 'COMPLETED',
@@ -156,6 +161,25 @@ function groupPurchasesForChart(
 }
 
 export class PurchaseService {
+  public async getSuppliers(search = ''): Promise<ApiResponse<Supplier[]>> {
+    const res = await api.get<any>('/suppliers/', { search, per_page: 100 });
+    return {
+      success: true,
+      data: (res.data || []).map((raw: any) => {
+        const supplier = toCamelCaseKeys(raw);
+        return {
+          id: String(supplier.id),
+          name: supplier.name || '',
+          phone: supplier.phone || '',
+          email: supplier.email || '',
+          address: supplier.address || '',
+          isActive: Boolean(supplier.isActive),
+        };
+      }),
+      meta: mapPaginationMeta(res.meta),
+    };
+  }
+
   public async getPurchases(
     params?: Partial<PurchaseFilterParams>,
     role: UserRole = 'admin'
@@ -310,7 +334,10 @@ export class PurchaseService {
           product_variant_id: numericId(it.productVariantId),
           quantity: it.quantity,
           unit_purchase_price: moneyValue(it.unitPurchasePrice, 'Unit purchase price'),
+          batch_number: it.batchNumber?.trim() || '',
+          expiry_date: it.expiryDate || null,
         })),
+        supplier_id: input.supplierId ? Number(input.supplierId) : null,
         payment_method: input.paymentMethod,
         purchase_date: purchaseDateTime(input.purchaseDate),
         note: input.note || '',

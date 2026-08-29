@@ -411,15 +411,15 @@ export const ExecutiveSummaryCards: React.FC<ExecutiveSummaryCardsProps> = ({
           </div>
         </div>
 
-        {/* 5. Net Money Movement */}
+        {/* 5. Net Cash Generated */}
         <div 
-          id="card-net-money-movement"
+          id="card-net-cash-generated"
           className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors"
         >
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                Net Money Movement
+                Net Cash Generated
               </span>
               <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
                 <Scale className="w-4 h-4" />
@@ -428,19 +428,27 @@ export const ExecutiveSummaryCards: React.FC<ExecutiveSummaryCardsProps> = ({
 
             <div className="space-y-0.5">
               <div className={`text-xl sm:text-2xl font-bold tracking-tight ${
-                summary.netMoneyMovement >= 0 ? 'text-indigo-900' : 'text-rose-600'
+                summary.netCashGenerated >= 0 ? 'text-indigo-900' : 'text-rose-600'
               }`}>
-                {summary.netMoneyMovement >= 0 ? '+' : ''}₦{summary.netMoneyMovement.toLocaleString()}
+                {summary.netCashGenerated >= 0 ? '+' : '−'}₦
+                {Math.abs(summary.netCashGenerated).toLocaleString()}
               </div>
-              <div className="text-xs text-slate-500 font-medium">
-                Money In − Money Out
+              <div className="space-y-0.5 text-[11px] text-slate-500 font-medium">
+                <div>
+                  + Sales ₦{summary.salesCollected.toLocaleString()} + Debt ₦
+                  {summary.debtRecovered.toLocaleString()}
+                </div>
+                <div>
+                  − Stock ₦{summary.stockPurchaseSpend.toLocaleString()} − Expenses ₦
+                  {summary.operatingExpenses.toLocaleString()}
+                </div>
               </div>
             </div>
           </div>
 
           <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
             <span className="text-[11px] text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded">
-              Cash Movement ≠ Profit
+              Cash Generated ≠ Profit
             </span>
             <button
               type="button"

@@ -24,6 +24,8 @@ from .serializers import (
     CustomerListSerializer,
     DebtPaymentInputSerializer,
     DebtPaymentOutputSerializer,
+    DebtPaymentReversalInputSerializer,
+    DebtPaymentReversalOutputSerializer,
     SaleOutputSerializer,
 )
 from .services import toggle_customer_status
@@ -119,6 +121,8 @@ class CustomerSalesHistoryView(APIView):
         get_object_or_404(Customer, pk=pk)
         from apps.sales.models import Sale
         sales = Sale.objects.filter(customer_id=pk).order_by('-created_at')
+        if getattr(request.user, 'role', None) != 'admin':
+            sales = sales.filter(served_by=request.user)
         return paginated_response(request, sales, SaleOutputSerializer)
 
 
@@ -129,6 +133,8 @@ class CustomerPaymentsHistoryView(APIView):
     def get(self, request, pk):
         get_object_or_404(Customer, pk=pk)
         payments = list_customer_payments(customer_id=pk)
+        if getattr(request.user, 'role', None) != 'admin':
+            payments = payments.filter(recorded_by=request.user)
         return paginated_response(request, payments, DebtPaymentOutputSerializer)
 
 
@@ -162,8 +168,23 @@ class DebtPaymentReceiptView(APIView):
 
     @extend_schema(responses={200: DebtPaymentOutputSerializer})
     def get(self, request, pk):
-        payment = get_object_or_404(
-            CustomerDebtPayment.objects.select_related('customer', 'recorded_by'),
-            pk=pk,
-        )
+        payments = CustomerDebtPayment.objects.select_related('customer', 'recorded_by')
+        if getattr(request.user, 'role', None) != 'admin':
+            payments = payments.filter(recorded_by=request.user)
+        payment = get_object_or_404(payments, pk=pk)
         return Response(success_response(DebtPaymentOutputSerializer(payment).data))
+
+
+class DebtPaymentReversalView(APIView):
+    permission_classes = [IsAdminUserRole]
+
+    @extend_schema(request=DebtPaymentReversalInputSerializer, responses={201: DebtPaymentReversalOutputSerializer})
+    def post(self, request, pk):
+        payment = get_object_or_404(CustomerDebtPayment, pk=pk)
+        serializer = DebtPaymentReversalInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        reversal = serializer.save(payment=payment, reversed_by=request.user)
+        return Response(
+            success_response(DebtPaymentReversalOutputSerializer(reversal).data, 'Debt payment reversed successfully.'),
+            status=status.HTTP_201_CREATED,
+        )

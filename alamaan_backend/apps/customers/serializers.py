@@ -6,8 +6,8 @@ from rest_framework import serializers
 
 from apps.sales.models import Sale
 
-from .models import Customer, CustomerDebtPayment
-from .services import create_customer, record_customer_debt_payment, update_customer
+from .models import Customer, CustomerDebtPayment, DebtPaymentReversal
+from .services import create_customer, record_customer_debt_payment, reverse_customer_debt_payment, update_customer
 
 
 class CustomerCreateUpdateSerializer(serializers.Serializer):
@@ -240,7 +240,35 @@ class DebtPaymentOutputSerializer(serializers.ModelSerializer):
             'recorded_by',
             'recorded_by_name',
             'created_at',
+            'is_reversed',
         ]
+        read_only_fields = fields
+
+
+class DebtPaymentReversalInputSerializer(serializers.Serializer):
+    reason = serializers.CharField(max_length=500)
+
+    def validate_reason(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError('A reversal reason is required.')
+        return value
+
+    def save(self, *, payment, reversed_by):
+        return reverse_customer_debt_payment(
+            payment=payment,
+            reversed_by=reversed_by,
+            reason=self.validated_data['reason'],
+        )
+
+
+class DebtPaymentReversalOutputSerializer(serializers.ModelSerializer):
+    receipt_number = serializers.CharField(source='payment.receipt_number', read_only=True)
+    reversed_by_name = serializers.CharField(source='reversed_by.full_name', read_only=True)
+
+    class Meta:
+        model = DebtPaymentReversal
+        fields = ['id', 'payment', 'receipt_number', 'reason', 'reversed_by_name', 'created_at']
         read_only_fields = fields
 
 

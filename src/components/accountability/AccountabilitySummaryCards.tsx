@@ -104,7 +104,7 @@ export const AccountabilitySummaryCards: React.FC<
           </div>
         </div>
 
-        {/* Net Movement Card (Explicitly NOT labelled profit!) */}
+        {/* Net Cash Generated Card (Explicitly NOT labelled profit!) */}
         <div
           id="kpi-card-net-movement"
           className={`relative bg-white border rounded-xl p-4 sm:p-5 shadow-xs hover:shadow-md transition-shadow ${
@@ -114,7 +114,7 @@ export const AccountabilitySummaryCards: React.FC<
           <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                Net Movement (Cash Flow)
+                Net Cash Generated
               </span>
             </div>
             <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center">
@@ -133,7 +133,9 @@ export const AccountabilitySummaryCards: React.FC<
 
           <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
             <Info className="w-3 h-3 text-slate-400 shrink-0" />
-            <span>Money In − Money Out ({summary.totalTransactionsCount} transactions)</span>
+            <span>
+              Sales + debt recovery − purchases − expenses ({summary.totalTransactionsCount} transactions)
+            </span>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@ from rest_framework.exceptions import ValidationError
 
 from apps.products.models import ProductVariant
 
+from .batch_services import apply_manual_batch_delta
 from .models import InventoryMovement
 
 
@@ -59,6 +60,8 @@ def adjust_stock_manually(*, variant_id, adjustment_type, quantity, reason, note
     delta = new_stock - previous_stock
     if delta == 0:
         raise ValidationError({'quantity': 'Adjustment does not change current stock.'})
+
+    apply_manual_batch_delta(variant=variant, delta=delta, created_by=created_by)
 
     variant.current_stock = new_stock
     variant.updated_by = created_by

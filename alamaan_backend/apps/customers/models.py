@@ -51,9 +51,40 @@ class CustomerDebtPayment(AuditableModel):
         on_delete=models.PROTECT,
         related_name='recorded_debt_payments',
     )
+    is_reversed = models.BooleanField(default=False, db_index=True)
 
     class Meta:
         ordering = ['-created_at']
 
     def __str__(self):
         return f'{self.receipt_number} - {self.customer.name} - {self.amount}'
+
+
+class CustomerDebtPaymentAllocation(models.Model):
+    payment = models.ForeignKey(CustomerDebtPayment, on_delete=models.PROTECT, related_name='allocations')
+    sale = models.ForeignKey('sales.Sale', on_delete=models.PROTECT, related_name='debt_payment_allocations')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['payment', 'sale'], name='unique_payment_sale_allocation'),
+        ]
+        ordering = ['id']
+
+
+class DebtPaymentReversal(AuditableModel):
+    payment = models.OneToOneField(
+        CustomerDebtPayment,
+        on_delete=models.PROTECT,
+        related_name='reversal',
+    )
+    reason = models.CharField(max_length=500)
+    reversed_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.PROTECT,
+        related_name='reversed_debt_payments',
+    )
+
+    class Meta:
+        ordering = ['-created_at']

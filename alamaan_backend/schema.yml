@@ -581,6 +581,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/InventoryMovement'
           description: ''
+  /api/v1/inventory/batches/:
+    get:
+      operationId: inventory_batches_list
+      tags:
+      - inventory
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InventoryBatch'
+          description: ''
   /api/v1/inventory/insights/:
     get:
       operationId: inventory_insights_retrieve
@@ -617,6 +633,38 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/v1/payments/{id}/reverse/:
+    post:
+      operationId: payments_reverse_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DebtPaymentReversalInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DebtPaymentReversalInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DebtPaymentReversalInputRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DebtPaymentReversalOutput'
+          description: ''
   /api/v1/payments/debt-payment/:
     post:
       operationId: payments_debt_payment_create
@@ -1335,6 +1383,78 @@ paths:
               schema:
                 $ref: '#/components/schemas/SystemSettingsOutput'
           description: ''
+  /api/v1/suppliers/:
+    get:
+      operationId: suppliers_list
+      tags:
+      - suppliers
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Supplier'
+          description: ''
+    post:
+      operationId: suppliers_create
+      tags:
+      - suppliers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SupplierRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SupplierRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+          description: ''
+  /api/v1/suppliers/{id}/:
+    patch:
+      operationId: suppliers_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - suppliers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSupplierRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSupplierRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSupplierRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Supplier'
+          description: ''
   /api/v1/users/:
     get:
       operationId: users_list
@@ -1866,6 +1986,9 @@ components:
     CreatePurchaseInputRequest:
       type: object
       properties:
+        supplier_id:
+          type: integer
+          nullable: true
         items:
           type: array
           items:
@@ -1894,6 +2017,14 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        batch_number:
+          type: string
+          default: ''
+          maxLength: 100
+        expiry_date:
+          type: string
+          format: date
+          nullable: true
       required:
       - product_variant_id
       - quantity
@@ -2212,6 +2343,26 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        sales_collected:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        debt_recovered:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        stock_purchase_spend:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        operating_expenses:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        net_cash_generated:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
         outstanding_debt:
           type: string
           format: decimal
@@ -2237,17 +2388,22 @@ components:
         purchases_count:
           type: integer
       required:
+      - debt_recovered
       - debtor_count
       - inventory_value
       - items_sold
       - low_stock_count
       - money_in
       - money_out
+      - net_cash_generated
       - net_money_movement
+      - operating_expenses
       - out_of_stock_count
       - outstanding_debt
       - purchases_count
       - registered_customers_count
+      - sales_collected
+      - stock_purchase_spend
       - total_profit
       - total_purchases_amount
       - total_sales
@@ -2321,6 +2477,9 @@ components:
           type: string
           format: date-time
           readOnly: true
+        is_reversed:
+          type: boolean
+          readOnly: true
       required:
       - amount
       - balance_after
@@ -2330,11 +2489,50 @@ components:
       - customer_name
       - customer_phone
       - id
+      - is_reversed
       - payment_method
       - receipt_number
       - recorded_by
       - recorded_by_name
       - reference_notes
+    DebtPaymentReversalInputRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required:
+      - reason
+    DebtPaymentReversalOutput:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        payment:
+          type: integer
+          readOnly: true
+        receipt_number:
+          type: string
+          readOnly: true
+        reason:
+          type: string
+          readOnly: true
+        reversed_by_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - payment
+      - reason
+      - receipt_number
+      - reversed_by_name
     DebtReport:
       type: object
       properties:
@@ -2449,6 +2647,96 @@ components:
       - total_inflow
       - total_outflow
       - trends
+    InventoryBatch:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        variant:
+          type: integer
+          readOnly: true
+        product_name:
+          type: string
+          readOnly: true
+        company_name:
+          type: string
+          readOnly: true
+        supplier:
+          type: integer
+          readOnly: true
+          nullable: true
+        supplier_name:
+          type: string
+          readOnly: true
+          default: ''
+        batch_number:
+          type: string
+          readOnly: true
+        expiry_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        received_quantity:
+          type: integer
+          readOnly: true
+        remaining_quantity:
+          type: integer
+          readOnly: true
+        unit_cost:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/InventoryBatchStatusEnum'
+          readOnly: true
+        received_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_expired:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - batch_number
+      - company_name
+      - created_at
+      - expiry_date
+      - id
+      - is_expired
+      - product_name
+      - received_at
+      - received_quantity
+      - remaining_quantity
+      - status
+      - supplier
+      - supplier_name
+      - unit_cost
+      - updated_at
+      - variant
+    InventoryBatchStatusEnum:
+      enum:
+      - AVAILABLE
+      - QUARANTINED
+      - EXHAUSTED
+      - CANCELLED
+      type: string
+      description: |-
+        * `AVAILABLE` - Available
+        * `QUARANTINED` - Quarantined
+        * `EXHAUSTED` - Exhausted
+        * `CANCELLED` - Cancelled
     InventoryItem:
       type: object
       properties:
@@ -2847,6 +3135,27 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ProductVariantInputRequest'
+    PatchedSupplierRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        phone:
+          type: string
+          maxLength: 30
+        email:
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        address:
+          type: string
+        is_active:
+          type: boolean
     PatchedSystemSettingsUpdateRequest:
       type: object
       properties:
@@ -3522,8 +3831,17 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
+        batch_number:
+          type: string
+          readOnly: true
+        expiry_date:
+          type: string
+          format: date
+          readOnly: true
       required:
+      - batch_number
       - company_name
+      - expiry_date
       - id
       - product_name
       - quantity
@@ -4118,6 +4436,14 @@ components:
           type: string
           format: date-time
           readOnly: true
+        supplier:
+          type: integer
+          readOnly: true
+          nullable: true
+        supplier_name:
+          type: string
+          readOnly: true
+          default: ''
         total_amount:
           type: string
           format: decimal
@@ -4163,6 +4489,8 @@ components:
       - purchase_number
       - recorded_by_name
       - status
+      - supplier
+      - supplier_name
       - total_amount
       - total_units
       - updated_at
@@ -4222,6 +4550,65 @@ components:
       - status
       - total_amount
       - total_units
+    Supplier:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        phone:
+          type: string
+          maxLength: 30
+        email:
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        address:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - updated_at
+    SupplierRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        phone:
+          type: string
+          maxLength: 30
+        email:
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        address:
+          type: string
+        is_active:
+          type: boolean
+      required:
+      - name
     SystemSettingsOutput:
       type: object
       properties:
@@ -4455,12 +4842,14 @@ components:
       - DEBT_PAYMENT
       - STOCK_PURCHASE
       - OTHER_EXPENSE
+      - DEBT_PAYMENT_REVERSAL
       type: string
       description: |-
         * `SALE` - Sales Revenue
         * `DEBT_PAYMENT` - Customer Debt Recovery
         * `STOCK_PURCHASE` - Stock Purchase Disbursement
         * `OTHER_EXPENSE` - Operational Expense
+        * `DEBT_PAYMENT_REVERSAL` - Debt Payment Reversal
     User:
       type: object
       properties:

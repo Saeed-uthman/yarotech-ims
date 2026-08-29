@@ -27,6 +27,7 @@ class SaleListCreateView(APIView):
     @extend_schema(responses={200: SaleListSerializer(many=True)})
     def get(self, request):
         queryset = list_sales(
+            user=request.user,
             search=request.query_params.get('search', ''),
             date_range=request.query_params.get('date_range'),
             payment_status=request.query_params.get('payment_status'),
@@ -67,7 +68,10 @@ class SaleDetailView(APIView):
 
     @extend_schema(responses={200: SaleDetailSerializer})
     def get(self, request, pk):
-        sale = get_object_or_404(Sale, pk=pk)
+        queryset = Sale.objects.all()
+        if getattr(request.user, 'role', None) != 'admin':
+            queryset = queryset.filter(served_by=request.user)
+        sale = get_object_or_404(queryset, pk=pk)
         return Response(success_response(SaleDetailSerializer(sale, context={'request': request}).data))
 
 
@@ -76,7 +80,7 @@ class SaleReceiptView(APIView):
 
     @extend_schema(responses={200: SaleReceiptSerializer})
     def get(self, request, pk):
-        sale = get_sale_receipt(sale_id=pk)
+        sale = get_sale_receipt(user=request.user, sale_id=pk)
         return Response(success_response(SaleReceiptSerializer(sale, context={'request': request}).data))
 
 
@@ -99,7 +103,7 @@ class SaleSummaryKpisView(APIView):
 
     @extend_schema(responses={200: None})
     def get(self, request):
-        data = get_sales_kpis(date_range=request.query_params.get('date_range'))
+        data = get_sales_kpis(user=request.user, date_range=request.query_params.get('date_range'))
         if getattr(request.user, 'role', None) != 'admin':
             data.pop('total_profit', None)
         return Response(success_response(data))

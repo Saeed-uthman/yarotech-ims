@@ -21,6 +21,7 @@ import {
   PurchasePaymentMethod,
   UserRole,
   StockPurchase,
+  Supplier,
 } from '../../types';
 import { productService } from '../../services/productService';
 import { purchaseService } from '../../services/purchaseService';
@@ -52,6 +53,8 @@ interface PurchaseDraftItem {
   currentBasePrice: number;
   quantity: number;
   unitPurchasePrice: number;
+  batchNumber: string;
+  expiryDate: string;
 }
 
 export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
@@ -66,39 +69,93 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
   const [productSearch, setProductSearch] = useState('');
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [productSearchError, setProductSearchError] = useState<string | null>(null);
 
   // Purchase metadata
   const [purchaseDate, setPurchaseDate] = useState(localToday);
   const [paymentMethod, setPaymentMethod] = useState<PurchasePaymentMethod>('TRANSFER');
   const [note, setNote] = useState('');
+  const [supplierId, setSupplierId] = useState('');
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const recordedBy = user?.fullName || 'Current administrator';
 
   // Form states & submission
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Fetch available products and their company variants on mount / when open
+  // Reset the purchase draft whenever the modal opens. Products are searched
+  // on demand so results are not restricted to the first catalogue page.
   useEffect(() => {
     if (!isOpen) return;
     setItems([]);
     setProductSearch('');
+    setAvailableProducts([]);
+    setProductSearchError(null);
     setPurchaseDate(localToday());
     setPaymentMethod('TRANSFER');
     setNote('');
+    setSupplierId('');
     setFormError(null);
-    async function loadProducts() {
-      setIsLoadingProducts(true);
-      try {
-        const res = await productService.getProducts({ page: 1, limit: 100 }, role);
-        setAvailableProducts(res.data);
-      } catch (err: any) {
-        setFormError('Failed to load products list.');
-      } finally {
-        setIsLoadingProducts(false);
-      }
-    }
-    loadProducts();
+    purchaseService.getSuppliers()
+      .then((response) => setSuppliers((response.data || []).filter((supplier) => supplier.isActive)))
+      .catch(() => setSuppliers([]));
   }, [role, isOpen]);
+
+  // Search Django after a short pause in typing and collect every matching
+  // page. Cleanup prevents an older request from replacing a newer query.
+  useEffect(() => {
+    const query = productSearch.trim();
+    if (!isOpen || !query) {
+      setAvailableProducts([]);
+      setIsLoadingProducts(false);
+      setProductSearchError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingProducts(true);
+    setProductSearchError(null);
+
+    const timerId = window.setTimeout(async () => {
+      try {
+        const matches: Product[] = [];
+        let page = 1;
+        let lastPage = 1;
+
+        do {
+          const response = await productService.searchProducts(
+            query,
+            {
+              page,
+              limit: 100,
+              sortBy: 'name',
+              sortOrder: 'asc',
+            },
+            role
+          );
+
+          if (cancelled) return;
+          matches.push(...(response.data || []));
+          lastPage = response.meta?.lastPage || 1;
+          page += 1;
+        } while (page <= lastPage);
+
+        if (!cancelled) setAvailableProducts(matches);
+      } catch {
+        if (!cancelled) {
+          setAvailableProducts([]);
+          setProductSearchError('Product search failed. Check the API connection and try again.');
+        }
+      } finally {
+        if (!cancelled) setIsLoadingProducts(false);
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timerId);
+    };
+  }, [isOpen, productSearch, role]);
 
   if (!isOpen) return null;
 
@@ -113,10 +170,11 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
   // Filtered variant search
   const filteredVariants = flatVariants.filter(({ product, variant }) => {
     if (!productSearch.trim()) return false;
-    const q = productSearch.toLowerCase();
+    const q = productSearch.toLowerCase().trim();
     return (
       product.name.toLowerCase().includes(q) ||
       product.genericName.toLowerCase().includes(q) ||
+      product.barcode.toLowerCase().includes(q) ||
       variant.companyName.toLowerCase().includes(q)
     );
   });
@@ -143,6 +201,8 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
         currentBasePrice: variant.basePrice || 0,
         quantity: 50,
         unitPurchasePrice: variant.basePrice || 500,
+        batchNumber: '',
+        expiryDate: '',
       };
       setItems([...items, newItem]);
     }
@@ -162,6 +222,12 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
     const updated = [...items];
     const price = Math.max(0, val || 0);
     updated[index].unitPurchasePrice = price;
+    setItems(updated);
+  };
+
+  const handleUpdateBatch = (index: number, field: 'batchNumber' | 'expiryDate', value: string) => {
+    const updated = [...items];
+    updated[index][field] = value;
     setItems(updated);
   };
 
@@ -205,11 +271,14 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
       const payload: CreatePurchaseInput = {
         purchaseDate,
         paymentMethod,
+        supplierId: supplierId || null,
         note: note.trim() || undefined,
         items: items.map((it) => ({
           productVariantId: it.variantId,
           quantity: it.quantity,
           unitPurchasePrice: it.unitPurchasePrice,
+          batchNumber: it.batchNumber.trim() || undefined,
+          expiryDate: it.expiryDate || null,
         })),
       };
 
@@ -272,7 +341,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
           )}
 
           {/* Top Configuration Strip: Date, Payment Method, Recorded By */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
             {/* Purchase Date */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
@@ -286,6 +355,24 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
                 onChange={(e) => setPurchaseDate(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-slate-500" />
+                <span>Supplier</span>
+              </label>
+              <select
+                id="purchase-input-supplier"
+                value={supplierId}
+                onChange={(event) => setSupplierId(event.target.value)}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Not specified</option>
+                {suppliers.map((supplier) => (
+                  <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+                ))}
+              </select>
             </div>
 
             {/* Payment Method */}
@@ -336,7 +423,9 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
                 type="text"
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Type medicine name or manufacturer (e.g. Paracetamol, Amoxicillin, Emzor, Swipha)..."
+                placeholder="Type any part of a brand, generic name, manufacturer, or barcode..."
+                autoComplete="off"
+                aria-autocomplete="list"
                 className="w-full pl-9.5 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
               />
             </div>
@@ -347,9 +436,18 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
                 id="purchase-search-results"
                 className="bg-white border border-slate-200 rounded-xl shadow-lg max-h-56 overflow-y-auto p-1 divide-y divide-slate-100 animate-in fade-in duration-100"
               >
-                {filteredVariants.length === 0 ? (
+                {isLoadingProducts ? (
+                  <div className="p-4 flex items-center justify-center gap-2 text-xs text-slate-500">
+                    <RotateCw className="w-4 h-4 animate-spin text-indigo-600" />
+                    <span>Searching the complete product catalogue...</span>
+                  </div>
+                ) : productSearchError ? (
+                  <div className="p-3 text-center text-xs text-rose-600">
+                    {productSearchError}
+                  </div>
+                ) : filteredVariants.length === 0 ? (
                   <div className="p-3 text-center text-xs text-slate-500">
-                    No matching medicine or manufacturer found.
+                    No matching product, manufacturer, or barcode found.
                   </div>
                 ) : (
                   filteredVariants.map(({ product, variant }) => (
@@ -440,6 +538,22 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
                         <div className="text-[11px] text-slate-500 mt-0.5">
                           {item.genericName} • {item.dosage} {item.form} • Current Live Stock:{' '}
                           <strong className="text-slate-700">{item.currentStock}</strong>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 max-w-md">
+                          <input
+                            type="text"
+                            value={item.batchNumber}
+                            onChange={(event) => handleUpdateBatch(index, 'batchNumber', event.target.value)}
+                            placeholder="Batch / lot number (optional)"
+                            className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <input
+                            type="date"
+                            value={item.expiryDate}
+                            onChange={(event) => handleUpdateBatch(index, 'expiryDate', event.target.value)}
+                            aria-label={`Expiry date for ${item.productName}`}
+                            className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
                         </div>
                       </div>
 

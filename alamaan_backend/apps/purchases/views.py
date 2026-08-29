@@ -9,14 +9,55 @@ from apps.common.pagination import paginated_response
 from apps.common.idempotency import execute_idempotent
 from apps.common.responses import success_response
 
-from .models import StockPurchase
+from .models import StockPurchase, Supplier
 from .selectors import get_purchase_detail, get_purchase_kpis, list_purchases
 from .serializers import (
     CreatePurchaseInputSerializer,
     StockPurchaseCancelSerializer,
     StockPurchaseDetailSerializer,
     StockPurchaseListSerializer,
+    SupplierSerializer,
 )
+
+
+class SupplierListCreateView(APIView):
+    permission_classes = [IsAdminUserRole]
+
+    @extend_schema(responses={200: SupplierSerializer(many=True)})
+    def get(self, request):
+        queryset = Supplier.objects.all()
+        search = request.query_params.get('search', '').strip()
+        if search:
+            queryset = queryset.filter(name__icontains=search)
+        return paginated_response(request, queryset, SupplierSerializer)
+
+    @extend_schema(request=SupplierSerializer, responses={201: SupplierSerializer})
+    def post(self, request):
+        serializer = SupplierSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        supplier = serializer.save()
+        return Response(
+            success_response(SupplierSerializer(supplier).data, 'Supplier created successfully.'),
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class SupplierDetailView(APIView):
+    permission_classes = [IsAdminUserRole]
+
+    @extend_schema(request=SupplierSerializer, responses={200: SupplierSerializer})
+    def patch(self, request, pk):
+        supplier = get_object_or_404(Supplier, pk=pk)
+        serializer = SupplierSerializer(
+            supplier,
+            data=request.data,
+            partial=True,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+        return Response(
+            success_response(SupplierSerializer(serializer.save()).data, 'Supplier updated successfully.')
+        )
 
 
 class PurchaseListCreateView(APIView):

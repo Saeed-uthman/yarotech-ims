@@ -56,6 +56,21 @@ def api_exception_handler(exc, context):
 
     detail = response.data
     message = _first_error_message(detail)
-    error_code = _first_error_code(exc.get_codes())
+    get_codes = getattr(exc, 'get_codes', None)
+    if callable(get_codes):
+        error_code = _first_error_code(get_codes())
+    else:
+        # Django's Http404 and PermissionDenied are normalized into DRF
+        # responses by ``exception_handler`` but do not implement
+        # APIException.get_codes(). Keep the public envelope stable instead
+        # of turning an expected client error into a server error.
+        error_code = {
+            status.HTTP_400_BAD_REQUEST: 'BAD_REQUEST',
+            status.HTTP_401_UNAUTHORIZED: 'NOT_AUTHENTICATED',
+            status.HTTP_403_FORBIDDEN: 'PERMISSION_DENIED',
+            status.HTTP_404_NOT_FOUND: 'NOT_FOUND',
+            status.HTTP_405_METHOD_NOT_ALLOWED: 'METHOD_NOT_ALLOWED',
+            status.HTTP_429_TOO_MANY_REQUESTS: 'THROTTLED',
+        }.get(response.status_code, 'REQUEST_FAILED')
     response.data = error_response(message=message, error=error_code, errors=detail)
     return response

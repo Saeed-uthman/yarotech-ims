@@ -667,6 +667,15 @@ export type StockPurchaseStatus = 'COMPLETED' | 'CANCELLED';
 export type PurchasePaymentMethod = 'CASH' | 'TRANSFER' | 'POS';
 export type PurchaseDateRange = 'today' | 'this_week' | 'this_month' | 'overall' | 'custom';
 
+export interface Supplier {
+  id: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  isActive: boolean;
+}
+
 export interface PurchaseItemEntity {
   id: string;
   purchaseId?: string;
@@ -680,6 +689,8 @@ export interface PurchaseItemEntity {
   quantity: number; // Whole number > 0
   unitPurchasePrice: number; // Purchase / Base cost per unit in NGN > 0
   subtotal: number; // quantity * unitPurchasePrice
+  batchNumber?: string;
+  expiryDate?: string | null;
 }
 
 export interface StockPurchase {
@@ -688,6 +699,8 @@ export interface StockPurchase {
   purchaseDate: string; // e.g. "19 Aug 2026, 09:30 AM"
   rawDate: string; // ISO 8601 string for reliable date sorting & range filtering
   recordedBy: string; // e.g. "Pharm. Abdullahi (Admin)"
+  supplierId?: string | null;
+  supplierName?: string;
   totalAmount: number; // SUM of line item subtotals
   paymentMethod: PurchasePaymentMethod; // CASH | TRANSFER | POS
   status: StockPurchaseStatus; // COMPLETED | CANCELLED
@@ -734,11 +747,14 @@ export interface CreatePurchaseItemInput {
   productVariantId: string;
   quantity: number; // Must be integer > 0
   unitPurchasePrice: number; // Must be number > 0
+  batchNumber?: string;
+  expiryDate?: string | null;
 }
 
 export interface CreatePurchaseInput {
   purchaseDate?: string;
   paymentMethod: PurchasePaymentMethod;
+  supplierId?: string | null;
   items: CreatePurchaseItemInput[];
   note?: string;
   recordedBy?: string;
@@ -1234,6 +1250,11 @@ export interface DashboardSummaryKPIs {
   moneyIn: number;
   moneyOut: number;
   netMoneyMovement: number; // Strictly NOT called net profit
+  salesCollected: number; // Cash received at sale creation
+  debtRecovered: number; // Subsequent customer debt payments
+  stockPurchaseSpend: number; // Completed stock-purchase cash outflow
+  operatingExpenses: number; // Completed manual operating-expense outflow
+  netCashGenerated: number; // salesCollected + debtRecovered - stockPurchaseSpend - operatingExpenses
   outstandingDebt: number;
   debtorCount: number;
   inventoryValue: number; // Admin only: current stock * base price

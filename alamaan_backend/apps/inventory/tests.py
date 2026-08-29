@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import User
-from apps.inventory.models import InventoryMovement
+from apps.inventory.models import InventoryBatch, InventoryMovement
 from apps.products.models import Category, Company, Product, ProductVariant
 
 
@@ -71,6 +71,25 @@ class InventoryApiTests(APITestCase):
         self.assertEqual(movement.quantity, 5)
         self.assertEqual(movement.previous_stock, 10)
         self.assertEqual(movement.new_stock, 15)
+        self.assertEqual(
+            sum(InventoryBatch.objects.filter(variant=self.variant).values_list('remaining_quantity', flat=True)),
+            5,
+        )
+
+    def test_admin_can_view_inventory_batches(self):
+        self.client.force_authenticate(self.admin)
+        self.client.post(reverse('inventory-adjust'), {
+            'variant_id': self.variant.id,
+            'adjustment_type': 'INCREMENT',
+            'quantity': 2,
+            'reason': 'Batch visibility test',
+        })
+
+        response = self.client.get(reverse('inventory-batches'), {'variant_id': self.variant.id})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['data']), 1)
+        self.assertEqual(response.data['data'][0]['remaining_quantity'], 2)
 
     def test_cashier_cannot_adjust_stock(self):
         self.client.force_authenticate(self.cashier)

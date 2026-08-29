@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.urls import reverse
@@ -5,8 +6,9 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import User
+from apps.accountability.models import AccountabilityTransaction
 from apps.customers.models import Customer
-from apps.inventory.models import InventoryMovement
+from apps.inventory.models import InventoryBatch, InventoryMovement, SaleBatchAllocation
 from apps.products.models import Category, Company, Product, ProductVariant
 from apps.settings_app.models import SystemSettings
 
@@ -111,6 +113,54 @@ class SalesApiTests(APITestCase):
         self.assertEqual(Decimal(data['total_revenue']), Decimal('3600.00'))
         self.assertEqual(Decimal(data['total_outstanding']), Decimal('0.00'))
 
+    def test_cashier_only_sees_sales_they_recorded(self):
+        other_cashier = User.objects.create_user(
+            email='other-cashier@example.com',
+            password='StrongPass123!',
+            full_name='Other Cashier',
+            phone='08000000009',
+            status=User.Status.ACTIVE,
+            is_active=True,
+        )
+        self.client.force_authenticate(other_cashier)
+        create_response = self.client.post(reverse('sales-list'), self._sale_payload(), format='json')
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        sale_id = create_response.data['data']['id']
+
+        self.client.force_authenticate(self.cashier)
+        list_response = self.client.get(reverse('sales-list'))
+        detail_response = self.client.get(reverse('sales-detail', args=[sale_id]))
+        receipt_response = self.client.get(reverse('sales-receipt', args=[sale_id]))
+
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(list_response.data['data']), 0)
+        self.assertEqual(detail_response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(receipt_response.status_code, status.HTTP_404_NOT_FOUND)
+
+        self.client.force_authenticate(self.admin)
+        self.assertEqual(
+            self.client.get(reverse('sales-detail', args=[sale_id])).status_code,
+            status.HTTP_200_OK,
+        )
+
+    def test_cashier_sales_kpis_only_include_their_sales(self):
+        other_cashier = User.objects.create_user(
+            email='other-kpi-cashier@example.com',
+            password='StrongPass123!',
+            full_name='Other KPI Cashier',
+            phone='08000000008',
+            status=User.Status.ACTIVE,
+            is_active=True,
+        )
+        self.client.force_authenticate(other_cashier)
+        self.client.post(reverse('sales-list'), self._sale_payload(), format='json')
+
+        self.client.force_authenticate(self.cashier)
+        response = self.client.get(reverse('sales-summary-kpis'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['data']['total_transactions'], 0)
+
     def test_transaction_preflight_allows_idempotency_header(self):
         response = self.client.options(
             reverse('sales-list'),
@@ -204,6 +254,43 @@ class SalesApiTests(APITestCase):
         self.assertEqual(sale_item.historical_base_price, Decimal('1500.00'))
         self.assertEqual(sale_item.profit, Decimal('600.00'))
 
+    def test_sale_allocates_non_expired_batches_by_earliest_expiry(self):
+        self.variant.current_stock = 3
+        self.variant.save(update_fields=['current_stock'])
+        later_batch = InventoryBatch.objects.create(
+            variant=self.variant,
+            batch_number='LATER',
+            expiry_date=date.today() + timedelta(days=180),
+            received_quantity=2,
+            remaining_quantity=2,
+            unit_cost=Decimal('1400.00'),
+            received_at=self.variant.created_at,
+            created_by=self.admin,
+        )
+        earlier_batch = InventoryBatch.objects.create(
+            variant=self.variant,
+            batch_number='EARLIER',
+            expiry_date=date.today() + timedelta(days=30),
+            received_quantity=1,
+            remaining_quantity=1,
+            unit_cost=Decimal('1000.00'),
+            received_at=self.variant.created_at,
+            created_by=self.admin,
+        )
+        self.client.force_authenticate(self.cashier)
+
+        response = self.client.post(reverse('sales-list'), self._sale_payload(), format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        allocations = list(SaleBatchAllocation.objects.order_by('id'))
+        self.assertEqual([(row.batch_id, row.quantity) for row in allocations], [
+            (earlier_batch.id, 1),
+            (later_batch.id, 1),
+        ])
+        sale_item = SaleItem.objects.get()
+        self.assertEqual(sale_item.historical_base_price, Decimal('1200.00'))
+        self.assertEqual(sale_item.profit, Decimal('1200.00'))
+
     def test_admin_can_cancel_sale(self):
         self.client.force_authenticate(self.cashier)
         self.client.post(reverse('sales-list'), self._sale_payload(), format='json')
@@ -235,6 +322,56 @@ class SalesApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_sale_with_allocated_debt_payment_cannot_be_cancelled(self):
+        self.client.force_authenticate(self.cashier)
+        create_response = self.client.post(
+            reverse('sales-list'),
+            self._sale_payload(
+                customer_id=self.customer.id,
+                amount_paid='2000.00',
+                payment_method='CASH',
+            ),
+            format='json',
+        )
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        sale = Sale.objects.get()
+
+        payment_response = self.client.post(
+            reverse('debt-payment-create'),
+            {
+                'customer_id': self.customer.id,
+                'amount': '500.00',
+                'payment_method': 'CASH',
+                'reference_notes': 'Part payment',
+            },
+            format='json',
+        )
+        self.assertEqual(payment_response.status_code, status.HTTP_201_CREATED)
+
+        self.client.force_authenticate(self.admin)
+        cancel_response = self.client.post(
+            reverse('sales-cancel', args=[sale.id]),
+            {'reason': 'Customer return'},
+            format='json',
+        )
+
+        self.assertEqual(cancel_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('received a debt payment', cancel_response.data['message'])
+
+        sale.refresh_from_db()
+        self.variant.refresh_from_db()
+        self.assertEqual(sale.status, Sale.Status.COMPLETED)
+        self.assertEqual(sale.amount_paid, Decimal('2500.00'))
+        self.assertEqual(sale.outstanding_amount, Decimal('1100.00'))
+        self.assertEqual(self.variant.current_stock, 48)
+        self.assertEqual(
+            AccountabilityTransaction.objects.filter(
+                type=AccountabilityTransaction.TxType.DEBT_PAYMENT,
+                status=AccountabilityTransaction.Status.COMPLETED,
+            ).count(),
+            1,
+        )
 
     def test_walk_in_sale_must_be_fully_paid(self):
         self.client.force_authenticate(self.cashier)

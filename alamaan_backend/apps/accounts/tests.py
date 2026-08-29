@@ -3,8 +3,10 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.exceptions import ValidationError
 
 from apps.accounts.models import User
+from apps.accounts.services import suspend_user
 
 
 class AccountsApiTests(APITestCase):
@@ -80,6 +82,49 @@ class AccountsApiTests(APITestCase):
         response = self.client.get(reverse('users-list'))
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_cannot_suspend_own_account(self):
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.post(reverse('users-suspend', args=[self.admin.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.status, User.Status.ACTIVE)
+        self.assertTrue(self.admin.is_active)
+
+    def test_final_active_admin_cannot_be_suspended(self):
+        second_admin = User.objects.create_superuser(
+            email='second-admin@example.com',
+            password='StrongPass123!',
+            full_name='Second Admin',
+            phone='08000000005',
+        )
+        self.admin.status = User.Status.SUSPENDED
+        self.admin.is_active = False
+        self.admin.save(update_fields=['status', 'is_active'])
+        with self.assertRaises(ValidationError):
+            suspend_user(user=second_admin, suspended_by=self.admin)
+
+        second_admin.refresh_from_db()
+        self.assertEqual(second_admin.status, User.Status.ACTIVE)
+        self.assertTrue(second_admin.is_active)
+
+    def test_admin_can_suspend_another_admin_when_one_remains(self):
+        second_admin = User.objects.create_superuser(
+            email='second-admin@example.com',
+            password='StrongPass123!',
+            full_name='Second Admin',
+            phone='08000000006',
+        )
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.post(reverse('users-suspend', args=[second_admin.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        second_admin.refresh_from_db()
+        self.assertEqual(second_admin.status, User.Status.SUSPENDED)
+        self.assertFalse(second_admin.is_active)
 
     def test_authenticated_user_can_change_password(self):
         self.client.force_authenticate(self.admin)

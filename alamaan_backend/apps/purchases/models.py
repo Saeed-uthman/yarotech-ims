@@ -5,6 +5,20 @@ from django.utils import timezone
 from apps.common.models import AuditableModel, TimeStampedModel
 
 
+class Supplier(AuditableModel):
+    name = models.CharField(max_length=200, unique=True)
+    phone = models.CharField(max_length=30, blank=True, default='')
+    email = models.EmailField(blank=True, default='')
+    address = models.TextField(blank=True, default='')
+    is_active = models.BooleanField(default=True, db_index=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
 class StockPurchase(AuditableModel):
     class PaymentMethod(models.TextChoices):
         CASH = 'CASH', 'Cash'
@@ -18,6 +32,13 @@ class StockPurchase(AuditableModel):
     id = models.BigAutoField(primary_key=True)
     purchase_number = models.CharField(max_length=32, unique=True, db_index=True)
     purchase_date = models.DateTimeField(default=timezone.now)
+    supplier = models.ForeignKey(
+        Supplier,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='purchases',
+    )
     total_amount = models.DecimalField(max_digits=12, decimal_places=2)
     payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices)
     status = models.CharField(

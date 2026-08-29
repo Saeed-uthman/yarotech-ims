@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.db.models import Count, Q, Sum
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from datetime import timedelta
@@ -8,8 +9,15 @@ from datetime import timedelta
 from .models import Sale
 
 
-def list_sales(*, search='', date_range=None, payment_status=None, customer_type=None, ordering='-date'):
-    queryset = Sale.objects.select_related('customer', 'served_by').annotate(
+def _visible_sales_for(user):
+    queryset = Sale.objects.all()
+    if getattr(user, 'role', None) != 'admin':
+        queryset = queryset.filter(served_by=user)
+    return queryset
+
+
+def list_sales(*, user, search='', date_range=None, payment_status=None, customer_type=None, ordering='-date'):
+    queryset = _visible_sales_for(user).select_related('customer', 'served_by').annotate(
         list_items_count=Count('items'),
     )
 
@@ -56,17 +64,17 @@ def list_sales(*, search='', date_range=None, payment_status=None, customer_type
     return queryset.order_by(ordering_field)
 
 
-def get_sale_receipt(*, sale_id):
-    return (
-        Sale.objects
+def get_sale_receipt(*, user, sale_id):
+    queryset = (
+        _visible_sales_for(user)
         .select_related('customer', 'served_by')
         .prefetch_related('items__variant__product', 'items__variant__company')
-        .get(pk=sale_id)
     )
+    return get_object_or_404(queryset, pk=sale_id)
 
 
-def get_sales_kpis(*, date_range=None):
-    queryset = Sale.objects.filter(status=Sale.Status.COMPLETED)
+def get_sales_kpis(*, user, date_range=None):
+    queryset = _visible_sales_for(user).filter(status=Sale.Status.COMPLETED)
 
     if date_range:
         now = timezone.now()

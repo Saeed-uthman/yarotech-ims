@@ -4,7 +4,27 @@ from rest_framework import serializers
 
 from apps.products.models import ProductVariant
 
-from .models import InventoryMovement
+from .models import InventoryBatch, InventoryMovement
+
+
+class InventoryBatchSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='variant.product.name', read_only=True)
+    company_name = serializers.CharField(source='variant.company.name', read_only=True)
+    supplier_name = serializers.CharField(source='supplier.name', read_only=True, default='')
+    is_expired = serializers.SerializerMethodField()
+
+    class Meta:
+        model = InventoryBatch
+        fields = [
+            'id', 'variant', 'product_name', 'company_name', 'supplier', 'supplier_name',
+            'batch_number', 'expiry_date', 'received_quantity', 'remaining_quantity',
+            'unit_cost', 'status', 'received_at', 'is_expired', 'created_at', 'updated_at',
+        ]
+        read_only_fields = fields
+
+    def get_is_expired(self, obj):
+        from django.utils import timezone
+        return bool(obj.expiry_date and obj.expiry_date < timezone.localdate())
 
 
 class InventoryItemSerializer(serializers.ModelSerializer):

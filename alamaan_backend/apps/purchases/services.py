@@ -7,7 +7,7 @@ from rest_framework.exceptions import ValidationError
 from apps.accountability.models import AccountabilityTransaction
 from apps.accountability.sequences import next_accountability_transaction_number
 from apps.common.sequences import next_document_number
-from apps.inventory.models import InventoryMovement
+from apps.inventory.models import InventoryBatch, InventoryMovement
 from apps.inventory.services import record_stock_movement
 from apps.products.models import ProductVariant
 
@@ -27,7 +27,7 @@ def _generate_purchase_number():
 
 
 @transaction.atomic
-def create_stock_purchase(*, user, items, payment_method, purchase_date=None, note=''):
+def create_stock_purchase(*, user, items, payment_method, supplier=None, purchase_date=None, note=''):
     variant_ids = [item['product_variant_id'] for item in items]
     variants = {
         v.id: v
@@ -58,6 +58,8 @@ def create_stock_purchase(*, user, items, payment_method, purchase_date=None, no
             'quantity': quantity,
             'unit_purchase_price': unit_price,
             'subtotal': item_subtotal,
+            'batch_number': item.get('batch_number', ''),
+            'expiry_date': item.get('expiry_date'),
         })
 
     purchase_number = _generate_purchase_number()
@@ -69,6 +71,7 @@ def create_stock_purchase(*, user, items, payment_method, purchase_date=None, no
         payment_method=payment_method,
         note=note.strip(),
         recorded_by=user,
+        supplier=supplier,
         created_by=user,
         updated_by=user,
     )
@@ -79,12 +82,26 @@ def create_stock_purchase(*, user, items, payment_method, purchase_date=None, no
         unit_price = item_data['unit_purchase_price']
         item_subtotal = item_data['subtotal']
 
-        PurchaseItem.objects.create(
+        purchase_item = PurchaseItem.objects.create(
             purchase=purchase,
             variant=variant,
             quantity=quantity,
             unit_purchase_price=unit_price,
             subtotal=item_subtotal,
+        )
+
+        batch_number = item_data.get('batch_number', '').strip() or f'{purchase_number}-{purchase_item.id}'
+        InventoryBatch.objects.create(
+            variant=variant,
+            purchase_item=purchase_item,
+            supplier=supplier,
+            batch_number=batch_number,
+            expiry_date=item_data.get('expiry_date'),
+            received_quantity=quantity,
+            remaining_quantity=quantity,
+            unit_cost=unit_price,
+            received_at=purchase.purchase_date,
+            created_by=user,
         )
 
         previous_stock = variant.current_stock
@@ -140,6 +157,11 @@ def cancel_purchase(*, purchase, cancelled_by, reason=''):
 
     for item in purchase_items:
         variant = locked_variants[item.variant_id]
+        batch = InventoryBatch.objects.select_for_update().get(purchase_item=item)
+        if batch.remaining_quantity != batch.received_quantity:
+            raise ValidationError({
+                'detail': f'Cannot cancel purchase: batch {batch.batch_number} has already been used or adjusted.'
+            })
         previous_stock = variant.current_stock
         new_stock = previous_stock - item.quantity
 
@@ -152,6 +174,9 @@ def cancel_purchase(*, purchase, cancelled_by, reason=''):
         variant.current_stock = new_stock
         variant.updated_by = cancelled_by
         variant.save(update_fields=['current_stock', 'updated_by', 'updated_at'])
+        batch.remaining_quantity = 0
+        batch.status = InventoryBatch.Status.CANCELLED
+        batch.save(update_fields=['remaining_quantity', 'status', 'updated_at'])
 
         record_stock_movement(
             variant=variant,

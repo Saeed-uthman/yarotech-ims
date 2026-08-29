@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import PurchaseItem, StockPurchase
+from .models import PurchaseItem, StockPurchase, Supplier
 
 
 class PurchaseItemInline(admin.TabularInline):
@@ -69,3 +69,10 @@ class PurchaseItemAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(Supplier)
+class SupplierAdmin(admin.ModelAdmin):
+    list_display = ('name', 'phone', 'email', 'is_active', 'created_at')
+    search_fields = ('name', 'phone', 'email')
+    list_filter = ('is_active',)

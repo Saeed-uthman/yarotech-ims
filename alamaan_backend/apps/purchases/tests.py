@@ -1,4 +1,5 @@
 from decimal import Decimal
+from datetime import date, timedelta
 
 from django.urls import reverse
 from rest_framework import status
@@ -6,10 +7,10 @@ from rest_framework.test import APITestCase
 
 from apps.accountability.models import AccountabilityTransaction
 from apps.accounts.models import User
-from apps.inventory.models import InventoryMovement
+from apps.inventory.models import InventoryBatch, InventoryMovement
 from apps.products.models import Category, Company, Product, ProductVariant
 
-from .models import StockPurchase
+from .models import StockPurchase, Supplier
 
 
 class PurchaseApiTests(APITestCase):
@@ -82,6 +83,30 @@ class PurchaseApiTests(APITestCase):
         self.assertEqual(movement.quantity, 50)
         self.assertEqual(movement.previous_stock, 50)
         self.assertEqual(movement.new_stock, 100)
+        batch = InventoryBatch.objects.get(purchase_item__purchase=StockPurchase.objects.get())
+        self.assertEqual(batch.remaining_quantity, 50)
+        self.assertTrue(batch.batch_number)
+
+    def test_purchase_records_supplier_batch_and_expiry(self):
+        self.client.force_authenticate(self.admin)
+        supplier_response = self.client.post(reverse('suppliers-list'), {
+            'name': 'Trusted Medical Supplies',
+            'phone': '08011112222',
+        }, format='json')
+        self.assertEqual(supplier_response.status_code, status.HTTP_201_CREATED)
+        supplier = Supplier.objects.get()
+        expiry = date.today() + timedelta(days=365)
+        payload = self._purchase_payload(supplier_id=supplier.id)
+        payload['items'][0]['batch_number'] = 'AMOX-2027-A'
+        payload['items'][0]['expiry_date'] = expiry.isoformat()
+
+        response = self.client.post(reverse('purchases-list'), payload, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        batch = InventoryBatch.objects.get(batch_number='AMOX-2027-A')
+        self.assertEqual(batch.supplier, supplier)
+        self.assertEqual(batch.expiry_date, expiry)
+        self.assertEqual(response.data['data']['supplier_name'], supplier.name)
 
     def test_purchase_idempotency_key_prevents_duplicate_restock(self):
         self.client.force_authenticate(self.admin)

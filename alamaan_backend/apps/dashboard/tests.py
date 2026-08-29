@@ -1,6 +1,8 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -90,6 +92,21 @@ class DashboardApiTests(APITestCase):
             updated_by=self.cashier,
         )
 
+    def _create_cashbook_transaction(self, *, number, direction, tx_type, amount, status=None):
+        return AccountabilityTransaction.objects.create(
+            transaction_number=number,
+            direction=direction,
+            type=tx_type,
+            category=tx_type,
+            amount=Decimal(amount),
+            payment_method=AccountabilityTransaction.PaymentMethod.CASH,
+            reference_type='DashboardTest',
+            reference_id=number,
+            status=status or AccountabilityTransaction.Status.COMPLETED,
+            created_by=self.admin,
+            updated_by=self.admin,
+        )
+
     def test_unauthenticated_user_cannot_access_dashboard(self):
         response = self.client.get(reverse('dashboard'))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -107,6 +124,106 @@ class DashboardApiTests(APITestCase):
         self.assertEqual(Decimal(data['summary']['money_in']), Decimal('15000.00'))
         self.assertEqual(len(data['top_products']), 1)
         self.assertEqual(len(data['recent_sales']), 1)
+
+    def test_net_cash_generated_uses_collections_recoveries_and_completed_outflows(self):
+        self.sale.total_amount = Decimal('100.00')
+        self.sale.amount_paid = Decimal('40.00')
+        self.sale.outstanding_amount = Decimal('60.00')
+        self.sale.payment_status = Sale.PaymentStatus.PARTIAL
+        self.sale.save(
+            update_fields=['total_amount', 'amount_paid', 'outstanding_amount', 'payment_status']
+        )
+        sale_transaction = AccountabilityTransaction.objects.get(
+            reference_type='Sale',
+            reference_id=str(self.sale.id),
+        )
+        sale_transaction.amount = Decimal('40.00')
+        sale_transaction.save(update_fields=['amount'])
+
+        self._create_cashbook_transaction(
+            number='ACC-NET-000001',
+            direction=AccountabilityTransaction.Direction.IN,
+            tx_type=AccountabilityTransaction.TxType.DEBT_PAYMENT,
+            amount='20.00',
+        )
+        self._create_cashbook_transaction(
+            number='ACC-NET-000002',
+            direction=AccountabilityTransaction.Direction.OUT,
+            tx_type=AccountabilityTransaction.TxType.STOCK_PURCHASE,
+            amount='15.00',
+        )
+        self._create_cashbook_transaction(
+            number='ACC-NET-000003',
+            direction=AccountabilityTransaction.Direction.OUT,
+            tx_type=AccountabilityTransaction.TxType.OTHER_EXPENSE,
+            amount='5.00',
+        )
+        self._create_cashbook_transaction(
+            number='ACC-NET-CANCELLED',
+            direction=AccountabilityTransaction.Direction.IN,
+            tx_type=AccountabilityTransaction.TxType.SALE,
+            amount='999.00',
+            status=AccountabilityTransaction.Status.CANCELLED,
+        )
+        self._create_cashbook_transaction(
+            number='ACC-NET-CANCELLED-PURCHASE',
+            direction=AccountabilityTransaction.Direction.OUT,
+            tx_type=AccountabilityTransaction.TxType.STOCK_PURCHASE,
+            amount='777.00',
+            status=AccountabilityTransaction.Status.CANCELLED,
+        )
+
+        self.client.force_authenticate(self.admin)
+        response = self.client.get(reverse('dashboard'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        summary = response.data['data']['summary']
+        self.assertEqual(Decimal(summary['total_sales']), Decimal('100.00'))
+        self.assertEqual(Decimal(summary['sales_collected']), Decimal('40.00'))
+        self.assertEqual(Decimal(summary['debt_recovered']), Decimal('20.00'))
+        self.assertEqual(Decimal(summary['stock_purchase_spend']), Decimal('15.00'))
+        self.assertEqual(Decimal(summary['operating_expenses']), Decimal('5.00'))
+        self.assertEqual(Decimal(summary['net_cash_generated']), Decimal('40.00'))
+        self.assertEqual(Decimal(summary['money_in']), Decimal('60.00'))
+        self.assertEqual(Decimal(summary['money_out']), Decimal('20.00'))
+        self.assertEqual(Decimal(summary['net_money_movement']), Decimal('40.00'))
+
+    def test_net_cash_generated_follows_dashboard_period_filters(self):
+        last_month_purchase = self._create_cashbook_transaction(
+            number='ACC-PERIOD-000001',
+            direction=AccountabilityTransaction.Direction.OUT,
+            tx_type=AccountabilityTransaction.TxType.STOCK_PURCHASE,
+            amount='25.00',
+        )
+        now = timezone.now()
+        last_month_date = (now.replace(day=1) - timedelta(days=1)).replace(hour=12)
+        AccountabilityTransaction.objects.filter(pk=last_month_purchase.pk).update(
+            created_at=last_month_date
+        )
+
+        self.client.force_authenticate(self.admin)
+        for period in ('today', 'this_week', 'this_month'):
+            response = self.client.get(reverse('dashboard'), {'period': period})
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(
+                Decimal(response.data['data']['summary']['stock_purchase_spend']),
+                Decimal('0.00'),
+            )
+
+        today = timezone.localdate().isoformat()
+        custom_response = self.client.get(
+            reverse('dashboard'),
+            {'period': 'custom', 'start_date': today, 'end_date': today},
+        )
+        self.assertEqual(
+            Decimal(custom_response.data['data']['summary']['stock_purchase_spend']),
+            Decimal('0.00'),
+        )
+
+        last_month_response = self.client.get(reverse('dashboard'), {'period': 'last_month'})
+        last_month_summary = last_month_response.data['data']['summary']
+        self.assertEqual(Decimal(last_month_summary['stock_purchase_spend']), Decimal('25.00'))
+        self.assertEqual(Decimal(last_month_summary['net_cash_generated']), Decimal('-25.00'))
 
     def test_cashier_gets_cashier_dashboard(self):
         self.client.force_authenticate(self.cashier)

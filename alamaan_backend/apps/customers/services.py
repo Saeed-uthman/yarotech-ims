@@ -9,7 +9,7 @@ from apps.accountability.sequences import next_accountability_transaction_number
 from apps.common.sequences import next_document_number
 from apps.sales.models import Sale
 
-from .models import Customer, CustomerDebtPayment
+from .models import Customer, CustomerDebtPayment, CustomerDebtPaymentAllocation, DebtPaymentReversal
 
 
 def _generate_receipt_number():
@@ -94,6 +94,7 @@ def record_customer_debt_payment(*, user, customer, amount, payment_method, note
     balance_before = total_outstanding
 
     remaining_payment = amount
+    allocation_rows = []
     for sale in unpaid_sales:
         if remaining_payment <= 0:
             break
@@ -107,6 +108,7 @@ def record_customer_debt_payment(*, user, customer, amount, payment_method, note
             Sale.PaymentStatus.PAID if sale.outstanding_amount == 0 else Sale.PaymentStatus.PARTIAL
         )
         sale.save(update_fields=['amount_paid', 'outstanding_amount', 'payment_status', 'updated_at'])
+        allocation_rows.append((sale, pay_for_sale))
 
         remaining_payment -= pay_for_sale
 
@@ -124,6 +126,10 @@ def record_customer_debt_payment(*, user, customer, amount, payment_method, note
         created_by=user,
         updated_by=user,
     )
+    CustomerDebtPaymentAllocation.objects.bulk_create([
+        CustomerDebtPaymentAllocation(payment=payment, sale=sale, amount=allocated_amount)
+        for sale, allocated_amount in allocation_rows
+    ])
 
     AccountabilityTransaction.objects.create(
         transaction_number=next_accountability_transaction_number(),
@@ -141,3 +147,59 @@ def record_customer_debt_payment(*, user, customer, amount, payment_method, note
     )
 
     return payment
+
+
+@transaction.atomic
+def reverse_customer_debt_payment(*, payment, reversed_by, reason):
+    payment = CustomerDebtPayment.objects.select_for_update().select_related('customer').get(pk=payment.pk)
+    if payment.is_reversed:
+        raise ValidationError({'detail': 'This debt payment has already been reversed.'})
+
+    allocations = list(payment.allocations.select_related('sale').order_by('-sale__created_at'))
+    if not allocations:
+        raise ValidationError({
+            'detail': 'This legacy payment has no allocation trail and requires manual reconciliation.'
+        })
+
+    locked_sales = {
+        sale.id: sale
+        for sale in Sale.objects.select_for_update().filter(
+            id__in=[allocation.sale_id for allocation in allocations]
+        )
+    }
+    for allocation in allocations:
+        sale = locked_sales[allocation.sale_id]
+        sale.amount_paid -= allocation.amount
+        sale.outstanding_amount += allocation.amount
+        sale.payment_status = (
+            Sale.PaymentStatus.UNPAID if sale.amount_paid == 0 else Sale.PaymentStatus.PARTIAL
+        )
+        sale.save(update_fields=['amount_paid', 'outstanding_amount', 'payment_status', 'updated_at'])
+
+    reversal = DebtPaymentReversal.objects.create(
+        payment=payment,
+        reason=reason.strip(),
+        reversed_by=reversed_by,
+        created_by=reversed_by,
+        updated_by=reversed_by,
+    )
+    payment.is_reversed = True
+    payment.updated_by = reversed_by
+    payment.save(update_fields=['is_reversed', 'updated_by', 'updated_at'])
+
+    AccountabilityTransaction.objects.create(
+        transaction_number=next_accountability_transaction_number(),
+        direction=AccountabilityTransaction.Direction.OUT,
+        type=AccountabilityTransaction.TxType.DEBT_PAYMENT_REVERSAL,
+        category='Customer Debt Payment Reversal',
+        amount=payment.amount,
+        payment_method=payment.payment_method,
+        reference_type='DebtPaymentReversal',
+        reference_id=str(reversal.id),
+        description=f'Reversal of debt receipt {payment.receipt_number}',
+        customer_name=payment.customer.name,
+        note=reason.strip(),
+        created_by=reversed_by,
+        updated_by=reversed_by,
+    )
+    return reversal

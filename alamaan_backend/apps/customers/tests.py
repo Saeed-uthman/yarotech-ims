@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import User
+from apps.accountability.models import AccountabilityTransaction
 from apps.inventory.models import InventoryMovement
 from apps.products.models import Category, Company, Product, ProductVariant
 from apps.sales.models import Sale, SaleItem
@@ -315,6 +316,63 @@ class DebtPaymentApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['data']['amount'], '1000.00')
+
+    def test_admin_can_reverse_debt_payment_with_allocation_and_cash_out(self):
+        sale = self._create_credit_sale(amount_paid=Decimal('0.00'))
+        self.client.force_authenticate(self.cashier)
+        payment_response = self.client.post(reverse('debt-payment-create'), {
+            'customer_id': self.customer.id,
+            'amount': '1000.00',
+            'payment_method': 'CASH',
+            'reference_notes': 'Entered in error',
+        }, format='json')
+        payment_id = payment_response.data['data']['id']
+
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(
+            reverse('debt-payment-reverse', args=[payment_id]),
+            {'reason': 'Cashier selected the wrong customer'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        sale.refresh_from_db()
+        payment = CustomerDebtPayment.objects.get(pk=payment_id)
+        self.assertTrue(payment.is_reversed)
+        self.assertEqual(sale.amount_paid, Decimal('0.00'))
+        self.assertEqual(sale.outstanding_amount, Decimal('3600.00'))
+        reversal_tx = AccountabilityTransaction.objects.get(
+            type=AccountabilityTransaction.TxType.DEBT_PAYMENT_REVERSAL,
+        )
+        self.assertEqual(reversal_tx.direction, AccountabilityTransaction.Direction.OUT)
+        self.assertEqual(reversal_tx.amount, Decimal('1000.00'))
+
+    def test_cashier_cannot_view_another_cashiers_debt_payment_receipt(self):
+        self._create_credit_sale(amount_paid=Decimal('0.00'))
+        other_cashier = User.objects.create_user(
+            email='other-cashier@example.com',
+            password='StrongPass123!',
+            full_name='Other Cashier',
+            phone='08000000009',
+            status=User.Status.ACTIVE,
+            is_active=True,
+        )
+        self.client.force_authenticate(other_cashier)
+        payment_response = self.client.post(reverse('debt-payment-create'), {
+            'customer_id': self.customer.id,
+            'amount': '500.00',
+            'payment_method': 'CASH',
+            'reference_notes': '',
+        }, format='json')
+        payment_id = payment_response.data['data']['id']
+
+        self.client.force_authenticate(self.cashier)
+        response = self.client.get(reverse('debt-payment-receipt', args=[payment_id]))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        self.client.force_authenticate(self.admin)
+        response = self.client.get(reverse('debt-payment-receipt', args=[payment_id]))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_customer_sales_history_endpoint(self):
         self._create_credit_sale(amount_paid=Decimal('2000.00'))
