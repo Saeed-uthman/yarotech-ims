@@ -10,9 +10,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 REPOSITORY_ROOT = BASE_DIR.parent
 
 env = environ.Env()
-environment_file = REPOSITORY_ROOT / '.env'
-if environment_file.exists():
-    environ.Env.read_env(environment_file)
+
+# Load repository-wide values first, then fill any missing backend-specific
+# values from alamaan_backend/.env. Existing process environment variables
+# retain the highest priority because django-environ does not overwrite them.
+for environment_file in (REPOSITORY_ROOT / '.env', BASE_DIR / '.env'):
+    if environment_file.exists():
+        environ.Env.read_env(environment_file)
 
 DEBUG = env.bool('DJANGO_DEBUG', default=True)
 
@@ -39,6 +43,16 @@ CSRF_TRUSTED_ORIGINS = env.list(
     'CSRF_TRUSTED_ORIGINS',
     default=['http://localhost:3000', 'http://127.0.0.1:5173'],
 )
+
+if not DEBUG:
+    for setting_name, origins in (
+        ('CORS_ALLOWED_ORIGINS', CORS_ALLOWED_ORIGINS),
+        ('CSRF_TRUSTED_ORIGINS', CSRF_TRUSTED_ORIGINS),
+    ):
+        if not origins or any(origin == '*' or not origin.startswith('https://') for origin in origins):
+            raise ImproperlyConfigured(
+                f'{setting_name} must contain only explicit HTTPS origins when DJANGO_DEBUG=False.'
+            )
 
 
 # Application definition
@@ -79,6 +93,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'apps.common.middleware.BrowserSecurityHeadersMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -101,7 +116,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-DATABASE_ENGINE = env.str('DB_ENGINE', default='sqlite').strip().lower()
+DATABASE_ENGINE = env.str('DB_ENGINE', default='postgresql').strip().lower()
 if DATABASE_ENGINE == 'sqlite':
     DATABASES = {
         'default': {
@@ -258,6 +273,8 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
+ENABLE_API_DOCS = env.bool('DJANGO_ENABLE_API_DOCS', default=DEBUG)
+
 
 EMAIL_BACKEND = env.str(
     'EMAIL_BACKEND',
@@ -295,6 +312,20 @@ SECURE_PROXY_SSL_HEADER = (
     if env.bool('DJANGO_TRUST_PROXY_HEADERS', default=False)
     else None
 )
+
+if not DEBUG:
+    insecure_production_settings = [
+        name for name, enabled in (
+            ('DJANGO_SECURE_SSL_REDIRECT', SECURE_SSL_REDIRECT),
+            ('DJANGO_SESSION_COOKIE_SECURE', SESSION_COOKIE_SECURE),
+            ('DJANGO_CSRF_COOKIE_SECURE', CSRF_COOKIE_SECURE),
+        ) if not enabled
+    ]
+    if insecure_production_settings:
+        raise ImproperlyConfigured(
+            'Production security settings cannot be disabled: '
+            + ', '.join(insecure_production_settings)
+        )
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = env.int('DJANGO_MAX_REQUEST_BYTES', default=5 * 1024 * 1024)
 FILE_UPLOAD_MAX_MEMORY_SIZE = env.int('DJANGO_MAX_UPLOAD_BYTES', default=5 * 1024 * 1024)

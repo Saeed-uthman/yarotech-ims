@@ -13,6 +13,8 @@ from .models import StockPurchase, Supplier
 from .selectors import get_purchase_detail, get_purchase_kpis, list_purchases
 from .serializers import (
     CreatePurchaseInputSerializer,
+    CreatePurchaseReturnSerializer,
+    PurchaseReturnOutputSerializer,
     StockPurchaseCancelSerializer,
     StockPurchaseDetailSerializer,
     StockPurchaseListSerializer,
@@ -116,6 +118,21 @@ class PurchaseCancelView(APIView):
         cancelled_purchase = serializer.save(purchase=purchase, cancelled_by=request.user)
         return Response(
             success_response(StockPurchaseDetailSerializer(cancelled_purchase).data, 'Purchase cancelled successfully.'),
+        )
+
+
+class PurchaseReturnView(APIView):
+    permission_classes = [IsAdminUserRole]
+
+    @extend_schema(request=CreatePurchaseReturnSerializer, responses={201: PurchaseReturnOutputSerializer})
+    def post(self, request, pk):
+        purchase = get_object_or_404(StockPurchase, pk=pk)
+        serializer = CreatePurchaseReturnSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return_record = serializer.save(purchase=purchase, processed_by=request.user)
+        return Response(
+            success_response(PurchaseReturnOutputSerializer(return_record).data, 'Purchase return recorded successfully.'),
+            status=status.HTTP_201_CREATED,
         )
 
 

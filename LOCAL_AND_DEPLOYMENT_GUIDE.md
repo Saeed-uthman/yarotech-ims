@@ -46,15 +46,38 @@ multiple simultaneous users, remote access, or production deployment. The
 sales and stock workflows use row locking; SQLite ignores
 `select_for_update()`, while PostgreSQL provides the intended protection.
 
-## SQLite backup behavior
+## Local backup behavior
 
 Double-click `Backup Pharmacy Data.cmd` for an immediate backup.
 
-Backups are ZIP archives under `backups/` by default and contain:
+The launcher detects `DB_ENGINE`. SQLite archives contain a consistent SQLite
+snapshot; PostgreSQL archives contain a custom-format `pg_dump`. Both include:
 
-- A transactionally consistent SQLite snapshot.
+- A transactionally consistent database snapshot.
 - The uploaded media directory, including the pharmacy logo.
 - A manifest containing the database SHA-256 and integrity-check result.
+
+PostgreSQL requires `pg_dump` and `pg_restore`. Add PostgreSQL's `bin` directory
+to `PATH`, or configure `POSTGRES_BIN` in `.env`. The password is supplied via
+the child process environment and is not placed in the command line.
+
+To verify an existing archive without changing live data, drag its ZIP file
+onto `Verify Pharmacy Backup.cmd`. Verification checks ZIP integrity, the
+database checksum, media count, and (for PostgreSQL) the dump catalogue.
+
+### PostgreSQL restore rehearsal
+
+Create a separate empty test database, then run `Rehearse PostgreSQL
+Restore.cmd`. The tool refuses the live `DB_NAME`, requires the rehearsal name
+twice, restores with `pg_restore`, validates the Django migration table, and
+extracts media under `backups/restore-rehearsals/`. It never overwrites live
+media. Review record counts and financial totals before manually removing the
+rehearsal database.
+
+Run `scripts/compare_postgres_restore.py <rehearsal_database>` with the backend
+virtual-environment Python to compare critical counts, stock units, debts,
+sales and purchase totals, ledger inflows/outflows, and document sequences.
+The comparison is read-only and refuses the live database as its target.
 
 The default policy keeps backups for 30 days and creates at most one automatic
 startup backup every 12 hours. Configure these values in `.env`:
@@ -64,6 +87,13 @@ PHARMACY_BACKUP_DIR=backups
 PHARMACY_BACKUP_RETENTION_DAYS=30
 PHARMACY_BACKUP_MIN_INTERVAL_HOURS=12
 ```
+
+For protection even on days when the application is not opened, run `Install
+Daily Backup Schedule.cmd` once. It creates a current-user Windows task at
+8:00 PM using the non-interactive backup runner. The minimum interval still
+prevents redundant archives. It is configured to run on battery power, but it
+runs only while the current Windows user is logged on so no Windows password
+has to be stored. Confirm the task's Last Run Result periodically.
 
 For real operations, set `PHARMACY_BACKUP_DIR` to a second disk or encrypted
 synced folder. A backup stored only on the same computer does not protect
@@ -108,6 +138,10 @@ Do not switch databases simply by changing `DB_ENGINE`; the existing SQLite
 records must be deliberately migrated and reconciled.
 
 ## Production deployment path
+
+Before selecting a host, run `scripts/check_production_security.py` with the
+backend virtual-environment Python. It exercises Django's deployment checks
+with temporary secure values and leaves the local configuration unchanged.
 
 The existing production foundation is under `deploy/` and
 `alamaan_backend/DEPLOYMENT.md`. The remaining host-specific work is:

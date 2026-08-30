@@ -81,3 +81,30 @@ class PurchaseItem(TimeStampedModel):
 
     def __str__(self):
         return f'{self.variant} x{self.quantity}'
+
+
+class PurchaseReturn(AuditableModel):
+    id = models.BigAutoField(primary_key=True)
+    return_number = models.CharField(max_length=32, unique=True, db_index=True)
+    purchase = models.ForeignKey(StockPurchase, on_delete=models.PROTECT, related_name='returns')
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    refund_method = models.CharField(max_length=20, choices=StockPurchase.PaymentMethod.choices)
+    reason = models.CharField(max_length=500)
+    processed_by = models.ForeignKey(
+        'accounts.User', on_delete=models.PROTECT, related_name='processed_purchase_returns'
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class PurchaseReturnItem(TimeStampedModel):
+    return_record = models.ForeignKey(PurchaseReturn, on_delete=models.PROTECT, related_name='items')
+    purchase_item = models.ForeignKey(PurchaseItem, on_delete=models.PROTECT, related_name='return_items')
+    batch = models.ForeignKey('inventory.InventoryBatch', on_delete=models.PROTECT, related_name='purchase_return_items')
+    quantity = models.PositiveIntegerField()
+    unit_refund_price = models.DecimalField(max_digits=12, decimal_places=2)
+    subtotal = models.DecimalField(max_digits=12, decimal_places=2)
+
+    class Meta:
+        ordering = ['id']

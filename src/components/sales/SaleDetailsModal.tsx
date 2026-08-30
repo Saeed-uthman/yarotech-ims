@@ -22,6 +22,7 @@ interface SaleDetailsModalProps {
   onClose: () => void;
   onPrintReceipt: (sale: Sale) => void;
   onNavigateToCustomer?: (customerId: string) => void;
+  onReturnSale?: (sale: Sale) => void;
   role: UserRole;
 }
 
@@ -32,6 +33,7 @@ export const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({
   onPrintReceipt,
   onNavigateToCustomer,
   role,
+  onReturnSale,
 }) => {
   if (!isOpen || !sale) return null;
 
@@ -78,6 +80,12 @@ export const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({
             </div>
           </div>
 
+          <div className="flex items-center gap-2">
+          {isAdmin && sale.status !== 'CANCELLED' && onReturnSale && (
+            <button type="button" onClick={() => onReturnSale(sale)} className="px-4 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold hover:bg-rose-100">
+              Return items
+            </button>
+          )}
           <button
             id="close-sale-details-btn"
             type="button"
@@ -86,6 +94,7 @@ export const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({
           >
             <X className="w-5 h-5" />
           </button>
+          </div>
         </div>
 
         {/* Modal Body */}

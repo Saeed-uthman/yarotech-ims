@@ -200,13 +200,22 @@ Running the import again skips matching products. The command creates generic pr
 
 SQLite is suitable while the system runs on one computer for one active operator at a time. Keep the database on the computer's local disk; do not place the live `.sqlite3` file on a shared or cloud-synchronized folder.
 
-Create a manual backup by double-clicking:
+Create a database-aware manual backup by double-clicking:
 
 ```text
 Backup Pharmacy Data.cmd
 ```
 
-The backup process creates a ZIP archive containing a consistent SQLite snapshot, uploaded media, and an integrity manifest. Backup location and retention can be configured in `.env` with `PHARMACY_BACKUP_DIR`, `PHARMACY_BACKUP_RETENTION_DAYS`, and `PHARMACY_BACKUP_MIN_INTERVAL_HOURS`.
+The backup process creates a ZIP archive containing a consistent snapshot of the selected database, uploaded media, and an integrity manifest. Backup location and retention can be configured in `.env` with `PHARMACY_BACKUP_DIR`, `PHARMACY_BACKUP_RETENTION_DAYS`, and `PHARMACY_BACKUP_MIN_INTERVAL_HOURS`.
+
+When `DB_ENGINE=postgresql`, the same launcher creates and validates a
+custom-format `pg_dump` instead. Drag any generated ZIP onto `Verify Pharmacy
+Backup.cmd` for a non-destructive checksum and structure check. Use `Rehearse
+PostgreSQL Restore.cmd` only with a separate test database; it refuses the live
+database name and never overwrites live media.
+
+Run `Install Daily Backup Schedule.cmd` once to opt into a daily 8:00 PM
+Windows backup task in addition to interval-controlled startup backups.
 
 Backups are useful only after a restore has been tested. Periodically restore an archive on a separate test copy and confirm that Django can read the database and media files.
 

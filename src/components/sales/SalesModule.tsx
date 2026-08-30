@@ -31,6 +31,7 @@ import { SalesCardList } from './SalesCardList';
 import { SaleDetailsModal } from './SaleDetailsModal';
 import { SaleReceiptModal } from './SaleReceiptModal';
 import { NewSaleModal } from './NewSaleModal';
+import { SaleReturnModal } from './SaleReturnModal';
 
 interface SalesModuleProps {
   role: UserRole;
@@ -59,6 +60,7 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
   const [selectedSaleForDetails, setSelectedSaleForDetails] = useState<Sale | null>(null);
   const [selectedSaleIdForReceipt, setSelectedSaleIdForReceipt] = useState<string | null>(null);
   const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
+  const [selectedSaleForReturn, setSelectedSaleForReturn] = useState<Sale | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   // Data fetching hooks
@@ -270,6 +272,21 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
         onPrintReceipt={handlePrintReceipt}
         onNavigateToCustomer={onNavigateToCustomer}
         role={role}
+        onReturnSale={(sale) => {
+          setSelectedSaleForDetails(null);
+          setSelectedSaleForReturn(sale);
+        }}
+      />
+
+      <SaleReturnModal
+        sale={selectedSaleForReturn}
+        isOpen={!!selectedSaleForReturn}
+        onClose={() => setSelectedSaleForReturn(null)}
+        onSuccess={() => {
+          handleRefreshAll();
+          setSuccessToast('Sale return recorded and inventory restored.');
+          setTimeout(() => setSuccessToast(null), 5000);
+        }}
       />
 
       {/* Sale Receipt Modal */}

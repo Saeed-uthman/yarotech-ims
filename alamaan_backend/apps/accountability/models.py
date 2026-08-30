@@ -42,6 +42,8 @@ class AccountabilityTransaction(AuditableModel):
         STOCK_PURCHASE = 'STOCK_PURCHASE', 'Stock Purchase Disbursement'
         OTHER_EXPENSE = 'OTHER_EXPENSE', 'Operational Expense'
         DEBT_PAYMENT_REVERSAL = 'DEBT_PAYMENT_REVERSAL', 'Debt Payment Reversal'
+        SALE_REFUND = 'SALE_REFUND', 'Customer Sale Refund'
+        PURCHASE_RETURN = 'PURCHASE_RETURN', 'Stock Purchase Return'
 
     class PaymentMethod(models.TextChoices):
         CASH = 'CASH', 'Cash'

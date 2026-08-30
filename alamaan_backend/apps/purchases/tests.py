@@ -10,7 +10,7 @@ from apps.accounts.models import User
 from apps.inventory.models import InventoryBatch, InventoryMovement
 from apps.products.models import Category, Company, Product, ProductVariant
 
-from .models import StockPurchase, Supplier
+from .models import PurchaseReturn, StockPurchase, Supplier
 
 
 class PurchaseApiTests(APITestCase):
@@ -185,3 +185,59 @@ class PurchaseApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['data']['purchase_number'], purchase.purchase_number)
         self.assertEqual(len(response.data['data']['items']), 1)
+
+    def test_admin_can_return_unsold_purchase_stock(self):
+        self.client.force_authenticate(self.admin)
+        created = self.client.post(reverse('purchases-list'), self._purchase_payload(), format='json')
+        purchase = StockPurchase.objects.get(pk=created.data['data']['id'])
+        purchase_item = purchase.items.get()
+        batch = purchase_item.inventory_batch
+
+        response = self.client.post(
+            reverse('purchases-return', args=[purchase.id]),
+            {'items': [{'purchase_item_id': purchase_item.id, 'quantity': 10}], 'refund_method': 'TRANSFER', 'reason': 'Supplier recall'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.variant.refresh_from_db()
+        batch.refresh_from_db()
+        return_record = PurchaseReturn.objects.get()
+        self.assertEqual(return_record.total_amount, Decimal('15000.00'))
+        self.assertEqual(self.variant.current_stock, 90)
+        self.assertEqual(batch.remaining_quantity, 40)
+        self.assertTrue(AccountabilityTransaction.objects.filter(
+            type=AccountabilityTransaction.TxType.PURCHASE_RETURN,
+            direction=AccountabilityTransaction.Direction.IN,
+            amount=Decimal('15000.00'),
+        ).exists())
+
+    def test_purchase_return_cannot_remove_stock_already_used(self):
+        self.client.force_authenticate(self.admin)
+        created = self.client.post(reverse('purchases-list'), self._purchase_payload(), format='json')
+        purchase = StockPurchase.objects.get(pk=created.data['data']['id'])
+        purchase_item = purchase.items.get()
+        batch = purchase_item.inventory_batch
+        batch.remaining_quantity = 5
+        batch.save(update_fields=['remaining_quantity', 'updated_at'])
+
+        response = self.client.post(
+            reverse('purchases-return', args=[purchase.id]),
+            {'items': [{'purchase_item_id': purchase_item.id, 'quantity': 6}], 'refund_method': 'CASH', 'reason': 'Return'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(PurchaseReturn.objects.count(), 0)
+
+    def test_purchase_with_return_cannot_be_cancelled(self):
+        self.client.force_authenticate(self.admin)
+        created = self.client.post(reverse('purchases-list'), self._purchase_payload(), format='json')
+        purchase = StockPurchase.objects.get(pk=created.data['data']['id'])
+        purchase_item = purchase.items.get()
+        self.client.post(
+            reverse('purchases-return', args=[purchase.id]),
+            {'items': [{'purchase_item_id': purchase_item.id, 'quantity': 1}], 'refund_method': 'CASH', 'reason': 'Return'},
+            format='json',
+        )
+        response = self.client.post(reverse('purchases-cancel', args=[purchase.id]), {'reason': 'Cancel'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

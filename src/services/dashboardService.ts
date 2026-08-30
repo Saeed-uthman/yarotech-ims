@@ -48,6 +48,8 @@ export class DashboardService {
               debtRecovered: Number(summary.debtRecovered || 0),
               stockPurchaseSpend: Number(summary.stockPurchaseSpend || 0),
               operatingExpenses: Number(summary.operatingExpenses || 0),
+              cashReversals: Number(summary.cashReversals || 0),
+              purchaseReturns: Number(summary.purchaseReturns || 0),
               netCashGenerated: Number(summary.netCashGenerated || 0),
               outstandingDebt: Number(summary.outstandingDebt || 0),
               debtorCount: Number(summary.debtorCount || 0),

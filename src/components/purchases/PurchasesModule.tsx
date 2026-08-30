@@ -26,6 +26,7 @@ import { PurchaseCardList } from './PurchaseCardList';
 import { CreatePurchaseModal } from './CreatePurchaseModal';
 import { PurchaseDetailsModal } from './PurchaseDetailsModal';
 import { CancelPurchaseConfirmModal } from './CancelPurchaseConfirmModal';
+import { PurchaseReturnModal } from './PurchaseReturnModal';
 
 interface PurchasesModuleProps {
   role: UserRole;
@@ -51,6 +52,7 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
   // Modal states
   const [selectedPurchaseForDetails, setSelectedPurchaseForDetails] = useState<StockPurchase | null>(null);
   const [selectedPurchaseForCancel, setSelectedPurchaseForCancel] = useState<StockPurchase | null>(null);
+  const [selectedPurchaseForReturn, setSelectedPurchaseForReturn] = useState<StockPurchase | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
@@ -248,7 +250,19 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
         isOpen={!!selectedPurchaseForDetails}
         onClose={() => setSelectedPurchaseForDetails(null)}
         onCancelPurchase={(p) => setSelectedPurchaseForCancel(p)}
+        onReturnPurchase={(p) => setSelectedPurchaseForReturn(p)}
         role={role}
+      />
+
+      <PurchaseReturnModal
+        purchase={selectedPurchaseForReturn}
+        isOpen={!!selectedPurchaseForReturn}
+        onClose={() => setSelectedPurchaseForReturn(null)}
+        onSuccess={() => {
+          handleRefreshAll();
+          setSuccessToast('Stock purchase return recorded and inventory adjusted.');
+          setTimeout(() => setSuccessToast(null), 5000);
+        }}
       />
 
       {/* Cancel Purchase Confirm Modal */}

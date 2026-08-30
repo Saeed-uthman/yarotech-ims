@@ -6,8 +6,8 @@ from rest_framework import serializers
 
 from apps.products.models import ProductVariant
 
-from .models import PurchaseItem, StockPurchase, Supplier
-from .services import cancel_purchase, create_stock_purchase
+from .models import PurchaseItem, PurchaseReturn, PurchaseReturnItem, StockPurchase, Supplier
+from .services import cancel_purchase, create_stock_purchase, process_purchase_return
 
 
 class SupplierSerializer(serializers.ModelSerializer):
@@ -199,3 +199,56 @@ class StockPurchaseCancelSerializer(serializers.Serializer):
             cancelled_by=cancelled_by,
             reason=self.validated_data['reason'],
         )
+
+
+class PurchaseReturnItemInputSerializer(serializers.Serializer):
+    purchase_item_id = serializers.IntegerField(min_value=1)
+    quantity = serializers.IntegerField(min_value=1)
+
+
+class CreatePurchaseReturnSerializer(serializers.Serializer):
+    items = PurchaseReturnItemInputSerializer(many=True, min_length=1)
+    refund_method = serializers.ChoiceField(choices=StockPurchase.PaymentMethod.choices)
+    reason = serializers.CharField(max_length=500)
+
+    def validate_items(self, value):
+        ids = [item['purchase_item_id'] for item in value]
+        if len(ids) != len(set(ids)):
+            raise serializers.ValidationError('Each purchase item may appear only once.')
+        return value
+
+    def validate_reason(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError('A return reason is required.')
+        return value
+
+    def save(self, *, purchase, processed_by):
+        return process_purchase_return(
+            purchase=purchase,
+            items=self.validated_data['items'],
+            refund_method=self.validated_data['refund_method'],
+            reason=self.validated_data['reason'],
+            processed_by=processed_by,
+        )
+
+
+class PurchaseReturnItemOutputSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='purchase_item.variant.product.name', read_only=True)
+    company_name = serializers.CharField(source='purchase_item.variant.company.name', read_only=True)
+    batch_number = serializers.CharField(source='batch.batch_number', read_only=True)
+
+    class Meta:
+        model = PurchaseReturnItem
+        fields = ['id', 'purchase_item', 'product_name', 'company_name', 'batch_number', 'quantity', 'unit_refund_price', 'subtotal']
+        read_only_fields = fields
+
+
+class PurchaseReturnOutputSerializer(serializers.ModelSerializer):
+    processed_by_name = serializers.CharField(source='processed_by.full_name', read_only=True)
+    items = PurchaseReturnItemOutputSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = PurchaseReturn
+        fields = ['id', 'return_number', 'purchase', 'total_amount', 'refund_method', 'reason', 'processed_by_name', 'items', 'created_at']
+        read_only_fields = fields

@@ -5,6 +5,7 @@ from .views import (
     SaleDetailView,
     SaleListCreateView,
     SaleReceiptView,
+    SaleReturnView,
     SaleSummaryKpisView,
 )
 
@@ -14,4 +15,5 @@ urlpatterns = [
     path('sales/<int:pk>/', SaleDetailView.as_view(), name='sales-detail'),
     path('sales/<int:pk>/receipt/', SaleReceiptView.as_view(), name='sales-receipt'),
     path('sales/<int:pk>/cancel/', SaleCancelView.as_view(), name='sales-cancel'),
+    path('sales/<int:pk>/returns/', SaleReturnView.as_view(), name='sales-return'),
 ]

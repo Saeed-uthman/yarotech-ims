@@ -10,7 +10,7 @@ from apps.accountability.models import AccountabilityTransaction
 from apps.customers.models import Customer
 from apps.products.models import ProductVariant
 from apps.purchases.models import StockPurchase
-from apps.sales.models import Sale, SaleItem
+from apps.sales.models import Sale, SaleItem, SaleReturnItem
 from apps.settings_app.models import SystemSettings
 
 
@@ -95,6 +95,17 @@ def get_dashboard_data(*, user, date_range=None, start_date=None, end_date=None)
         total_collected=Sum('amount_paid'),
     )
     items_agg = items.aggregate(items_sold=Sum('quantity'), total_profit=Sum('profit'))
+    returned_items = _filter_period(
+        SaleReturnItem.objects.all(),
+        date_range=date_range,
+        start_date=start_date,
+        end_date=end_date,
+        date_field='return_record__created_at',
+    )
+    returned_agg = returned_items.aggregate(
+        items_returned=Sum('quantity'),
+        profit_reversed=Sum('profit_reversal'),
+    )
     cash_agg = transactions.aggregate(
         money_in=Sum('amount', filter=Q(direction=AccountabilityTransaction.Direction.IN)),
         money_out=Sum('amount', filter=Q(direction=AccountabilityTransaction.Direction.OUT)),
@@ -124,6 +135,23 @@ def get_dashboard_data(*, user, date_range=None, start_date=None, end_date=None)
             filter=Q(
                 direction=AccountabilityTransaction.Direction.OUT,
                 type=AccountabilityTransaction.TxType.OTHER_EXPENSE,
+            ),
+        ),
+        cash_reversals=Sum(
+            'amount',
+            filter=Q(
+                direction=AccountabilityTransaction.Direction.OUT,
+                type__in=[
+                    AccountabilityTransaction.TxType.SALE_REFUND,
+                    AccountabilityTransaction.TxType.DEBT_PAYMENT_REVERSAL,
+                ],
+            ),
+        ),
+        purchase_returns=Sum(
+            'amount',
+            filter=Q(
+                direction=AccountabilityTransaction.Direction.IN,
+                type=AccountabilityTransaction.TxType.PURCHASE_RETURN,
             ),
         ),
     )
@@ -162,18 +190,25 @@ def get_dashboard_data(*, user, date_range=None, start_date=None, end_date=None)
     registered_customers = Customer.objects.filter(status=Customer.Status.ACTIVE).count()
 
     total_sales = sales_agg['total_sales'] or ZERO
-    total_profit = (items_agg['total_profit'] or ZERO) if is_admin else ZERO
+    total_profit = (
+        (items_agg['total_profit'] or ZERO) - (returned_agg['profit_reversed'] or ZERO)
+    ) if is_admin else ZERO
+    items_sold = (items_agg['items_sold'] or 0) - (returned_agg['items_returned'] or 0)
     money_in = cash_agg['money_in'] or ZERO
     money_out = cash_agg['money_out'] or ZERO
     sales_collected = cash_agg['sales_collected'] or ZERO
     debt_recovered = cash_agg['debt_recovered'] or ZERO
     stock_purchase_spend = cash_agg['stock_purchase_spend'] or ZERO
     operating_expenses = cash_agg['operating_expenses'] or ZERO
+    cash_reversals = cash_agg['cash_reversals'] or ZERO
+    purchase_returns = cash_agg['purchase_returns'] or ZERO
     net_cash_generated = (
         sales_collected
         + debt_recovered
+        + purchase_returns
         - stock_purchase_spend
         - operating_expenses
+        - cash_reversals
     )
 
     sales_daily = {
@@ -311,7 +346,7 @@ def get_dashboard_data(*, user, date_range=None, start_date=None, end_date=None)
         'total_sales': total_sales,
         'total_profit': total_profit,
         'transaction_count': sales_agg['transaction_count'] or 0,
-        'items_sold': items_agg['items_sold'] or 0,
+        'items_sold': items_sold,
         'money_in': money_in,
         'money_out': money_out,
         'net_money_movement': money_in - money_out,
@@ -319,6 +354,8 @@ def get_dashboard_data(*, user, date_range=None, start_date=None, end_date=None)
         'debt_recovered': debt_recovered,
         'stock_purchase_spend': stock_purchase_spend,
         'operating_expenses': operating_expenses,
+        'cash_reversals': cash_reversals,
+        'purchase_returns': purchase_returns,
         'net_cash_generated': net_cash_generated,
         'outstanding_debt': outstanding_debt,
         'debtor_count': debtor_count,

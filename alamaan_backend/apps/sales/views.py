@@ -14,10 +14,12 @@ from .models import Sale
 from .selectors import get_sale_receipt, get_sales_kpis, list_sales
 from .serializers import (
     CreateSaleInputSerializer,
+    CreateSaleReturnSerializer,
     SaleCancelSerializer,
     SaleDetailSerializer,
     SaleListSerializer,
     SaleReceiptSerializer,
+    SaleReturnOutputSerializer,
 )
 
 
@@ -95,6 +97,24 @@ class SaleCancelView(APIView):
         cancelled_sale = serializer.save(sale=sale, cancelled_by=request.user)
         return Response(
             success_response(SaleDetailSerializer(cancelled_sale, context={'request': request}).data, 'Sale cancelled successfully.'),
+        )
+
+
+class SaleReturnView(APIView):
+    permission_classes = [IsAdminUserRole]
+
+    @extend_schema(request=CreateSaleReturnSerializer, responses={201: SaleReturnOutputSerializer})
+    def post(self, request, pk):
+        sale = get_object_or_404(Sale, pk=pk)
+        serializer = CreateSaleReturnSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return_record = serializer.save(sale=sale, processed_by=request.user)
+        return Response(
+            success_response(
+                SaleReturnOutputSerializer(return_record, context={'request': request}).data,
+                'Sale return recorded successfully.',
+            ),
+            status=status.HTTP_201_CREATED,
         )
 
 

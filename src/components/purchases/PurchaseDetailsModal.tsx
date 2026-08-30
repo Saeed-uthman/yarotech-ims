@@ -22,6 +22,7 @@ interface PurchaseDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCancelPurchase?: (purchase: StockPurchase) => void;
+  onReturnPurchase?: (purchase: StockPurchase) => void;
   role: UserRole;
 }
 
@@ -30,6 +31,7 @@ export const PurchaseDetailsModal: React.FC<PurchaseDetailsModalProps> = ({
   isOpen,
   onClose,
   onCancelPurchase,
+  onReturnPurchase,
   role,
 }) => {
   const [isPrinting, setIsPrinting] = useState(false);
@@ -229,6 +231,20 @@ export const PurchaseDetailsModal: React.FC<PurchaseDetailsModalProps> = ({
         {/* Modal Footer */}
         <div className="bg-slate-50 border-t border-slate-200 px-5 py-4 flex items-center justify-between shrink-0">
           <div>
+            <div className="flex items-center gap-2">
+            {!isCancelled && onReturnPurchase && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onReturnPurchase(purchase);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 border border-amber-200 rounded-lg transition-colors"
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+                <span>Return Stock</span>
+              </button>
+            )}
             {!isCancelled && onCancelPurchase && (
               <button
                 id="details-cancel-purchase-btn"
@@ -243,6 +259,7 @@ export const PurchaseDetailsModal: React.FC<PurchaseDetailsModalProps> = ({
                 <span>Cancel Order</span>
               </button>
             )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">

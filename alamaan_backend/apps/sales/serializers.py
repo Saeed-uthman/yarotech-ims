@@ -5,8 +5,8 @@ from rest_framework import serializers
 from apps.customers.models import Customer
 from apps.products.models import ProductVariant
 
-from .models import Sale, SaleItem
-from .services import cancel_sale, process_pos_sale
+from .models import Sale, SaleItem, SaleReturn, SaleReturnItem
+from .services import cancel_sale, process_pos_sale, process_sale_return
 
 
 class CreateSaleItemInputSerializer(serializers.Serializer):
@@ -236,3 +236,66 @@ class SaleCancelSerializer(serializers.Serializer):
             cancelled_by=cancelled_by,
             reason=self.validated_data['reason'],
         )
+
+
+class SaleReturnItemInputSerializer(serializers.Serializer):
+    sale_item_id = serializers.IntegerField(min_value=1)
+    quantity = serializers.IntegerField(min_value=1)
+
+
+class CreateSaleReturnSerializer(serializers.Serializer):
+    items = SaleReturnItemInputSerializer(many=True, min_length=1)
+    refund_method = serializers.ChoiceField(choices=[
+        Sale.PaymentMethod.CASH,
+        Sale.PaymentMethod.TRANSFER,
+        Sale.PaymentMethod.POS,
+    ])
+    reason = serializers.CharField(max_length=500)
+
+    def validate_items(self, value):
+        item_ids = [item['sale_item_id'] for item in value]
+        if len(item_ids) != len(set(item_ids)):
+            raise serializers.ValidationError('Each sale item may appear only once.')
+        return value
+
+    def validate_reason(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError('A return reason is required.')
+        return value
+
+    def save(self, *, sale, processed_by):
+        return process_sale_return(
+            sale=sale,
+            items=self.validated_data['items'],
+            refund_method=self.validated_data['refund_method'],
+            reason=self.validated_data['reason'],
+            processed_by=processed_by,
+        )
+
+
+class SaleReturnItemOutputSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='sale_item.variant.product.name', read_only=True)
+    company_name = serializers.CharField(source='sale_item.variant.company.name', read_only=True)
+
+    class Meta:
+        model = SaleReturnItem
+        fields = [
+            'id', 'sale_item', 'product_name', 'company_name', 'quantity',
+            'unit_refund_price', 'subtotal', 'historical_cost', 'profit_reversal',
+        ]
+        read_only_fields = fields
+
+
+class SaleReturnOutputSerializer(serializers.ModelSerializer):
+    processed_by_name = serializers.CharField(source='processed_by.full_name', read_only=True)
+    items = SaleReturnItemOutputSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = SaleReturn
+        fields = [
+            'id', 'return_number', 'sale', 'total_amount', 'debt_reduction',
+            'refund_amount', 'refund_method', 'reason', 'processed_by_name',
+            'items', 'created_at',
+        ]
+        read_only_fields = fields

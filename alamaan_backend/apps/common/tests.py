@@ -3,7 +3,7 @@ from decimal import Decimal
 from threading import Barrier
 from unittest.mock import patch
 
-from django.db import close_old_connections, connection
+from django.db import close_old_connections, connection, connections
 from django.test import TestCase, TransactionTestCase, skipUnlessDBFeature
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
@@ -59,6 +59,15 @@ class HealthCheckTests(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json(), {'status': 'ok'})
+
+    def test_health_check_has_restrictive_browser_security_headers(self):
+        response = self.client.get(reverse('health-check'))
+        self.assertEqual(response['X-Frame-Options'], 'DENY')
+        self.assertEqual(response['X-Content-Type-Options'], 'nosniff')
+        self.assertIn("default-src 'none'", response['Content-Security-Policy'])
+        self.assertIn('camera=()', response['Permissions-Policy'])
+        self.assertEqual(response['Cross-Origin-Opener-Policy'], 'same-origin')
+        self.assertEqual(response['X-Permitted-Cross-Domain-Policies'], 'none')
 
 
 class WorkflowFixtureMixin:
@@ -403,7 +412,7 @@ class ConcurrentTransactionTests(WorkflowFixtureMixin, TransactionTestCase):
         except Exception as exc:  # surfaced as a clear assertion failure in the parent thread
             return {'result': 'error', 'detail': repr(exc)}
         finally:
-            close_old_connections()
+            connections.close_all()
 
     @skipUnlessDBFeature('has_select_for_update')
     def test_two_cashiers_cannot_oversell_the_last_unit(self):
@@ -499,7 +508,7 @@ class ConcurrentTransactionTests(WorkflowFixtureMixin, TransactionTestCase):
         except Exception as exc:
             return {'status': 0, 'error': repr(exc)}
         finally:
-            close_old_connections()
+            connections.close_all()
 
     @skipUnlessDBFeature('has_select_for_update')
     def test_simultaneous_identical_idempotency_keys_mutate_once(self):

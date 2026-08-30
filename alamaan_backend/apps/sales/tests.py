@@ -12,7 +12,7 @@ from apps.inventory.models import InventoryBatch, InventoryMovement, SaleBatchAl
 from apps.products.models import Category, Company, Product, ProductVariant
 from apps.settings_app.models import SystemSettings
 
-from .models import Sale, SaleItem
+from .models import Sale, SaleItem, SaleReturn
 
 
 class SalesApiTests(APITestCase):
@@ -421,3 +421,75 @@ class SalesApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(Sale.objects.count(), 0)
+
+    def test_admin_can_return_paid_sale_item_and_restore_its_batch(self):
+        self.client.force_authenticate(self.cashier)
+        created = self.client.post(reverse('sales-list'), self._sale_payload(), format='json')
+        sale = Sale.objects.get(pk=created.data['data']['id'])
+        sale_item = sale.items.get()
+        batch = sale_item.batch_allocations.get().batch
+
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(
+            reverse('sales-return', args=[sale.id]),
+            {'items': [{'sale_item_id': sale_item.id, 'quantity': 1}], 'refund_method': 'CASH', 'reason': 'Damaged pack'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        sale.refresh_from_db()
+        self.variant.refresh_from_db()
+        batch.refresh_from_db()
+        return_record = SaleReturn.objects.get()
+        self.assertEqual(return_record.refund_amount, Decimal('1800.00'))
+        self.assertEqual(return_record.debt_reduction, Decimal('0.00'))
+        self.assertEqual(sale.amount_paid, Decimal('1800.00'))
+        self.assertEqual(self.variant.current_stock, 49)
+        self.assertEqual(batch.remaining_quantity, 49)
+        self.assertTrue(AccountabilityTransaction.objects.filter(
+            type=AccountabilityTransaction.TxType.SALE_REFUND,
+            direction=AccountabilityTransaction.Direction.OUT,
+            amount=Decimal('1800.00'),
+        ).exists())
+
+    def test_credit_return_reduces_debt_before_refunding_cash(self):
+        self.client.force_authenticate(self.cashier)
+        created = self.client.post(
+            reverse('sales-list'),
+            self._sale_payload(customer_id=self.customer.id, amount_paid='2000.00'),
+            format='json',
+        )
+        sale = Sale.objects.get(pk=created.data['data']['id'])
+        sale_item = sale.items.get()
+
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(
+            reverse('sales-return', args=[sale.id]),
+            {'items': [{'sale_item_id': sale_item.id, 'quantity': 1}], 'refund_method': 'CASH', 'reason': 'Customer return'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        sale.refresh_from_db()
+        return_record = SaleReturn.objects.get()
+        self.assertEqual(return_record.debt_reduction, Decimal('1600.00'))
+        self.assertEqual(return_record.refund_amount, Decimal('200.00'))
+        self.assertEqual(sale.outstanding_amount, Decimal('0.00'))
+        self.assertEqual(sale.amount_paid, Decimal('1800.00'))
+
+    def test_return_cannot_exceed_unreturned_quantity_or_be_followed_by_cancellation(self):
+        self.client.force_authenticate(self.cashier)
+        created = self.client.post(reverse('sales-list'), self._sale_payload(), format='json')
+        sale = Sale.objects.get(pk=created.data['data']['id'])
+        sale_item = sale.items.get()
+        self.client.force_authenticate(self.admin)
+        payload = {'items': [{'sale_item_id': sale_item.id, 'quantity': 1}], 'refund_method': 'CASH', 'reason': 'Return'}
+        self.assertEqual(self.client.post(reverse('sales-return', args=[sale.id]), payload, format='json').status_code, status.HTTP_201_CREATED)
+        over_return = self.client.post(
+            reverse('sales-return', args=[sale.id]),
+            {'items': [{'sale_item_id': sale_item.id, 'quantity': 2}], 'refund_method': 'CASH', 'reason': 'Again'},
+            format='json',
+        )
+        cancel = self.client.post(reverse('sales-cancel', args=[sale.id]), {'reason': 'Cancel'}, format='json')
+        self.assertEqual(over_return.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(cancel.status_code, status.HTTP_400_BAD_REQUEST)

@@ -442,6 +442,12 @@ export const ExecutiveSummaryCards: React.FC<ExecutiveSummaryCardsProps> = ({
                   − Stock ₦{summary.stockPurchaseSpend.toLocaleString()} − Expenses ₦
                   {summary.operatingExpenses.toLocaleString()}
                 </div>
+                <div>
+                  − Refunds/reversals ₦{summary.cashReversals.toLocaleString()}
+                </div>
+                <div>
+                  + Purchase refunds ₦{summary.purchaseReturns.toLocaleString()}
+                </div>
               </div>
             </div>
           </div>

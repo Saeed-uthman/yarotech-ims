@@ -101,6 +101,27 @@ function numericId(value: string, field: string): number {
 // ==========================================
 
 export class SalesService {
+  public async returnSale(
+    saleId: string,
+    input: { items: Array<{ saleItemId: string; quantity: number }>; refundMethod: 'CASH' | 'TRANSFER' | 'POS'; reason: string }
+  ): Promise<ApiResponse<any>> {
+    const res = await api.post<any>(`/sales/${numericId(saleId, 'Sale')}/returns/`, {
+      items: input.items.map((item) => ({
+        sale_item_id: numericId(item.saleItemId, 'Sale item'),
+        quantity: item.quantity,
+      })),
+      refund_method: input.refundMethod,
+      reason: input.reason.trim(),
+    });
+    apiCache.invalidateByPrefix('sales:');
+    apiCache.invalidateByPrefix('inventory:');
+    apiCache.invalidateByPrefix('products:');
+    apiCache.invalidateByPrefix('accountability:');
+    apiCache.invalidateByPrefix('dashboard:');
+    apiCache.invalidateByPrefix('reports:');
+    return { success: true, data: toCamelCaseKeys(res.data), message: res.message };
+  }
+
   /**
    * Fetch sales list from backend
    */

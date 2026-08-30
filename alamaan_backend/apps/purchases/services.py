@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import Sum
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
@@ -11,7 +12,7 @@ from apps.inventory.models import InventoryBatch, InventoryMovement
 from apps.inventory.services import record_stock_movement
 from apps.products.models import ProductVariant
 
-from .models import PurchaseItem, StockPurchase
+from .models import PurchaseItem, PurchaseReturn, PurchaseReturnItem, StockPurchase
 
 
 def _generate_purchase_number():
@@ -22,6 +23,17 @@ def _generate_purchase_number():
         prefix=prefix,
         queryset=StockPurchase.objects.all(),
         field_name='purchase_number',
+        width=5,
+    )
+
+
+def _generate_purchase_return_number():
+    now = timezone.now()
+    return next_document_number(
+        sequence_name=f'purchase-return:{now:%Y%m}',
+        prefix=f'PRT-{now:%Y%m}-',
+        queryset=PurchaseReturn.objects.all(),
+        field_name='return_number',
         width=5,
     )
 
@@ -144,6 +156,8 @@ def cancel_purchase(*, purchase, cancelled_by, reason=''):
     purchase = StockPurchase.objects.select_for_update().get(pk=purchase.pk)
     if purchase.status == StockPurchase.Status.CANCELLED:
         raise ValidationError({'detail': 'Purchase is already cancelled.'})
+    if purchase.returns.exists():
+        raise ValidationError({'detail': 'A purchase with recorded returns cannot be cancelled.'})
 
     purchase_items = list(purchase.items.select_related('variant').all())
     locked_variants = {
@@ -201,3 +215,102 @@ def cancel_purchase(*, purchase, cancelled_by, reason=''):
     purchase.save(update_fields=['status', 'updated_by', 'updated_at'])
 
     return purchase
+
+
+@transaction.atomic
+def process_purchase_return(*, purchase, items, refund_method, reason, processed_by):
+    purchase = StockPurchase.objects.select_for_update().get(pk=purchase.pk)
+    if purchase.status != StockPurchase.Status.COMPLETED:
+        raise ValidationError({'detail': 'Only completed purchases can be returned.'})
+
+    requested_ids = [item['purchase_item_id'] for item in items]
+    purchase_items = {
+        item.id: item
+        for item in PurchaseItem.objects.select_for_update().select_related('variant')
+        .filter(purchase=purchase, id__in=requested_ids)
+    }
+    if len(purchase_items) != len(set(requested_ids)):
+        raise ValidationError({'items': 'One or more purchase items do not belong to this purchase.'})
+
+    prepared = []
+    total_amount = Decimal('0.00')
+    for requested in items:
+        purchase_item = purchase_items[requested['purchase_item_id']]
+        quantity = requested['quantity']
+        already_returned = purchase_item.return_items.aggregate(total=Sum('quantity'))['total'] or 0
+        if quantity <= 0 or quantity > purchase_item.quantity - already_returned:
+            raise ValidationError({'items': f'Return quantity for item {purchase_item.id} exceeds the returnable quantity.'})
+        batch = InventoryBatch.objects.select_for_update().get(purchase_item=purchase_item)
+        if quantity > batch.remaining_quantity:
+            raise ValidationError({
+                'items': f'Only {batch.remaining_quantity} unsold unit(s) remain in batch {batch.batch_number}.'
+            })
+        subtotal = purchase_item.unit_purchase_price * quantity
+        prepared.append((purchase_item, batch, quantity, subtotal))
+        total_amount += subtotal
+
+    return_record = PurchaseReturn.objects.create(
+        return_number=_generate_purchase_return_number(),
+        purchase=purchase,
+        total_amount=total_amount,
+        refund_method=refund_method,
+        reason=reason.strip(),
+        processed_by=processed_by,
+        created_by=processed_by,
+        updated_by=processed_by,
+    )
+
+    locked_variants = {
+        variant.id: variant
+        for variant in ProductVariant.objects.select_for_update().filter(
+            id__in=[item.variant_id for item, _, _, _ in prepared]
+        ).order_by('id')
+    }
+    for purchase_item, batch, quantity, subtotal in prepared:
+        PurchaseReturnItem.objects.create(
+            return_record=return_record,
+            purchase_item=purchase_item,
+            batch=batch,
+            quantity=quantity,
+            unit_refund_price=purchase_item.unit_purchase_price,
+            subtotal=subtotal,
+        )
+        batch.remaining_quantity -= quantity
+        if batch.remaining_quantity == 0:
+            batch.status = InventoryBatch.Status.EXHAUSTED
+        batch.save(update_fields=['remaining_quantity', 'status', 'updated_at'])
+
+        variant = locked_variants[purchase_item.variant_id]
+        previous_stock = variant.current_stock
+        if quantity > previous_stock:
+            raise ValidationError({'items': f'Stock for {variant} would become negative.'})
+        variant.current_stock -= quantity
+        variant.updated_by = processed_by
+        variant.save(update_fields=['current_stock', 'updated_by', 'updated_at'])
+        record_stock_movement(
+            variant=variant,
+            movement_type=InventoryMovement.MovementType.STOCK_OUT,
+            quantity=-quantity,
+            previous_stock=previous_stock,
+            new_stock=variant.current_stock,
+            reason=f'Purchase return {return_record.return_number}',
+            created_by=processed_by,
+            reference_type=InventoryMovement.ReferenceType.PURCHASE_RETURN,
+            reference_id=str(return_record.id),
+        )
+
+    AccountabilityTransaction.objects.create(
+        transaction_number=next_accountability_transaction_number(),
+        direction=AccountabilityTransaction.Direction.IN,
+        type=AccountabilityTransaction.TxType.PURCHASE_RETURN,
+        category='Stock Purchase Return',
+        amount=total_amount,
+        payment_method=refund_method,
+        reference_type='PurchaseReturn',
+        reference_id=str(return_record.id),
+        description=f'Purchase refund for {purchase.purchase_number}',
+        note=reason.strip(),
+        created_by=processed_by,
+        updated_by=processed_by,
+    )
+    return return_record

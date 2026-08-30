@@ -13,6 +13,8 @@ class DashboardSummarySerializer(serializers.Serializer):
     debt_recovered = serializers.DecimalField(max_digits=18, decimal_places=2)
     stock_purchase_spend = serializers.DecimalField(max_digits=18, decimal_places=2)
     operating_expenses = serializers.DecimalField(max_digits=18, decimal_places=2)
+    cash_reversals = serializers.DecimalField(max_digits=18, decimal_places=2)
+    purchase_returns = serializers.DecimalField(max_digits=18, decimal_places=2)
     net_cash_generated = serializers.DecimalField(max_digits=18, decimal_places=2)
     outstanding_debt = serializers.DecimalField(max_digits=18, decimal_places=2)
     debtor_count = serializers.IntegerField()

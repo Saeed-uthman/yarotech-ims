@@ -22,7 +22,7 @@ class InventoryBatchSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_is_expired(self, obj):
+    def get_is_expired(self, obj) -> bool:
         from django.utils import timezone
         return bool(obj.expiry_date and obj.expiry_date < timezone.localdate())
 

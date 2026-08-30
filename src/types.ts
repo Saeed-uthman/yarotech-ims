@@ -1254,7 +1254,9 @@ export interface DashboardSummaryKPIs {
   debtRecovered: number; // Subsequent customer debt payments
   stockPurchaseSpend: number; // Completed stock-purchase cash outflow
   operatingExpenses: number; // Completed manual operating-expense outflow
-  netCashGenerated: number; // salesCollected + debtRecovered - stockPurchaseSpend - operatingExpenses
+  cashReversals: number; // Completed sale refunds and debt-payment reversals
+  purchaseReturns: number; // Cash recovered from stock purchase returns
+  netCashGenerated: number; // inflows - purchases - expenses - reversals
   outstandingDebt: number;
   debtorCount: number;
   inventoryValue: number; // Admin only: current stock * base price

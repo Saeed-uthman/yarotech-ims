@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import F, Q
+from django.db.models import F, Q, Sum
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
@@ -13,7 +13,7 @@ from apps.inventory.services import record_stock_movement
 from apps.products.models import ProductVariant
 from apps.settings_app.models import SystemSettings
 
-from .models import Sale, SaleItem
+from .models import Sale, SaleItem, SaleReturn, SaleReturnBatchRestoration, SaleReturnItem
 
 
 def _generate_invoice_number():
@@ -24,6 +24,17 @@ def _generate_invoice_number():
         prefix=prefix,
         queryset=Sale.objects.all(),
         field_name='invoice_number',
+        width=6,
+    )
+
+
+def _generate_return_number():
+    today = timezone.now()
+    return next_document_number(
+        sequence_name=f'sale-return:{today:%Y%m}',
+        prefix=f'RET-{today:%Y%m}-',
+        queryset=SaleReturn.objects.all(),
+        field_name='return_number',
         width=6,
     )
 
@@ -234,6 +245,8 @@ def cancel_sale(*, sale, cancelled_by, reason=''):
     sale = Sale.objects.select_for_update().get(pk=sale.pk)
     if sale.status == Sale.Status.CANCELLED:
         raise ValidationError({'detail': 'Sale is already cancelled.'})
+    if sale.returns.exists():
+        raise ValidationError({'detail': 'A sale with recorded returns cannot be cancelled.'})
 
     # Debt recoveries update ``Sale.amount_paid`` but are posted to the
     # accountability ledger under their own CustomerDebtPayment reference.
@@ -304,3 +317,153 @@ def cancel_sale(*, sale, cancelled_by, reason=''):
     sale.save(update_fields=['status', 'updated_by', 'updated_at'])
 
     return sale
+
+
+@transaction.atomic
+def process_sale_return(*, sale, items, refund_method, reason, processed_by):
+    # Lock only the sale row. Joining the nullable customer relation here makes
+    # PostgreSQL reject FOR UPDATE on the nullable side of the outer join.
+    sale = Sale.objects.select_for_update().get(pk=sale.pk)
+    if sale.status != Sale.Status.COMPLETED:
+        raise ValidationError({'detail': 'Only completed sales can be returned.'})
+    if sale.debt_payment_allocations.filter(payment__is_reversed=False).exists():
+        raise ValidationError({
+            'detail': 'Reverse all debt recovery payments allocated to this sale before recording a return.'
+        })
+
+    requested_ids = [item['sale_item_id'] for item in items]
+    sale_items = {
+        item.id: item
+        for item in SaleItem.objects.select_for_update()
+        .select_related('variant')
+        .filter(sale=sale, id__in=requested_ids)
+    }
+    if len(sale_items) != len(set(requested_ids)):
+        raise ValidationError({'items': 'One or more sale items do not belong to this sale.'})
+
+    prepared = []
+    total_amount = Decimal('0.00')
+    for request_item in items:
+        sale_item = sale_items[request_item['sale_item_id']]
+        quantity = request_item['quantity']
+        already_returned = sale_item.return_items.aggregate(total=Sum('quantity'))['total'] or 0
+        if quantity <= 0 or quantity > sale_item.quantity - already_returned:
+            raise ValidationError({
+                'items': f'Return quantity for item {sale_item.id} exceeds the remaining returnable quantity.'
+            })
+        discount_factor = sale.total_amount / sale.subtotal if sale.subtotal else Decimal('0.00')
+        unit_refund_price = (sale_item.actual_selling_price * discount_factor).quantize(Decimal('0.01'))
+        subtotal = unit_refund_price * quantity
+        prepared.append((sale_item, quantity, unit_refund_price, subtotal))
+        total_amount += subtotal
+
+    previously_returned = sale.returns.aggregate(total=Sum('total_amount'))['total'] or Decimal('0.00')
+    if total_amount > sale.total_amount - previously_returned:
+        raise ValidationError({'items': 'Return amount exceeds the remaining refundable sale amount.'})
+
+    debt_reduction = min(total_amount, sale.outstanding_amount)
+    refund_amount = total_amount - debt_reduction
+    if refund_amount > sale.amount_paid:
+        raise ValidationError({'detail': 'Refund exceeds the cash collected for this sale.'})
+
+    return_record = SaleReturn.objects.create(
+        return_number=_generate_return_number(),
+        sale=sale,
+        total_amount=total_amount,
+        debt_reduction=debt_reduction,
+        refund_amount=refund_amount,
+        refund_method=refund_method,
+        reason=reason.strip(),
+        processed_by=processed_by,
+        created_by=processed_by,
+        updated_by=processed_by,
+    )
+
+    locked_variants = {
+        variant.id: variant
+        for variant in ProductVariant.objects.select_for_update().filter(
+            id__in=[sale_item.variant_id for sale_item, _, _, _ in prepared]
+        )
+    }
+    for sale_item, quantity, unit_refund_price, subtotal in prepared:
+        cost = sale_item.unit_base_price * quantity
+        return_item = SaleReturnItem.objects.create(
+            return_record=return_record,
+            sale_item=sale_item,
+            quantity=quantity,
+            unit_refund_price=unit_refund_price,
+            subtotal=subtotal,
+            historical_cost=cost,
+            profit_reversal=subtotal - cost,
+        )
+
+        remaining = quantity
+        for allocation in sale_item.batch_allocations.select_related('batch').order_by('id'):
+            restored = SaleReturnBatchRestoration.objects.filter(
+                return_item__sale_item=sale_item,
+                batch=allocation.batch,
+            ).aggregate(total=Sum('quantity'))['total'] or 0
+            available = allocation.quantity - restored
+            if available <= 0:
+                continue
+            restore_quantity = min(remaining, available)
+            batch = InventoryBatch.objects.select_for_update().get(pk=allocation.batch_id)
+            batch.remaining_quantity += restore_quantity
+            batch.status = InventoryBatch.Status.AVAILABLE
+            batch.save(update_fields=['remaining_quantity', 'status', 'updated_at'])
+            SaleReturnBatchRestoration.objects.create(
+                return_item=return_item,
+                batch=batch,
+                quantity=restore_quantity,
+            )
+            remaining -= restore_quantity
+            if remaining == 0:
+                break
+        if remaining:
+            raise ValidationError({'items': f'Batch allocation history is incomplete for sale item {sale_item.id}.'})
+
+        variant = locked_variants[sale_item.variant_id]
+        previous_stock = variant.current_stock
+        variant.current_stock += quantity
+        variant.updated_by = processed_by
+        variant.save(update_fields=['current_stock', 'updated_by', 'updated_at'])
+        record_stock_movement(
+            variant=variant,
+            movement_type=InventoryMovement.MovementType.STOCK_IN,
+            quantity=quantity,
+            previous_stock=previous_stock,
+            new_stock=variant.current_stock,
+            reason=f'Sale return {return_record.return_number}',
+            created_by=processed_by,
+            reference_type=InventoryMovement.ReferenceType.SALE_RETURN,
+            reference_id=str(return_record.id),
+        )
+
+    sale.outstanding_amount -= debt_reduction
+    sale.amount_paid -= refund_amount
+    if sale.outstanding_amount == 0:
+        sale.payment_status = Sale.PaymentStatus.PAID
+    elif sale.amount_paid == 0:
+        sale.payment_status = Sale.PaymentStatus.UNPAID
+    else:
+        sale.payment_status = Sale.PaymentStatus.PARTIAL
+    sale.updated_by = processed_by
+    sale.save(update_fields=['outstanding_amount', 'amount_paid', 'payment_status', 'updated_by', 'updated_at'])
+
+    if refund_amount > 0:
+        AccountabilityTransaction.objects.create(
+            transaction_number=next_accountability_transaction_number(),
+            direction=AccountabilityTransaction.Direction.OUT,
+            type=AccountabilityTransaction.TxType.SALE_REFUND,
+            category='Customer Sale Refund',
+            amount=refund_amount,
+            payment_method=refund_method,
+            reference_type='SaleReturn',
+            reference_id=str(return_record.id),
+            description=f'Refund for {sale.invoice_number}',
+            customer_name=sale.customer.name if sale.customer_id else '',
+            note=reason.strip(),
+            created_by=processed_by,
+            updated_by=processed_by,
+        )
+    return return_record

@@ -11,14 +11,18 @@ if not exist "%PYTHON_EXE%" (
     exit /b 1
 )
 
-"%PYTHON_EXE%" "%PROJECT_DIR%scripts\backup_sqlite.py" --force
+for /f "tokens=1,* delims==" %%A in ('findstr /b /i "DB_ENGINE=" "%PROJECT_DIR%.env" 2^>nul') do set "DB_ENGINE=%%B"
+if not defined DB_ENGINE for /f "tokens=1,* delims==" %%A in ('findstr /b /i "DB_ENGINE=" "%PROJECT_DIR%alamaan_backend\.env" 2^>nul') do set "DB_ENGINE=%%~B"
+set "DB_ENGINE=%DB_ENGINE:"=%"
+if /i "%DB_ENGINE%"=="postgresql" (
+    "%PYTHON_EXE%" "%PROJECT_DIR%scripts\backup_postgres.py" --force
+) else if /i "%DB_ENGINE%"=="postgres" (
+    "%PYTHON_EXE%" "%PROJECT_DIR%scripts\backup_postgres.py" --force
+) else (
+    "%PYTHON_EXE%" "%PROJECT_DIR%scripts\backup_sqlite.py" --force
+)
 set "BACKUP_RESULT=%ERRORLEVEL%"
-if "%BACKUP_RESULT%"=="2" (
-    echo.
-    echo PostgreSQL is selected. Use the PostgreSQL pg_dump backup job instead.
-    pause
-    exit /b 2
-) else if not "%BACKUP_RESULT%"=="0" (
+if not "%BACKUP_RESULT%"=="0" (
     echo.
     echo Backup failed. Do not assume the current data is protected.
     pause

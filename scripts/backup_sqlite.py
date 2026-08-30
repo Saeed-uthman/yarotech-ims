@@ -113,6 +113,8 @@ def main() -> int:
     repository_root = Path(__file__).resolve().parents[1]
     backend_dir = repository_root / "alamaan_backend"
     environment = read_env(repository_root / ".env")
+    for key, value in read_env(backend_dir / ".env").items():
+        environment.setdefault(key, value)
     database_engine = environment.get("DB_ENGINE", "sqlite").strip().lower()
 
     if database_engine not in {"sqlite", "sqlite3"}:

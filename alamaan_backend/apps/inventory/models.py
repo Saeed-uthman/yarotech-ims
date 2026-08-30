@@ -15,6 +15,8 @@ class InventoryMovement(TimeStampedModel):
         STOCK_PURCHASE = 'STOCK_PURCHASE', 'Stock Purchase'
         MANUAL_ADJUSTMENT = 'MANUAL_ADJUSTMENT', 'Manual Adjustment'
         INITIAL_SETUP = 'INITIAL_SETUP', 'Initial Inventory Setup'
+        SALE_RETURN = 'SALE_RETURN', 'Customer Sale Return'
+        PURCHASE_RETURN = 'PURCHASE_RETURN', 'Stock Purchase Return'
 
     variant = models.ForeignKey('products.ProductVariant', on_delete=models.PROTECT, related_name='inventory_movements')
     movement_type = models.CharField(max_length=20, choices=MovementType.choices, db_index=True)

@@ -92,3 +92,44 @@ class SaleItem(TimeStampedModel):
 
     def __str__(self):
         return f'{self.variant} x{self.quantity}'
+
+
+class SaleReturn(AuditableModel):
+    id = models.BigAutoField(primary_key=True)
+    return_number = models.CharField(max_length=32, unique=True, db_index=True)
+    sale = models.ForeignKey(Sale, on_delete=models.PROTECT, related_name='returns')
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    debt_reduction = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    refund_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    refund_method = models.CharField(max_length=20, choices=Sale.PaymentMethod.choices)
+    reason = models.CharField(max_length=500)
+    processed_by = models.ForeignKey(
+        'accounts.User', on_delete=models.PROTECT, related_name='processed_sale_returns'
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class SaleReturnItem(TimeStampedModel):
+    return_record = models.ForeignKey(SaleReturn, on_delete=models.PROTECT, related_name='items')
+    sale_item = models.ForeignKey(SaleItem, on_delete=models.PROTECT, related_name='return_items')
+    quantity = models.PositiveIntegerField()
+    unit_refund_price = models.DecimalField(max_digits=12, decimal_places=2)
+    subtotal = models.DecimalField(max_digits=12, decimal_places=2)
+    historical_cost = models.DecimalField(max_digits=12, decimal_places=2)
+    profit_reversal = models.DecimalField(max_digits=12, decimal_places=2)
+
+    class Meta:
+        ordering = ['id']
+
+
+class SaleReturnBatchRestoration(TimeStampedModel):
+    return_item = models.ForeignKey(SaleReturnItem, on_delete=models.PROTECT, related_name='batch_restorations')
+    batch = models.ForeignKey('inventory.InventoryBatch', on_delete=models.PROTECT, related_name='return_restorations')
+    quantity = models.PositiveIntegerField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['return_item', 'batch'], name='unique_return_item_batch'),
+        ]

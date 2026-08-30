@@ -4,6 +4,7 @@ from .views import (
     PurchaseCancelView,
     PurchaseDetailView,
     PurchaseListCreateView,
+    PurchaseReturnView,
     PurchaseSummaryKpisView,
     SupplierDetailView,
     SupplierListCreateView,
@@ -16,4 +17,5 @@ urlpatterns = [
     path('purchases/summary-kpis/', PurchaseSummaryKpisView.as_view(), name='purchases-summary-kpis'),
     path('purchases/<int:pk>/', PurchaseDetailView.as_view(), name='purchases-detail'),
     path('purchases/<int:pk>/cancel/', PurchaseCancelView.as_view(), name='purchases-cancel'),
+    path('purchases/<int:pk>/returns/', PurchaseReturnView.as_view(), name='purchases-return'),
 ]

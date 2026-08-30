@@ -161,6 +161,27 @@ function groupPurchasesForChart(
 }
 
 export class PurchaseService {
+  public async returnPurchase(
+    purchaseId: string,
+    input: { items: Array<{ purchaseItemId: string; quantity: number }>; refundMethod: 'CASH' | 'TRANSFER' | 'POS'; reason: string }
+  ): Promise<ApiResponse<any>> {
+    const res = await api.post<any>(`/purchases/${numericId(purchaseId)}/returns/`, {
+      items: input.items.map((item) => ({
+        purchase_item_id: numericId(item.purchaseItemId),
+        quantity: item.quantity,
+      })),
+      refund_method: input.refundMethod,
+      reason: input.reason.trim(),
+    });
+    apiCache.invalidateByPrefix('purchases:');
+    apiCache.invalidateByPrefix('inventory:');
+    apiCache.invalidateByPrefix('products:');
+    apiCache.invalidateByPrefix('dashboard:');
+    apiCache.invalidateByPrefix('accountability:');
+    apiCache.invalidateByPrefix('reports:');
+    return { success: true, data: toCamelCaseKeys(res.data), message: res.message };
+  }
+
   public async getSuppliers(search = ''): Promise<ApiResponse<Supplier[]>> {
     const res = await api.get<any>('/suppliers/', { search, per_page: 100 });
     return {

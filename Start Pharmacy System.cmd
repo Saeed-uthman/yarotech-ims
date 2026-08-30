@@ -33,12 +33,18 @@ if not exist "%PROJECT_DIR%node_modules\.bin\vite.cmd" (
 )
 
 echo Checking the local data backup...
-"%PYTHON_EXE%" "%PROJECT_DIR%scripts\backup_sqlite.py"
+for /f "tokens=1,* delims==" %%A in ('findstr /b /i "DB_ENGINE=" "%PROJECT_DIR%.env" 2^>nul') do set "DB_ENGINE=%%B"
+if not defined DB_ENGINE for /f "tokens=1,* delims==" %%A in ('findstr /b /i "DB_ENGINE=" "%PROJECT_DIR%alamaan_backend\.env" 2^>nul') do set "DB_ENGINE=%%~B"
+set "DB_ENGINE=%DB_ENGINE:"=%"
+if /i "%DB_ENGINE%"=="postgresql" (
+    "%PYTHON_EXE%" "%PROJECT_DIR%scripts\backup_postgres.py"
+) else if /i "%DB_ENGINE%"=="postgres" (
+    "%PYTHON_EXE%" "%PROJECT_DIR%scripts\backup_postgres.py"
+) else (
+    "%PYTHON_EXE%" "%PROJECT_DIR%scripts\backup_sqlite.py"
+)
 set "BACKUP_RESULT=%ERRORLEVEL%"
-if "%BACKUP_RESULT%"=="2" (
-    echo WARNING: PostgreSQL is selected, so the SQLite startup backup was skipped.
-    echo Confirm that the separate pg_dump backup job is operating.
-) else if not "%BACKUP_RESULT%"=="0" (
+if not "%BACKUP_RESULT%"=="0" (
     echo.
     echo Startup cancelled because the safety backup failed.
     pause

@@ -17,6 +17,10 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;
 
     client_max_body_size 5m;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()" always;
+    add_header Referrer-Policy "same-origin" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
 
     location /static/ {
         alias /srv/alamaan/pharmacy-ims/alamaan_backend/staticfiles/;

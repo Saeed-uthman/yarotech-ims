@@ -360,7 +360,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5 text-slate-500" />
-                <span>Supplier</span>
+                <span>Supplier / Distributor (Optional)</span>
               </label>
               <select
                 id="purchase-input-supplier"
@@ -373,6 +373,9 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
                   <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
                 ))}
               </select>
+              <p className="mt-1 text-[10px] text-slate-500">
+                Not required for batch or expiry tracking. Use only when you want to record who supplied this shipment.
+              </p>
             </div>
 
             {/* Payment Method */}

@@ -32,14 +32,21 @@ DJANGO_CSRF_COOKIE_SECURE=True
 DJANGO_SECURE_HSTS_SECONDS=31536000
 DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS=True
 DJANGO_SECURE_HSTS_PRELOAD=True
+DJANGO_ENABLE_API_DOCS=False
 ```
 
 Only enable `DJANGO_TRUST_PROXY_HEADERS` when the application accepts traffic
 solely from a trusted proxy that overwrites `X-Forwarded-Proto`.
 
+Production startup rejects wildcard or non-HTTPS CORS/CSRF origins and rejects
+disabled SSL redirects or secure cookies. Interactive API documentation is
+disabled by default outside debug mode; enable it only in a controlled
+administrative environment.
+
 Install `requirements/production.txt`, then run the Django deployment gate:
 
 ```bash
+python ../scripts/check_production_security.py
 python manage.py migrate
 python manage.py collectstatic --noinput
 python manage.py check --deploy
@@ -47,6 +54,10 @@ python manage.py spectacular --file schema.yml --validate
 python manage.py test
 python -m pytest -q -p no:cacheprovider
 ```
+
+The production-security script supplies temporary placeholder domains and a
+temporary high-entropy secret only to `check --deploy --fail-level WARNING`.
+It does not edit `.env`, connect to a different database, or mutate data.
 
 Run the real row-locking tests against PostgreSQL before deployment. The
 database user used for this test must be permitted to create the Django test
@@ -61,7 +72,7 @@ All three tests must run and pass; none should be skipped.
 ## Application and reverse proxy
 
 `gunicorn.conf.py` supplies conservative production defaults. Copy and adapt
-the templates in `deploy/systemd/` and `deploy/nginx/`, replace the example
+the API and frontend templates in `deploy/systemd/` and `deploy/nginx/`, replace the example
 domain and filesystem paths, then validate the NGINX configuration before
 reload. The public `/health/` endpoint performs a minimal database readiness
 check and exposes no application data.
