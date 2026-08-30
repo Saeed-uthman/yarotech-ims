@@ -97,6 +97,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/CashbookSummary'
           description: ''
+  /api/v1/audit-events/:
+    get:
+      operationId: audit_events_list
+      tags:
+      - audit-events
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditEvent'
+          description: ''
   /api/v1/auth/change-password/:
     post:
       operationId: auth_change_password_create
@@ -1062,6 +1078,59 @@ paths:
               schema:
                 $ref: '#/components/schemas/StockPurchaseDetail'
           description: ''
+  /api/v1/purchases/{id}/payments/:
+    get:
+      operationId: purchases_payments_list
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - purchases
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SupplierPaymentOutput'
+          description: ''
+    post:
+      operationId: purchases_payments_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - purchases
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierPaymentInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SupplierPaymentInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SupplierPaymentInputRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierPaymentOutput'
+          description: ''
   /api/v1/purchases/{id}/returns/:
     post:
       operationId: purchases_returns_create
@@ -1447,78 +1516,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/SystemSettingsOutput'
           description: ''
-  /api/v1/suppliers/:
-    get:
-      operationId: suppliers_list
-      tags:
-      - suppliers
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Supplier'
-          description: ''
-    post:
-      operationId: suppliers_create
-      tags:
-      - suppliers
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SupplierRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/SupplierRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/SupplierRequest'
-        required: true
-      security:
-      - jwtAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Supplier'
-          description: ''
-  /api/v1/suppliers/{id}/:
-    patch:
-      operationId: suppliers_partial_update
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        required: true
-      tags:
-      - suppliers
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedSupplierRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedSupplierRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedSupplierRequest'
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Supplier'
-          description: ''
   /api/v1/users/:
     get:
       operationId: users_list
@@ -1839,6 +1836,73 @@ components:
         * `SET_EXACT` - SET_EXACT
         * `INCREMENT` - INCREMENT
         * `DECREMENT` - DECREMENT
+    AuditEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        request_id:
+          type: string
+          format: uuid
+          readOnly: true
+        actor:
+          type: integer
+          readOnly: true
+          nullable: true
+        actor_name:
+          type: string
+          readOnly: true
+          default: System / anonymous
+        actor_email:
+          type: string
+          format: email
+          readOnly: true
+          default: ''
+        method:
+          type: string
+          readOnly: true
+        path:
+          type: string
+          readOnly: true
+        action:
+          type: string
+          readOnly: true
+        outcome:
+          allOf:
+          - $ref: '#/components/schemas/OutcomeEnum'
+          readOnly: true
+        status_code:
+          type: integer
+          readOnly: true
+        ip_address:
+          type: string
+          readOnly: true
+          nullable: true
+        user_agent:
+          type: string
+          readOnly: true
+        metadata:
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - action
+      - actor
+      - actor_email
+      - actor_name
+      - created_at
+      - id
+      - ip_address
+      - metadata
+      - method
+      - outcome
+      - path
+      - request_id
+      - status_code
+      - user_agent
     AvailabilityStatusEnum:
       enum:
       - Available
@@ -2050,15 +2114,24 @@ components:
     CreatePurchaseInputRequest:
       type: object
       properties:
-        supplier_id:
-          type: integer
+        supplier_name:
+          type: string
+          default: ''
+          maxLength: 200
+        amount_paid:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           nullable: true
         items:
           type: array
           items:
             $ref: '#/components/schemas/CreatePurchaseItemInputRequest'
         payment_method:
-          $ref: '#/components/schemas/PaymentMethodEnum'
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/PaymentMethodEnum'
+          - $ref: '#/components/schemas/NullEnum'
         purchase_date:
           type: string
           format: date-time
@@ -2068,7 +2141,6 @@ components:
           default: ''
       required:
       - items
-      - payment_method
     CreatePurchaseItemInputRequest:
       type: object
       properties:
@@ -2193,12 +2265,9 @@ components:
           minLength: 1
           maxLength: 20
         email:
-          oneOf:
-          - type: string
-            format: email
-            default: ''
-          - type: string
-            maxLength: 0
+          type: string
+          format: email
+          default: ''
         address:
           type: string
           default: ''
@@ -2780,14 +2849,9 @@ components:
         company_name:
           type: string
           readOnly: true
-        supplier:
-          type: integer
-          readOnly: true
-          nullable: true
         supplier_name:
           type: string
           readOnly: true
-          default: ''
         batch_number:
           type: string
           readOnly: true
@@ -2838,7 +2902,6 @@ components:
       - received_quantity
       - remaining_quantity
       - status
-      - supplier
       - supplier_name
       - unit_cost
       - updated_at
@@ -3114,6 +3177,19 @@ components:
         * `STOCK_IN` - Stock In
         * `STOCK_OUT` - Stock Out
         * `ADJUSTMENT` - Manual Adjustment
+    NullEnum:
+      enum:
+      - null
+    OutcomeEnum:
+      enum:
+      - SUCCESS
+      - DENIED
+      - FAILED
+      type: string
+      description: |-
+        * `SUCCESS` - Success
+        * `DENIED` - Denied
+        * `FAILED` - Failed
     OverviewReport:
       type: object
       properties:
@@ -3204,12 +3280,9 @@ components:
           minLength: 1
           maxLength: 20
         email:
-          oneOf:
-          - type: string
-            format: email
-            default: ''
-          - type: string
-            maxLength: 0
+          type: string
+          format: email
+          default: ''
         address:
           type: string
           default: ''
@@ -3253,27 +3326,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ProductVariantInputRequest'
-    PatchedSupplierRequest:
-      type: object
-      properties:
-        name:
-          type: string
-          minLength: 1
-          maxLength: 200
-        phone:
-          type: string
-          maxLength: 30
-        email:
-          oneOf:
-          - type: string
-            format: email
-            maxLength: 254
-          - type: string
-            maxLength: 0
-        address:
-          type: string
-        is_active:
-          type: boolean
     PatchedSystemSettingsUpdateRequest:
       type: object
       properties:
@@ -3407,16 +3459,6 @@ components:
         * `CASH` - Cash
         * `TRANSFER` - Bank Transfer
         * `POS` - Card / POS
-    PaymentStatusEnum:
-      enum:
-      - PAID
-      - PARTIAL
-      - UNPAID
-      type: string
-      description: |-
-        * `PAID` - Fully Paid
-        * `PARTIAL` - Partially Paid
-        * `UNPAID` - Credit / Unpaid
     PriceAdjustmentHistory:
       type: object
       properties:
@@ -3981,6 +4023,16 @@ components:
       - company_name
       - product_name
       - quantity
+    PurchasePaymentStatusEnum:
+      enum:
+      - PAID
+      - PARTIAL
+      - UNPAID
+      type: string
+      description: |-
+        * `PAID` - Fully Paid
+        * `PARTIAL` - Partially Paid
+        * `UNPAID` - Unpaid
     PurchaseReturnItemInputRequest:
       type: object
       properties:
@@ -4209,7 +4261,7 @@ components:
           readOnly: true
         payment_status:
           allOf:
-          - $ref: '#/components/schemas/PaymentStatusEnum'
+          - $ref: '#/components/schemas/SalePaymentStatusEnum'
           readOnly: true
         payment_method:
           allOf:
@@ -4359,7 +4411,7 @@ components:
           readOnly: true
         payment_status:
           allOf:
-          - $ref: '#/components/schemas/PaymentStatusEnum'
+          - $ref: '#/components/schemas/SalePaymentStatusEnum'
           readOnly: true
         payment_method:
           allOf:
@@ -4421,7 +4473,7 @@ components:
           readOnly: true
         payment_status:
           allOf:
-          - $ref: '#/components/schemas/PaymentStatusEnum'
+          - $ref: '#/components/schemas/SalePaymentStatusEnum'
           readOnly: true
         payment_method:
           allOf:
@@ -4452,6 +4504,16 @@ components:
         * `TRANSFER` - Bank Transfer
         * `POS` - Card / POS
         * `CREDIT` - Credit
+    SalePaymentStatusEnum:
+      enum:
+      - PAID
+      - PARTIAL
+      - UNPAID
+      type: string
+      description: |-
+        * `PAID` - Fully Paid
+        * `PARTIAL` - Partially Paid
+        * `UNPAID` - Credit / Unpaid
     SaleReceipt:
       type: object
       properties:
@@ -4503,7 +4565,7 @@ components:
           readOnly: true
         payment_status:
           allOf:
-          - $ref: '#/components/schemas/PaymentStatusEnum'
+          - $ref: '#/components/schemas/SalePaymentStatusEnum'
           readOnly: true
         payment_method:
           allOf:
@@ -4773,23 +4835,34 @@ components:
           type: string
           format: date-time
           readOnly: true
-        supplier:
-          type: integer
-          readOnly: true
-          nullable: true
         supplier_name:
           type: string
           readOnly: true
-          default: ''
         total_amount:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
-        payment_method:
-          allOf:
-          - $ref: '#/components/schemas/PaymentMethodEnum'
+        amount_paid:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
+        outstanding_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        payment_status:
+          allOf:
+          - $ref: '#/components/schemas/PurchasePaymentStatusEnum'
+          readOnly: true
+        payment_method:
+          readOnly: true
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/PaymentMethodEnum'
+          - $ref: '#/components/schemas/NullEnum'
         status:
           allOf:
           - $ref: '#/components/schemas/CompletionStatusEnum'
@@ -4817,16 +4890,18 @@ components:
           format: date-time
           readOnly: true
       required:
+      - amount_paid
       - created_at
       - id
       - items
       - note
+      - outstanding_amount
       - payment_method
+      - payment_status
       - purchase_date
       - purchase_number
       - recorded_by_name
       - status
-      - supplier
       - supplier_name
       - total_amount
       - total_units
@@ -4844,15 +4919,34 @@ components:
           type: string
           format: date-time
           readOnly: true
+        supplier_name:
+          type: string
+          readOnly: true
         total_amount:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
-        payment_method:
-          allOf:
-          - $ref: '#/components/schemas/PaymentMethodEnum'
+        amount_paid:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
+        outstanding_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        payment_status:
+          allOf:
+          - $ref: '#/components/schemas/PurchasePaymentStatusEnum'
+          readOnly: true
+        payment_method:
+          readOnly: true
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/PaymentMethodEnum'
+          - $ref: '#/components/schemas/NullEnum'
         status:
           allOf:
           - $ref: '#/components/schemas/CompletionStatusEnum'
@@ -4876,76 +4970,105 @@ components:
           format: date-time
           readOnly: true
       required:
+      - amount_paid
       - created_at
       - id
       - items_count
       - items_summary
+      - outstanding_amount
       - payment_method
+      - payment_status
       - purchase_date
       - purchase_number
       - recorded_by_name
       - status
+      - supplier_name
       - total_amount
       - total_units
-    Supplier:
+    SupplierPaymentInputRequest:
+      type: object
+      properties:
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        payment_method:
+          $ref: '#/components/schemas/PaymentMethodEnum'
+        payment_date:
+          type: string
+          format: date-time
+          nullable: true
+        note:
+          type: string
+          default: ''
+      required:
+      - amount
+      - payment_method
+    SupplierPaymentOutput:
       type: object
       properties:
         id:
           type: integer
           readOnly: true
-        name:
+        payment_number:
           type: string
-          maxLength: 200
-        phone:
+          readOnly: true
+        purchase:
+          type: integer
+          readOnly: true
+        supplier_name:
           type: string
-          maxLength: 30
-        email:
-          oneOf:
-          - type: string
-            format: email
-            maxLength: 254
-          - type: string
-            maxLength: 0
-        address:
+          readOnly: true
+        amount:
           type: string
-        is_active:
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        payment_method:
+          allOf:
+          - $ref: '#/components/schemas/PaymentMethodEnum'
+          readOnly: true
+        payment_date:
+          type: string
+          format: date-time
+          readOnly: true
+        balance_before:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        balance_after:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        recorded_by_name:
+          type: string
+          readOnly: true
+        is_reversed:
           type: boolean
+          readOnly: true
         created_at:
           type: string
           format: date-time
           readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
       required:
+      - amount
+      - balance_after
+      - balance_before
       - created_at
       - id
-      - name
-      - updated_at
-    SupplierRequest:
-      type: object
-      properties:
-        name:
-          type: string
-          minLength: 1
-          maxLength: 200
-        phone:
-          type: string
-          maxLength: 30
-        email:
-          oneOf:
-          - type: string
-            format: email
-            maxLength: 254
-          - type: string
-            maxLength: 0
-        address:
-          type: string
-        is_active:
-          type: boolean
-      required:
-      - name
+      - is_reversed
+      - note
+      - payment_date
+      - payment_method
+      - payment_number
+      - purchase
+      - recorded_by_name
+      - supplier_name
     SystemSettingsOutput:
       type: object
       properties:
@@ -5180,6 +5303,7 @@ components:
       - DEBT_PAYMENT_REVERSAL
       - SALE_REFUND
       - PURCHASE_RETURN
+      - SUPPLIER_PAYMENT
       type: string
       description: |-
         * `SALE` - Sales Revenue
@@ -5189,6 +5313,7 @@ components:
         * `DEBT_PAYMENT_REVERSAL` - Debt Payment Reversal
         * `SALE_REFUND` - Customer Sale Refund
         * `PURCHASE_RETURN` - Stock Purchase Return
+        * `SUPPLIER_PAYMENT` - Supplier Payment
     User:
       type: object
       properties:

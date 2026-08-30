@@ -80,6 +80,8 @@ check and exposes no application data.
 ## Recurring operations
 
 - Run `python manage.py flushexpiredtokens` daily.
+- Run `python manage.py prune_audit_events` on a regular schedule after first reviewing `--dry-run`; retention defaults to 365 days.
+- Monitor the rotating `application.json.log` and `audit.json.log` files and use `X-Request-ID` to correlate reported failures.
 - Back up PostgreSQL daily with `pg_dump` and store encrypted copies off-site.
 - Back up the media directory with the same retention policy.
 - Test restoration regularly; an untested backup is not a recovery plan.

@@ -6,26 +6,8 @@ from rest_framework import serializers
 
 from apps.products.models import ProductVariant
 
-from .models import PurchaseItem, PurchaseReturn, PurchaseReturnItem, StockPurchase, Supplier
-from .services import cancel_purchase, create_stock_purchase, process_purchase_return
-
-
-class SupplierSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Supplier
-        fields = ['id', 'name', 'phone', 'email', 'address', 'is_active', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at']
-
-    def create(self, validated_data):
-        user = self.context['request'].user
-        return Supplier.objects.create(created_by=user, updated_by=user, **validated_data)
-
-    def update(self, instance, validated_data):
-        for field, value in validated_data.items():
-            setattr(instance, field, value)
-        instance.updated_by = self.context['request'].user
-        instance.save()
-        return instance
+from .models import PurchaseItem, PurchaseReturn, PurchaseReturnItem, StockPurchase, SupplierPayment
+from .services import cancel_purchase, create_stock_purchase, process_purchase_return, record_supplier_payment
 
 
 class CreatePurchaseItemInputSerializer(serializers.Serializer):
@@ -42,15 +24,10 @@ class CreatePurchaseItemInputSerializer(serializers.Serializer):
 
 
 class CreatePurchaseInputSerializer(serializers.Serializer):
-    supplier_id = serializers.PrimaryKeyRelatedField(
-        queryset=Supplier.objects.filter(is_active=True),
-        source='supplier',
-        required=False,
-        allow_null=True,
-        default=None,
-    )
+    supplier_name = serializers.CharField(max_length=200, required=False, allow_blank=True, default='')
+    amount_paid = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0, required=False, allow_null=True)
     items = CreatePurchaseItemInputSerializer(many=True, min_length=1)
-    payment_method = serializers.ChoiceField(choices=StockPurchase.PaymentMethod.choices)
+    payment_method = serializers.ChoiceField(choices=StockPurchase.PaymentMethod.choices, required=False, allow_null=True)
     purchase_date = serializers.DateTimeField(required=False, allow_null=True, default=None)
     note = serializers.CharField(required=False, allow_blank=True, default='')
 
@@ -73,8 +50,9 @@ class CreatePurchaseInputSerializer(serializers.Serializer):
                 }
                 for item in items_data
             ],
-            payment_method=validated_data['payment_method'],
-            supplier=validated_data.get('supplier'),
+            payment_method=validated_data.get('payment_method'),
+            amount_paid=validated_data.get('amount_paid'),
+            supplier_name=validated_data.get('supplier_name', ''),
             purchase_date=validated_data.get('purchase_date'),
             note=validated_data.get('note', ''),
         )
@@ -125,7 +103,11 @@ class StockPurchaseListSerializer(serializers.ModelSerializer):
             'id',
             'purchase_number',
             'purchase_date',
+            'supplier_name',
             'total_amount',
+            'amount_paid',
+            'outstanding_amount',
+            'payment_status',
             'payment_method',
             'status',
             'recorded_by_name',
@@ -158,7 +140,6 @@ class StockPurchaseDetailSerializer(serializers.ModelSerializer):
     recorded_by_name = serializers.CharField(source='recorded_by.full_name', read_only=True)
     items = PurchaseItemOutputSerializer(many=True, read_only=True)
     total_units = serializers.SerializerMethodField()
-    supplier_name = serializers.CharField(source='supplier.name', read_only=True, default='')
 
     class Meta:
         model = StockPurchase
@@ -166,9 +147,11 @@ class StockPurchaseDetailSerializer(serializers.ModelSerializer):
             'id',
             'purchase_number',
             'purchase_date',
-            'supplier',
             'supplier_name',
             'total_amount',
+            'amount_paid',
+            'outstanding_amount',
+            'payment_status',
             'payment_method',
             'status',
             'note',
@@ -199,6 +182,29 @@ class StockPurchaseCancelSerializer(serializers.Serializer):
             cancelled_by=cancelled_by,
             reason=self.validated_data['reason'],
         )
+
+
+class SupplierPaymentInputSerializer(serializers.Serializer):
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0.01'))
+    payment_method = serializers.ChoiceField(choices=StockPurchase.PaymentMethod.choices)
+    payment_date = serializers.DateTimeField(required=False, allow_null=True, default=None)
+    note = serializers.CharField(required=False, allow_blank=True, default='')
+
+    def save(self, *, purchase, recorded_by):
+        return record_supplier_payment(purchase=purchase, user=recorded_by, **self.validated_data)
+
+
+class SupplierPaymentOutputSerializer(serializers.ModelSerializer):
+    recorded_by_name = serializers.CharField(source='recorded_by.full_name', read_only=True)
+
+    class Meta:
+        model = SupplierPayment
+        fields = [
+            'id', 'payment_number', 'purchase', 'supplier_name', 'amount',
+            'payment_method', 'payment_date', 'balance_before', 'balance_after',
+            'note', 'recorded_by_name', 'is_reversed', 'created_at',
+        ]
+        read_only_fields = fields
 
 
 class PurchaseReturnItemInputSerializer(serializers.Serializer):

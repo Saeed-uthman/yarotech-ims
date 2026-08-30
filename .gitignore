@@ -17,5 +17,6 @@ __pycache__/
 alamaan_backend/staticfiles/*
 !alamaan_backend/staticfiles/.gitkeep
 backups/
+alamaan_backend/logs/
 alamaan_backend/media/*
 !alamaan_backend/media/.gitkeep

@@ -92,9 +92,7 @@ class InventoryBatchListView(APIView):
 
     @extend_schema(responses={200: InventoryBatchSerializer(many=True)})
     def get(self, request):
-        queryset = InventoryBatch.objects.select_related(
-            'variant__product', 'variant__company', 'supplier'
-        )
+        queryset = InventoryBatch.objects.select_related('variant__product', 'variant__company')
         if request.query_params.get('variant_id'):
             queryset = queryset.filter(variant_id=request.query_params['variant_id'])
         if request.query_params.get('status'):

@@ -84,7 +84,10 @@ def get_cashbook_summary(*, date_range=None, start_date=None, end_date=None):
         transaction_count=Count('id'),
         sales_income=Sum('amount', filter=Q(type=AccountabilityTransaction.TxType.SALE)),
         debt_income=Sum('amount', filter=Q(type=AccountabilityTransaction.TxType.DEBT_PAYMENT)),
-        purchase_expense=Sum('amount', filter=Q(type=AccountabilityTransaction.TxType.STOCK_PURCHASE)),
+        purchase_expense=Sum('amount', filter=Q(type__in=[
+            AccountabilityTransaction.TxType.STOCK_PURCHASE,
+            AccountabilityTransaction.TxType.SUPPLIER_PAYMENT,
+        ])),
         other_expense=Sum('amount', filter=Q(type=AccountabilityTransaction.TxType.OTHER_EXPENSE)),
     )
 

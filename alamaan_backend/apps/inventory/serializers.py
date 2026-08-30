@@ -10,13 +10,12 @@ from .models import InventoryBatch, InventoryMovement
 class InventoryBatchSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='variant.product.name', read_only=True)
     company_name = serializers.CharField(source='variant.company.name', read_only=True)
-    supplier_name = serializers.CharField(source='supplier.name', read_only=True, default='')
     is_expired = serializers.SerializerMethodField()
 
     class Meta:
         model = InventoryBatch
         fields = [
-            'id', 'variant', 'product_name', 'company_name', 'supplier', 'supplier_name',
+            'id', 'variant', 'product_name', 'company_name', 'supplier_name',
             'batch_number', 'expiry_date', 'received_quantity', 'remaining_quantity',
             'unit_cost', 'status', 'received_at', 'is_expired', 'created_at', 'updated_at',
         ]

@@ -30,6 +30,7 @@ def list_purchases(*, search='', date_range=None, payment_method=None, status=No
     if search:
         queryset = queryset.filter(
             Q(purchase_number__icontains=search)
+            | Q(supplier_name__icontains=search)
             | Q(note__icontains=search)
             | Q(recorded_by__full_name__icontains=search)
         )

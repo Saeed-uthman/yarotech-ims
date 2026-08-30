@@ -251,6 +251,11 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
         onClose={() => setSelectedPurchaseForDetails(null)}
         onCancelPurchase={(p) => setSelectedPurchaseForCancel(p)}
         onReturnPurchase={(p) => setSelectedPurchaseForReturn(p)}
+        onSupplierPayment={() => {
+          handleRefreshAll();
+          setSuccessToast('Supplier payment recorded and outstanding purchase balance updated.');
+          setTimeout(() => setSuccessToast(null), 5000);
+        }}
         role={role}
       />
 

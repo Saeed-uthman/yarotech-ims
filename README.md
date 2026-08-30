@@ -345,10 +345,19 @@ Before release, run Django's deployment checks and the complete acceptance gate 
 
 - Use individual staff accounts; never share administrator credentials.
 - Keep `.env`, database files, media, and backups outside version control.
+- Administrative API mutations are recorded in the immutable audit trail. Administrators can review it at `GET /api/v1/audit-events/`; filters include `action`, `outcome`, and `actor`.
+- Application and audit logs are written as rotating JSON files under `alamaan_backend/logs` by default. Use the response `X-Request-ID` to correlate a browser error with server and audit logs.
+- Run `python manage.py prune_audit_events --dry-run` before scheduling `python manage.py prune_audit_events`. Retention defaults to 365 days and cannot be configured below 30 days.
 - Restrict administrator-only actions such as purchases, settings, reporting, inventory adjustment, and staff approval.
 - Verify physical medicine details, current NAFDAC registration, prices, storage requirements, and prescription controls before use.
 - Reconcile daily sales, purchases, customer debt, stock movements, and accountability totals.
 - Protect backups as sensitive business and customer data, and test restoration regularly.
+
+## Final release gate
+
+Double-click `Run Release Readiness Check.cmd` to run the system check, migration-drift check, OpenAPI validation, hardened production security check, full Django suite, frontend type checking and production build, and verification of the newest backup. The runner does not migrate or modify business data.
+
+After the automated gate passes, complete [RELEASE_UAT_CHECKLIST.md](RELEASE_UAT_CHECKLIST.md) with the pharmacy owner. Automated tests do not replace receipt inspection, permission checks, financial reconciliation, backup restoration, or workflow acceptance on the intended computer.
 
 ## License
 

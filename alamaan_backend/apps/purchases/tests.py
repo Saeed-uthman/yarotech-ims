@@ -10,7 +10,7 @@ from apps.accounts.models import User
 from apps.inventory.models import InventoryBatch, InventoryMovement
 from apps.products.models import Category, Company, Product, ProductVariant
 
-from .models import PurchaseReturn, StockPurchase, Supplier
+from .models import PurchaseReturn, StockPurchase, SupplierPayment
 
 
 class PurchaseApiTests(APITestCase):
@@ -89,14 +89,8 @@ class PurchaseApiTests(APITestCase):
 
     def test_purchase_records_supplier_batch_and_expiry(self):
         self.client.force_authenticate(self.admin)
-        supplier_response = self.client.post(reverse('suppliers-list'), {
-            'name': 'Trusted Medical Supplies',
-            'phone': '08011112222',
-        }, format='json')
-        self.assertEqual(supplier_response.status_code, status.HTTP_201_CREATED)
-        supplier = Supplier.objects.get()
         expiry = date.today() + timedelta(days=365)
-        payload = self._purchase_payload(supplier_id=supplier.id)
+        payload = self._purchase_payload(supplier_name='Trusted Medical Supplies')
         payload['items'][0]['batch_number'] = 'AMOX-2027-A'
         payload['items'][0]['expiry_date'] = expiry.isoformat()
 
@@ -104,9 +98,9 @@ class PurchaseApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         batch = InventoryBatch.objects.get(batch_number='AMOX-2027-A')
-        self.assertEqual(batch.supplier, supplier)
+        self.assertEqual(batch.supplier_name, 'Trusted Medical Supplies')
         self.assertEqual(batch.expiry_date, expiry)
-        self.assertEqual(response.data['data']['supplier_name'], supplier.name)
+        self.assertEqual(response.data['data']['supplier_name'], 'Trusted Medical Supplies')
 
     def test_purchase_idempotency_key_prevents_duplicate_restock(self):
         self.client.force_authenticate(self.admin)
@@ -133,6 +127,97 @@ class PurchaseApiTests(APITestCase):
         self.assertEqual(tx.direction, AccountabilityTransaction.Direction.OUT)
         self.assertEqual(tx.amount, Decimal('75000.00'))
         self.assertEqual(tx.reference_type, 'StockPurchase')
+
+    def test_partial_purchase_posts_only_amount_paid(self):
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(
+            reverse('purchases-list'),
+            self._purchase_payload(amount_paid='25000.00'),
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        purchase = StockPurchase.objects.get()
+        self.assertEqual(purchase.amount_paid, Decimal('25000.00'))
+        self.assertEqual(purchase.outstanding_amount, Decimal('50000.00'))
+        self.assertEqual(purchase.payment_status, StockPurchase.PaymentStatus.PARTIAL)
+        self.assertEqual(
+            AccountabilityTransaction.objects.get(type=AccountabilityTransaction.TxType.STOCK_PURCHASE).amount,
+            Decimal('25000.00'),
+        )
+
+    def test_unpaid_purchase_creates_no_cash_outflow(self):
+        self.client.force_authenticate(self.admin)
+        payload = self._purchase_payload(amount_paid='0.00')
+        payload['payment_method'] = None
+        response = self.client.post(reverse('purchases-list'), payload, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        purchase = StockPurchase.objects.get()
+        self.assertEqual(purchase.payment_status, StockPurchase.PaymentStatus.UNPAID)
+        self.assertEqual(purchase.outstanding_amount, purchase.total_amount)
+        self.assertFalse(AccountabilityTransaction.objects.filter(type=AccountabilityTransaction.TxType.STOCK_PURCHASE).exists())
+
+    def test_purchase_rejects_amount_paid_above_total(self):
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(
+            reverse('purchases-list'),
+            self._purchase_payload(amount_paid='75000.01'),
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(StockPurchase.objects.exists())
+
+    def test_admin_can_pay_outstanding_supplier_balance(self):
+        self.client.force_authenticate(self.admin)
+        purchase_response = self.client.post(
+            reverse('purchases-list'), self._purchase_payload(amount_paid='25000.00'), format='json'
+        )
+        purchase_id = purchase_response.data['data']['id']
+
+        response = self.client.post(reverse('purchases-payments', args=[purchase_id]), {
+            'amount': '10000.00',
+            'payment_method': 'TRANSFER',
+            'note': 'Second instalment',
+        }, format='json', HTTP_IDEMPOTENCY_KEY='supplier-payment-test')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        purchase = StockPurchase.objects.get(pk=purchase_id)
+        self.assertEqual(purchase.amount_paid, Decimal('35000.00'))
+        self.assertEqual(purchase.outstanding_amount, Decimal('40000.00'))
+        self.assertEqual(purchase.payment_status, StockPurchase.PaymentStatus.PARTIAL)
+        payment = SupplierPayment.objects.get()
+        self.assertEqual(payment.balance_before, Decimal('50000.00'))
+        self.assertEqual(payment.balance_after, Decimal('40000.00'))
+        tx = AccountabilityTransaction.objects.get(type=AccountabilityTransaction.TxType.SUPPLIER_PAYMENT)
+        self.assertEqual(tx.amount, Decimal('10000.00'))
+
+    def test_supplier_payment_is_idempotent_and_cannot_overpay(self):
+        self.client.force_authenticate(self.admin)
+        created = self.client.post(
+            reverse('purchases-list'), self._purchase_payload(amount_paid='0.00', payment_method=None), format='json'
+        )
+        purchase_id = created.data['data']['id']
+        payload = {'amount': '75000.00', 'payment_method': 'CASH'}
+        headers = {'HTTP_IDEMPOTENCY_KEY': 'supplier-final-payment'}
+
+        first = self.client.post(reverse('purchases-payments', args=[purchase_id]), payload, format='json', **headers)
+        second = self.client.post(reverse('purchases-payments', args=[purchase_id]), payload, format='json', **headers)
+        overpay = self.client.post(
+            reverse('purchases-payments', args=[purchase_id]),
+            {'amount': '1.00', 'payment_method': 'CASH'},
+            format='json',
+            HTTP_IDEMPOTENCY_KEY='supplier-overpay',
+        )
+
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(overpay.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(SupplierPayment.objects.count(), 1)
+        purchase = StockPurchase.objects.get(pk=purchase_id)
+        self.assertEqual(purchase.payment_status, StockPurchase.PaymentStatus.PAID)
+        self.assertEqual(purchase.outstanding_amount, Decimal('0.00'))
 
     def test_cancel_purchase_reverses_stock(self):
         self.client.force_authenticate(self.admin)

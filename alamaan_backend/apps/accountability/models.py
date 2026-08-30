@@ -44,6 +44,7 @@ class AccountabilityTransaction(AuditableModel):
         DEBT_PAYMENT_REVERSAL = 'DEBT_PAYMENT_REVERSAL', 'Debt Payment Reversal'
         SALE_REFUND = 'SALE_REFUND', 'Customer Sale Refund'
         PURCHASE_RETURN = 'PURCHASE_RETURN', 'Stock Purchase Return'
+        SUPPLIER_PAYMENT = 'SUPPLIER_PAYMENT', 'Supplier Payment'
 
     class PaymentMethod(models.TextChoices):
         CASH = 'CASH', 'Cash'

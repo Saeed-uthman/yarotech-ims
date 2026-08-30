@@ -54,9 +54,7 @@ class InventoryBatch(TimeStampedModel):
     purchase_item = models.OneToOneField(
         'purchases.PurchaseItem', on_delete=models.PROTECT, null=True, blank=True, related_name='inventory_batch'
     )
-    supplier = models.ForeignKey(
-        'purchases.Supplier', on_delete=models.PROTECT, null=True, blank=True, related_name='inventory_batches'
-    )
+    supplier_name = models.CharField(max_length=200, blank=True, default='')
     batch_number = models.CharField(max_length=100)
     expiry_date = models.DateField(null=True, blank=True, db_index=True)
     received_quantity = models.PositiveIntegerField()

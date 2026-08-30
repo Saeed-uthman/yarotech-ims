@@ -665,16 +665,8 @@ export interface DebtPaymentInput {
 
 export type StockPurchaseStatus = 'COMPLETED' | 'CANCELLED';
 export type PurchasePaymentMethod = 'CASH' | 'TRANSFER' | 'POS';
+export type PurchasePaymentStatus = 'PAID' | 'PARTIAL' | 'UNPAID';
 export type PurchaseDateRange = 'today' | 'this_week' | 'this_month' | 'overall' | 'custom';
-
-export interface Supplier {
-  id: string;
-  name: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-  isActive: boolean;
-}
 
 export interface PurchaseItemEntity {
   id: string;
@@ -699,10 +691,12 @@ export interface StockPurchase {
   purchaseDate: string; // e.g. "19 Aug 2026, 09:30 AM"
   rawDate: string; // ISO 8601 string for reliable date sorting & range filtering
   recordedBy: string; // e.g. "Pharm. Abdullahi (Admin)"
-  supplierId?: string | null;
   supplierName?: string;
   totalAmount: number; // SUM of line item subtotals
-  paymentMethod: PurchasePaymentMethod; // CASH | TRANSFER | POS
+  amountPaid: number;
+  outstandingAmount: number;
+  paymentStatus: PurchasePaymentStatus;
+  paymentMethod: PurchasePaymentMethod | null;
   status: StockPurchaseStatus; // COMPLETED | CANCELLED
   note?: string;
   items: PurchaseItemEntity[];
@@ -753,8 +747,9 @@ export interface CreatePurchaseItemInput {
 
 export interface CreatePurchaseInput {
   purchaseDate?: string;
-  paymentMethod: PurchasePaymentMethod;
-  supplierId?: string | null;
+  paymentMethod: PurchasePaymentMethod | null;
+  amountPaid: number;
+  supplierName?: string;
   items: CreatePurchaseItemInput[];
   note?: string;
   recordedBy?: string;
@@ -1133,6 +1128,21 @@ export interface InventoryMovementReportData {
     stockOutSales: number;
     stockOutAdjustments: number;
   };
+}
+
+export interface SupplierPayment {
+  id: string;
+  paymentNumber: string;
+  purchase: string;
+  supplierName: string;
+  amount: number;
+  paymentMethod: PurchasePaymentMethod;
+  paymentDate: string;
+  balanceBefore: number;
+  balanceAfter: number;
+  note?: string;
+  recordedByName: string;
+  isReversed: boolean;
 }
 
 export interface DebtMovementReportData {

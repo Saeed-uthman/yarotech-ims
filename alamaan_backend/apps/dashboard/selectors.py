@@ -127,7 +127,10 @@ def get_dashboard_data(*, user, date_range=None, start_date=None, end_date=None)
             'amount',
             filter=Q(
                 direction=AccountabilityTransaction.Direction.OUT,
-                type=AccountabilityTransaction.TxType.STOCK_PURCHASE,
+                type__in=[
+                    AccountabilityTransaction.TxType.STOCK_PURCHASE,
+                    AccountabilityTransaction.TxType.SUPPLIER_PAYMENT,
+                ],
             ),
         ),
         operating_expenses=Sum(

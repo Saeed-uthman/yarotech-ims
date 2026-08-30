@@ -26,7 +26,7 @@ from apps.sales.models import Sale
 from apps.sales.services import process_pos_sale
 from apps.settings_app.models import SystemSettings
 
-from .models import DocumentSequence, IdempotencyRecord
+from .models import AuditEvent, DocumentSequence, IdempotencyRecord
 
 
 class DocumentSequenceContinuityTests(TestCase):
@@ -68,6 +68,88 @@ class HealthCheckTests(TestCase):
         self.assertIn('camera=()', response['Permissions-Policy'])
         self.assertEqual(response['Cross-Origin-Opener-Policy'], 'same-origin')
         self.assertEqual(response['X-Permitted-Cross-Domain-Policies'], 'none')
+
+
+class AuditEventTests(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            email='audit-admin@example.com',
+            password='StrongPass123!',
+            full_name='Audit Admin',
+            phone='08000000010',
+        )
+        self.cashier = User.objects.create_user(
+            email='audit-cashier@example.com',
+            password='StrongPass123!',
+            full_name='Audit Cashier',
+            phone='08000000011',
+            status=User.Status.ACTIVE,
+            is_active=True,
+        )
+
+    def test_successful_mutation_records_authenticated_actor_and_request_id(self):
+        pending_user = User.objects.create_user(
+            email='audit-pending@example.com',
+            password='StrongPass123!',
+            full_name='Pending User',
+            phone='08000000012',
+        )
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.post(reverse('users-approve', args=[pending_user.id]), {
+            'assigned_role': User.Role.CASHIER,
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        event = AuditEvent.objects.get()
+        self.assertEqual(str(event.request_id), response['X-Request-ID'])
+        self.assertEqual(event.actor, self.admin)
+        self.assertEqual(event.outcome, AuditEvent.Outcome.SUCCESS)
+        self.assertEqual(event.status_code, status.HTTP_200_OK)
+        self.assertEqual(event.metadata, {})
+
+    def test_denied_mutation_is_recorded(self):
+        self.client.force_authenticate(self.cashier)
+
+        response = self.client.post(reverse('system-settings-reset'))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        event = AuditEvent.objects.get()
+        self.assertEqual(event.actor, self.cashier)
+        self.assertEqual(event.outcome, AuditEvent.Outcome.DENIED)
+
+    def test_login_audit_does_not_store_credentials(self):
+        response = self.client.post(reverse('auth-login'), {
+            'email': self.admin.email,
+            'password': 'WrongSecretPassword!',
+        })
+
+        self.assertGreaterEqual(response.status_code, 400)
+        event = AuditEvent.objects.get()
+        self.assertEqual(event.action, 'auth.login')
+        self.assertEqual(event.metadata, {})
+        self.assertNotIn('WrongSecretPassword', str(event.__dict__))
+
+    def test_audit_event_list_is_admin_only_and_filterable(self):
+        AuditEvent.objects.create(
+            request_id='cf5166fa-cfab-4a99-bd99-a0bc27222e5e',
+            actor=self.admin,
+            method='POST',
+            path='/api/v1/example/',
+            action='example.created',
+            outcome=AuditEvent.Outcome.SUCCESS,
+            status_code=201,
+        )
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.get(reverse('audit-events-list'), {'outcome': 'success'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['data'][0]['action'], 'example.created')
+
+        self.client.force_authenticate(self.cashier)
+        denied_response = self.client.get(reverse('audit-events-list'))
+        self.assertEqual(denied_response.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class WorkflowFixtureMixin:

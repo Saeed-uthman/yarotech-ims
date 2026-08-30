@@ -57,3 +57,41 @@ class DocumentSequence(TimeStampedModel):
 
     def __str__(self):
         return f'{self.name}:{self.value}'
+
+
+class AuditEvent(models.Model):
+    class Outcome(models.TextChoices):
+        SUCCESS = 'SUCCESS', 'Success'
+        DENIED = 'DENIED', 'Denied'
+        FAILED = 'FAILED', 'Failed'
+
+    id = models.BigAutoField(primary_key=True)
+    request_id = models.UUIDField(db_index=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='audit_events',
+    )
+    method = models.CharField(max_length=10)
+    path = models.CharField(max_length=255, db_index=True)
+    action = models.CharField(max_length=100, db_index=True)
+    outcome = models.CharField(max_length=10, choices=Outcome.choices, db_index=True)
+    status_code = models.PositiveSmallIntegerField()
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=255, blank=True, default='')
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['action', 'created_at'], name='common_aud_action_7f2f86_idx')]
+
+    def save(self, *args, **kwargs):
+        if self.pk and type(self).objects.filter(pk=self.pk).exists():
+            raise NotImplementedError('Audit events are immutable and cannot be updated.')
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise NotImplementedError('Audit events are immutable and cannot be deleted individually.')

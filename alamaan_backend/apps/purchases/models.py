@@ -5,21 +5,12 @@ from django.utils import timezone
 from apps.common.models import AuditableModel, TimeStampedModel
 
 
-class Supplier(AuditableModel):
-    name = models.CharField(max_length=200, unique=True)
-    phone = models.CharField(max_length=30, blank=True, default='')
-    email = models.EmailField(blank=True, default='')
-    address = models.TextField(blank=True, default='')
-    is_active = models.BooleanField(default=True, db_index=True)
-
-    class Meta:
-        ordering = ['name']
-
-    def __str__(self):
-        return self.name
-
-
 class StockPurchase(AuditableModel):
+    class PaymentStatus(models.TextChoices):
+        PAID = 'PAID', 'Fully Paid'
+        PARTIAL = 'PARTIAL', 'Partially Paid'
+        UNPAID = 'UNPAID', 'Unpaid'
+
     class PaymentMethod(models.TextChoices):
         CASH = 'CASH', 'Cash'
         TRANSFER = 'TRANSFER', 'Bank Transfer'
@@ -32,15 +23,12 @@ class StockPurchase(AuditableModel):
     id = models.BigAutoField(primary_key=True)
     purchase_number = models.CharField(max_length=32, unique=True, db_index=True)
     purchase_date = models.DateTimeField(default=timezone.now)
-    supplier = models.ForeignKey(
-        Supplier,
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name='purchases',
-    )
+    supplier_name = models.CharField(max_length=200, blank=True, default='', db_index=True)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2)
-    payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices)
+    amount_paid = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    outstanding_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    payment_status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PAID, db_index=True)
+    payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices, null=True, blank=True)
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
@@ -57,6 +45,10 @@ class StockPurchase(AuditableModel):
     class Meta:
         constraints = [
             models.CheckConstraint(condition=Q(total_amount__gte=0), name='purchase_total_non_negative'),
+            models.CheckConstraint(condition=Q(amount_paid__gte=0), name='purchase_paid_non_negative'),
+            models.CheckConstraint(condition=Q(outstanding_amount__gte=0), name='purchase_outstanding_non_negative'),
+            models.CheckConstraint(condition=Q(amount_paid__lte=models.F('total_amount')), name='purchase_paid_not_above_total'),
+            models.CheckConstraint(condition=Q(amount_paid=models.F('total_amount') - models.F('outstanding_amount')), name='purchase_payment_balances_total'),
         ]
         ordering = ['-created_at']
 
@@ -81,6 +73,24 @@ class PurchaseItem(TimeStampedModel):
 
     def __str__(self):
         return f'{self.variant} x{self.quantity}'
+
+
+class SupplierPayment(AuditableModel):
+    payment_number = models.CharField(max_length=32, unique=True, db_index=True)
+    purchase = models.ForeignKey(StockPurchase, on_delete=models.PROTECT, related_name='supplier_payments')
+    supplier_name = models.CharField(max_length=200, blank=True, default='')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    payment_method = models.CharField(max_length=20, choices=StockPurchase.PaymentMethod.choices)
+    payment_date = models.DateTimeField(default=timezone.now)
+    balance_before = models.DecimalField(max_digits=12, decimal_places=2)
+    balance_after = models.DecimalField(max_digits=12, decimal_places=2)
+    note = models.TextField(blank=True, default='')
+    recorded_by = models.ForeignKey('accounts.User', on_delete=models.PROTECT, related_name='recorded_supplier_payments')
+    is_reversed = models.BooleanField(default=False, db_index=True)
+
+    class Meta:
+        constraints = [models.CheckConstraint(condition=Q(amount__gt=0), name='supplier_payment_positive')]
+        ordering = ['-payment_date', '-id']
 
 
 class PurchaseReturn(AuditableModel):

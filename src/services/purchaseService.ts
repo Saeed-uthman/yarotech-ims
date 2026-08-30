@@ -8,7 +8,8 @@ import {
   CreatePurchaseInput,
   UserRole,
   ApiResponse,
-  Supplier,
+  SupplierPayment,
+  PurchasePaymentMethod,
 } from '../types';
 import { api, ApiError, createIdempotencyKey, mapPaginationMeta, toCamelCaseKeys } from './apiClient';
 import { apiCache } from './apiCache';
@@ -50,10 +51,12 @@ function mapBackendPurchase(raw: any): StockPurchase {
     purchaseDate: dateStr,
     rawDate: purchaseDate,
     recordedBy: p.recordedByName || '',
-    supplierId: p.supplier ? String(p.supplier) : null,
     supplierName: p.supplierName || '',
     totalAmount: Number(p.totalAmount || 0),
-    paymentMethod: p.paymentMethod || 'CASH',
+    amountPaid: Number(p.amountPaid || 0),
+    outstandingAmount: Number(p.outstandingAmount || 0),
+    paymentStatus: p.paymentStatus || 'PAID',
+    paymentMethod: p.paymentMethod || null,
     status: p.status || 'COMPLETED',
     note: p.note || '',
     items,
@@ -161,6 +164,27 @@ function groupPurchasesForChart(
 }
 
 export class PurchaseService {
+  public async getSupplierPayments(purchaseId: string): Promise<ApiResponse<SupplierPayment[]>> {
+    const res = await api.get<any>(`/purchases/${numericId(purchaseId)}/payments/`, { per_page: 100 });
+    return { success: true, data: (res.data || []).map((item: any) => toCamelCaseKeys(item) as SupplierPayment) };
+  }
+
+  public async recordSupplierPayment(
+    purchaseId: string,
+    input: { amount: number; paymentMethod: PurchasePaymentMethod; note?: string }
+  ): Promise<ApiResponse<SupplierPayment>> {
+    const res = await api.post<any>(`/purchases/${numericId(purchaseId)}/payments/`, {
+      amount: moneyValue(input.amount, 'Payment amount'),
+      payment_method: input.paymentMethod,
+      note: input.note?.trim() || '',
+    }, createIdempotencyKey('supplier-payment'));
+    apiCache.invalidateByPrefix('purchases:');
+    apiCache.invalidateByPrefix('dashboard:');
+    apiCache.invalidateByPrefix('accountability:');
+    apiCache.invalidateByPrefix('reports:');
+    return { success: true, data: toCamelCaseKeys(res.data) as SupplierPayment, message: res.message };
+  }
+
   public async returnPurchase(
     purchaseId: string,
     input: { items: Array<{ purchaseItemId: string; quantity: number }>; refundMethod: 'CASH' | 'TRANSFER' | 'POS'; reason: string }
@@ -180,25 +204,6 @@ export class PurchaseService {
     apiCache.invalidateByPrefix('accountability:');
     apiCache.invalidateByPrefix('reports:');
     return { success: true, data: toCamelCaseKeys(res.data), message: res.message };
-  }
-
-  public async getSuppliers(search = ''): Promise<ApiResponse<Supplier[]>> {
-    const res = await api.get<any>('/suppliers/', { search, per_page: 100 });
-    return {
-      success: true,
-      data: (res.data || []).map((raw: any) => {
-        const supplier = toCamelCaseKeys(raw);
-        return {
-          id: String(supplier.id),
-          name: supplier.name || '',
-          phone: supplier.phone || '',
-          email: supplier.email || '',
-          address: supplier.address || '',
-          isActive: Boolean(supplier.isActive),
-        };
-      }),
-      meta: mapPaginationMeta(res.meta),
-    };
   }
 
   public async getPurchases(
@@ -358,8 +363,9 @@ export class PurchaseService {
           batch_number: it.batchNumber?.trim() || '',
           expiry_date: it.expiryDate || null,
         })),
-        supplier_id: input.supplierId ? Number(input.supplierId) : null,
-        payment_method: input.paymentMethod,
+        supplier_name: input.supplierName?.trim() || '',
+        amount_paid: moneyValue(input.amountPaid, 'Amount paid'),
+        payment_method: input.amountPaid > 0 ? input.paymentMethod : null,
         purchase_date: purchaseDateTime(input.purchaseDate),
         note: input.note || '',
       };

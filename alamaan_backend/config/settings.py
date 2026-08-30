@@ -85,6 +85,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'apps.common.middleware.RequestAuditMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -254,6 +255,16 @@ SPECTACULAR_SETTINGS = {
             ('POS', 'Card / POS'),
             ('CREDIT', 'Credit'),
         ],
+        'SalePaymentStatusEnum': [
+            ('PAID', 'Fully Paid'),
+            ('PARTIAL', 'Partially Paid'),
+            ('UNPAID', 'Credit / Unpaid'),
+        ],
+        'PurchasePaymentStatusEnum': [
+            ('PAID', 'Fully Paid'),
+            ('PARTIAL', 'Partially Paid'),
+            ('UNPAID', 'Unpaid'),
+        ],
         'CompletionStatusEnum': [
             ('COMPLETED', 'Completed'),
             ('CANCELLED', 'Cancelled'),
@@ -329,6 +340,14 @@ if not DEBUG:
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = env.int('DJANGO_MAX_REQUEST_BYTES', default=5 * 1024 * 1024)
 FILE_UPLOAD_MAX_MEMORY_SIZE = env.int('DJANGO_MAX_UPLOAD_BYTES', default=5 * 1024 * 1024)
+AUDIT_RETENTION_DAYS = env.int('DJANGO_AUDIT_RETENTION_DAYS', default=365)
+if AUDIT_RETENTION_DAYS < 30:
+    raise ImproperlyConfigured('DJANGO_AUDIT_RETENTION_DAYS must be at least 30.')
+
+LOG_DIR = Path(env.str('DJANGO_LOG_DIR', default=str(BASE_DIR / 'logs')))
+if not LOG_DIR.is_absolute():
+    LOG_DIR = REPOSITORY_ROOT / LOG_DIR
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 LOGGING = {
     'version': 1,
@@ -338,26 +357,50 @@ LOGGING = {
             'format': '{asctime} {levelname} {name} {message}',
             'style': '{',
         },
+        'json': {
+            '()': 'apps.common.logging.JsonFormatter',
+        },
     },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'standard',
         },
+        'application_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOG_DIR / 'application.json.log'),
+            'maxBytes': env.int('DJANGO_LOG_MAX_BYTES', default=10 * 1024 * 1024),
+            'backupCount': env.int('DJANGO_LOG_BACKUP_COUNT', default=10),
+            'formatter': 'json',
+            'encoding': 'utf-8',
+        },
+        'audit_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOG_DIR / 'audit.json.log'),
+            'maxBytes': env.int('DJANGO_LOG_MAX_BYTES', default=10 * 1024 * 1024),
+            'backupCount': env.int('DJANGO_LOG_BACKUP_COUNT', default=10),
+            'formatter': 'json',
+            'encoding': 'utf-8',
+        },
     },
     'root': {
-        'handlers': ['console'],
+        'handlers': ['console', 'application_file'],
         'level': env.str('DJANGO_LOG_LEVEL', default='INFO'),
     },
     'loggers': {
         'django.request': {
-            'handlers': ['console'],
+            'handlers': ['console', 'application_file'],
             'level': 'WARNING',
             'propagate': False,
         },
         'django.security': {
-            'handlers': ['console'],
+            'handlers': ['console', 'application_file'],
             'level': 'WARNING',
+            'propagate': False,
+        },
+        'pharmacy.audit': {
+            'handlers': ['audit_file'],
+            'level': 'INFO',
             'propagate': False,
         },
     },

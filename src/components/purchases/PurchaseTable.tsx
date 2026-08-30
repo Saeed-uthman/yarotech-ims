@@ -184,7 +184,7 @@ export const PurchaseTable: React.FC<PurchaseTableProps> = ({
                           : 'bg-purple-50 text-purple-700 border border-purple-200'
                       }`}
                     >
-                      {purchase.paymentMethod}
+                      {purchase.paymentMethod || 'UNPAID'}
                     </span>
                   </td>
 

@@ -128,7 +128,7 @@ export const PurchaseCardList: React.FC<PurchaseCardListProps> = ({
                   {totalUnits} units
                 </span>
                 <span className="text-[10px] font-bold uppercase text-slate-500 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded">
-                  {purchase.paymentMethod}
+                  {purchase.paymentMethod || 'UNPAID'}
                 </span>
               </div>
 

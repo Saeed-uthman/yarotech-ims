@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import PurchaseItem, StockPurchase, Supplier
+from .models import PurchaseItem, StockPurchase, SupplierPayment
 
 
 class PurchaseItemInline(admin.TabularInline):
@@ -22,18 +22,26 @@ class StockPurchaseAdmin(admin.ModelAdmin):
     list_display = (
         'purchase_number',
         'purchase_date',
+        'supplier_name',
         'total_amount',
+        'amount_paid',
+        'outstanding_amount',
+        'payment_status',
         'payment_method',
         'status',
         'recorded_by',
         'created_at',
     )
-    list_filter = ('payment_method', 'status', 'created_at')
-    search_fields = ('purchase_number', 'note', 'recorded_by__full_name')
+    list_filter = ('payment_status', 'payment_method', 'status', 'created_at')
+    search_fields = ('purchase_number', 'supplier_name', 'note', 'recorded_by__full_name')
     readonly_fields = (
         'purchase_number',
         'purchase_date',
+        'supplier_name',
         'total_amount',
+        'amount_paid',
+        'outstanding_amount',
+        'payment_status',
         'payment_method',
         'status',
         'note',
@@ -71,8 +79,12 @@ class PurchaseItemAdmin(admin.ModelAdmin):
         return False
 
 
-@admin.register(Supplier)
-class SupplierAdmin(admin.ModelAdmin):
-    list_display = ('name', 'phone', 'email', 'is_active', 'created_at')
-    search_fields = ('name', 'phone', 'email')
-    list_filter = ('is_active',)
+@admin.register(SupplierPayment)
+class SupplierPaymentAdmin(admin.ModelAdmin):
+    list_display = ('payment_number', 'purchase', 'supplier_name', 'amount', 'payment_method', 'payment_date', 'recorded_by')
+    list_filter = ('payment_method', 'is_reversed', 'payment_date')
+    search_fields = ('payment_number', 'purchase__purchase_number', 'supplier_name')
+    readonly_fields = [field.name for field in SupplierPayment._meta.fields]
+
+    def has_delete_permission(self, request, obj=None):
+        return False

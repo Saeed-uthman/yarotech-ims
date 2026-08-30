@@ -21,7 +21,6 @@ import {
   PurchasePaymentMethod,
   UserRole,
   StockPurchase,
-  Supplier,
 } from '../../types';
 import { productService } from '../../services/productService';
 import { purchaseService } from '../../services/purchaseService';
@@ -74,9 +73,9 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
   // Purchase metadata
   const [purchaseDate, setPurchaseDate] = useState(localToday);
   const [paymentMethod, setPaymentMethod] = useState<PurchasePaymentMethod>('TRANSFER');
+  const [amountPaid, setAmountPaid] = useState('');
   const [note, setNote] = useState('');
-  const [supplierId, setSupplierId] = useState('');
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [supplierName, setSupplierName] = useState('');
   const recordedBy = user?.fullName || 'Current administrator';
 
   // Form states & submission
@@ -93,12 +92,10 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
     setProductSearchError(null);
     setPurchaseDate(localToday());
     setPaymentMethod('TRANSFER');
+    setAmountPaid('');
     setNote('');
-    setSupplierId('');
+    setSupplierName('');
     setFormError(null);
-    purchaseService.getSuppliers()
-      .then((response) => setSuppliers((response.data || []).filter((supplier) => supplier.isActive)))
-      .catch(() => setSuppliers([]));
   }, [role, isOpen]);
 
   // Search Django after a short pause in typing and collect every matching
@@ -242,6 +239,9 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
     0
   );
   const totalUnits = items.reduce((sum, item) => sum + item.quantity, 0);
+  const effectiveAmountPaid = amountPaid === '' ? grandTotal : Number(amountPaid);
+  const outstandingAmount = Math.max(0, grandTotal - (Number.isFinite(effectiveAmountPaid) ? effectiveAmountPaid : 0));
+  const paymentStatus = outstandingAmount === 0 ? 'Paid' : effectiveAmountPaid > 0 ? 'Partially paid' : 'Unpaid';
 
   // Submit stock purchase
   const handleSubmit = async () => {
@@ -263,6 +263,10 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
         return;
       }
     }
+    if (!Number.isFinite(effectiveAmountPaid) || effectiveAmountPaid < 0 || effectiveAmountPaid > grandTotal) {
+      setFormError('Amount paid must be between zero and the purchase total.');
+      return;
+    }
 
     setFormError(null);
     setIsSubmitting(true);
@@ -270,8 +274,9 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
     try {
       const payload: CreatePurchaseInput = {
         purchaseDate,
-        paymentMethod,
-        supplierId: supplierId || null,
+        paymentMethod: effectiveAmountPaid > 0 ? paymentMethod : null,
+        amountPaid: effectiveAmountPaid,
+        supplierName: supplierName.trim() || undefined,
         note: note.trim() || undefined,
         items: items.map((it) => ({
           productVariantId: it.variantId,
@@ -341,7 +346,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
           )}
 
           {/* Top Configuration Strip: Date, Payment Method, Recorded By */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
             {/* Purchase Date */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
@@ -362,20 +367,37 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
                 <Building2 className="w-3.5 h-3.5 text-slate-500" />
                 <span>Supplier / Distributor (Optional)</span>
               </label>
-              <select
+              <input
                 id="purchase-input-supplier"
-                value={supplierId}
-                onChange={(event) => setSupplierId(event.target.value)}
+                type="text"
+                value={supplierName}
+                onChange={(event) => setSupplierName(event.target.value)}
+                maxLength={200}
+                placeholder="e.g. Trusted Medical Supplies"
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="">Not specified</option>
-                {suppliers.map((supplier) => (
-                  <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
-                ))}
-              </select>
+              />
               <p className="mt-1 text-[10px] text-slate-500">
                 Not required for batch or expiry tracking. Use only when you want to record who supplied this shipment.
               </p>
+            </div>
+
+            {/* Payment Method */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Amount Paid Now
+              </label>
+              <input
+                id="purchase-input-amount-paid"
+                type="number"
+                min="0"
+                max={grandTotal}
+                step="0.01"
+                value={amountPaid}
+                onChange={(event) => setAmountPaid(event.target.value)}
+                placeholder={grandTotal.toFixed(2)}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <p className="mt-1 text-[10px] text-slate-500">Blank means fully paid.</p>
             </div>
 
             {/* Payment Method */}
@@ -388,6 +410,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
                 id="purchase-input-payment-method"
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as PurchasePaymentMethod)}
+                disabled={effectiveAmountPaid === 0}
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="TRANSFER">Bank Transfer</option>
@@ -658,11 +681,12 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
 
             <div className="text-right">
               <div className="text-xs text-indigo-300 font-medium uppercase tracking-wider">
-                Total Capital Outflow
+                Paid Now · {paymentStatus}
               </div>
               <div className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                {formatNaira(grandTotal)}
+                {formatNaira(effectiveAmountPaid)}
               </div>
+              <div className="text-xs text-amber-300">Outstanding: {formatNaira(outstandingAmount)}</div>
             </div>
           </div>
         </div>

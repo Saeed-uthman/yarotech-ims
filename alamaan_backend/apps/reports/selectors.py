@@ -256,7 +256,7 @@ def get_financial_movement_report(*, date_range=None, start_date=None, end_date=
             rows.append(row)
         return rows
     type_totals = {row['type']: row['total'] for row in by_type}
-    return {'summary': {'money_in': inflow, 'money_out': outflow, 'net_movement': inflow - outflow, 'sales_income': type_totals.get('SALE', ZERO), 'debt_payments_income': type_totals.get('DEBT_PAYMENT', ZERO), 'purchases_expense': type_totals.get('STOCK_PURCHASE', ZERO), 'operating_expenses': type_totals.get('OTHER_EXPENSE', ZERO)}, 'trends': trends, 'money_in_breakdown': breakdown('IN'), 'money_out_breakdown': breakdown('OUT'), 'total_inflow': inflow, 'total_outflow': outflow, 'net_movement': inflow - outflow, 'by_type': by_type}
+    return {'summary': {'money_in': inflow, 'money_out': outflow, 'net_movement': inflow - outflow, 'sales_income': type_totals.get('SALE', ZERO), 'debt_payments_income': type_totals.get('DEBT_PAYMENT', ZERO), 'purchases_expense': type_totals.get('STOCK_PURCHASE', ZERO) + type_totals.get('SUPPLIER_PAYMENT', ZERO), 'operating_expenses': type_totals.get('OTHER_EXPENSE', ZERO)}, 'trends': trends, 'money_in_breakdown': breakdown('IN'), 'money_out_breakdown': breakdown('OUT'), 'total_inflow': inflow, 'total_outflow': outflow, 'net_movement': inflow - outflow, 'by_type': by_type}
 
 
 def get_product_performance_report(*, date_range=None, start_date=None, end_date=None, category_id=None, company_id=None, product_id=None):

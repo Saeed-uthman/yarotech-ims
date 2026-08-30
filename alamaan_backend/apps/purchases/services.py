@@ -12,7 +12,7 @@ from apps.inventory.models import InventoryBatch, InventoryMovement
 from apps.inventory.services import record_stock_movement
 from apps.products.models import ProductVariant
 
-from .models import PurchaseItem, PurchaseReturn, PurchaseReturnItem, StockPurchase
+from .models import PurchaseItem, PurchaseReturn, PurchaseReturnItem, StockPurchase, SupplierPayment
 
 
 def _generate_purchase_number():
@@ -38,8 +38,72 @@ def _generate_purchase_return_number():
     )
 
 
+def _generate_supplier_payment_number():
+    now = timezone.now()
+    return next_document_number(
+        sequence_name=f'supplier-payment:{now:%Y%m}',
+        prefix=f'SPP-{now:%Y%m}-',
+        queryset=SupplierPayment.objects.all(),
+        field_name='payment_number',
+        width=6,
+    )
+
+
 @transaction.atomic
-def create_stock_purchase(*, user, items, payment_method, supplier=None, purchase_date=None, note=''):
+def record_supplier_payment(*, purchase, user, amount, payment_method, payment_date=None, note=''):
+    purchase = StockPurchase.objects.select_for_update().get(pk=purchase.pk)
+    if purchase.status != StockPurchase.Status.COMPLETED:
+        raise ValidationError({'detail': 'Payments can only be recorded against completed purchases.'})
+    amount = Decimal(str(amount))
+    if amount <= 0:
+        raise ValidationError({'amount': 'Payment amount must be greater than zero.'})
+    if amount > purchase.outstanding_amount:
+        raise ValidationError({'amount': 'Payment amount exceeds the outstanding purchase balance.'})
+
+    balance_before = purchase.outstanding_amount
+    purchase.amount_paid += amount
+    purchase.outstanding_amount -= amount
+    purchase.payment_status = (
+        StockPurchase.PaymentStatus.PAID
+        if purchase.outstanding_amount == 0
+        else StockPurchase.PaymentStatus.PARTIAL
+    )
+    purchase.updated_by = user
+    purchase.save(update_fields=['amount_paid', 'outstanding_amount', 'payment_status', 'updated_by', 'updated_at'])
+
+    payment = SupplierPayment.objects.create(
+        payment_number=_generate_supplier_payment_number(),
+        purchase=purchase,
+        supplier_name=purchase.supplier_name,
+        amount=amount,
+        payment_method=payment_method,
+        payment_date=payment_date or timezone.now(),
+        balance_before=balance_before,
+        balance_after=purchase.outstanding_amount,
+        note=note.strip(),
+        recorded_by=user,
+        created_by=user,
+        updated_by=user,
+    )
+    AccountabilityTransaction.objects.create(
+        transaction_number=next_accountability_transaction_number(),
+        direction=AccountabilityTransaction.Direction.OUT,
+        type=AccountabilityTransaction.TxType.SUPPLIER_PAYMENT,
+        category='Supplier Payment',
+        amount=amount,
+        payment_method=payment_method,
+        reference_type='SupplierPayment',
+        reference_id=str(payment.id),
+        description=f'Supplier payment for {purchase.purchase_number}',
+        note=note.strip(),
+        created_by=user,
+        updated_by=user,
+    )
+    return payment
+
+
+@transaction.atomic
+def create_stock_purchase(*, user, items, payment_method=None, amount_paid=None, supplier_name='', purchase_date=None, note=''):
     variant_ids = [item['product_variant_id'] for item in items]
     variants = {
         v.id: v
@@ -75,15 +139,30 @@ def create_stock_purchase(*, user, items, payment_method, supplier=None, purchas
         })
 
     purchase_number = _generate_purchase_number()
+    amount_paid = total_amount if amount_paid is None else Decimal(str(amount_paid))
+    if amount_paid < 0 or amount_paid > total_amount:
+        raise ValidationError({'amount_paid': 'Amount paid must be between zero and the purchase total.'})
+    if amount_paid > 0 and not payment_method:
+        raise ValidationError({'payment_method': 'Payment method is required when money is paid.'})
+    outstanding_amount = total_amount - amount_paid
+    payment_status = (
+        StockPurchase.PaymentStatus.PAID if outstanding_amount == 0
+        else StockPurchase.PaymentStatus.PARTIAL if amount_paid > 0
+        else StockPurchase.PaymentStatus.UNPAID
+    )
 
+    resolved_supplier_name = supplier_name.strip()
     purchase = StockPurchase.objects.create(
         purchase_number=purchase_number,
         purchase_date=purchase_date or timezone.now(),
         total_amount=total_amount,
+        amount_paid=amount_paid,
+        outstanding_amount=outstanding_amount,
+        payment_status=payment_status,
         payment_method=payment_method,
         note=note.strip(),
         recorded_by=user,
-        supplier=supplier,
+        supplier_name=resolved_supplier_name,
         created_by=user,
         updated_by=user,
     )
@@ -106,7 +185,7 @@ def create_stock_purchase(*, user, items, payment_method, supplier=None, purchas
         InventoryBatch.objects.create(
             variant=variant,
             purchase_item=purchase_item,
-            supplier=supplier,
+            supplier_name=resolved_supplier_name,
             batch_number=batch_number,
             expiry_date=item_data.get('expiry_date'),
             received_quantity=quantity,
@@ -134,19 +213,20 @@ def create_stock_purchase(*, user, items, payment_method, supplier=None, purchas
             reference_id=str(purchase.id),
         )
 
-    AccountabilityTransaction.objects.create(
-        transaction_number=next_accountability_transaction_number(),
-        direction=AccountabilityTransaction.Direction.OUT,
-        type=AccountabilityTransaction.TxType.STOCK_PURCHASE,
-        category='Stock Purchase',
-        amount=total_amount,
-        payment_method=payment_method,
-        reference_type='StockPurchase',
-        reference_id=str(purchase.id),
-        description=f'Stock purchase {purchase_number}',
-        created_by=user,
-        updated_by=user,
-    )
+    if amount_paid > 0:
+        AccountabilityTransaction.objects.create(
+            transaction_number=next_accountability_transaction_number(),
+            direction=AccountabilityTransaction.Direction.OUT,
+            type=AccountabilityTransaction.TxType.STOCK_PURCHASE,
+            category='Stock Purchase',
+            amount=amount_paid,
+            payment_method=payment_method,
+            reference_type='StockPurchase',
+            reference_id=str(purchase.id),
+            description=f'Stock purchase {purchase_number}',
+            created_by=user,
+            updated_by=user,
+        )
 
     return purchase
 
@@ -158,6 +238,8 @@ def cancel_purchase(*, purchase, cancelled_by, reason=''):
         raise ValidationError({'detail': 'Purchase is already cancelled.'})
     if purchase.returns.exists():
         raise ValidationError({'detail': 'A purchase with recorded returns cannot be cancelled.'})
+    if purchase.supplier_payments.exists():
+        raise ValidationError({'detail': 'A purchase with later supplier payments cannot be cancelled.'})
 
     purchase_items = list(purchase.items.select_related('variant').all())
     locked_variants = {
@@ -222,6 +304,8 @@ def process_purchase_return(*, purchase, items, refund_method, reason, processed
     purchase = StockPurchase.objects.select_for_update().get(pk=purchase.pk)
     if purchase.status != StockPurchase.Status.COMPLETED:
         raise ValidationError({'detail': 'Only completed purchases can be returned.'})
+    if purchase.payment_status != StockPurchase.PaymentStatus.PAID:
+        raise ValidationError({'detail': 'Returns for unpaid or partially paid purchases will be enabled with supplier payment allocation.'})
 
     requested_ids = [item['purchase_item_id'] for item in items]
     purchase_items = {
