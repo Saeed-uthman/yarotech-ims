@@ -122,8 +122,26 @@ class DashboardApiTests(APITestCase):
         self.assertEqual(Decimal(data['summary']['total_sales']), Decimal('15000.00'))
         self.assertEqual(Decimal(data['summary']['total_profit']), Decimal('5000.00'))
         self.assertEqual(Decimal(data['summary']['money_in']), Decimal('15000.00'))
+        self.assertEqual(Decimal(data['summary']['current_business_funds']), Decimal('15000.00'))
         self.assertEqual(len(data['top_products']), 1)
         self.assertEqual(len(data['recent_sales']), 1)
+
+    def test_owner_funds_change_current_balance_without_changing_operational_cash_generated(self):
+        self._create_cashbook_transaction(
+            number='ACC-202608-OWNER-1', direction='IN',
+            tx_type=AccountabilityTransaction.TxType.OWNER_CAPITAL, amount='5000.00',
+        )
+        self._create_cashbook_transaction(
+            number='ACC-202608-OWNER-2', direction='OUT',
+            tx_type=AccountabilityTransaction.TxType.OWNER_WITHDRAWAL, amount='1000.00',
+        )
+        self.client.force_authenticate(self.admin)
+        summary = self.client.get(reverse('dashboard')).data['data']['summary']
+
+        self.assertEqual(Decimal(summary['current_business_funds']), Decimal('19000.00'))
+        self.assertEqual(Decimal(summary['owner_capital']), Decimal('5000.00'))
+        self.assertEqual(Decimal(summary['owner_withdrawals']), Decimal('1000.00'))
+        self.assertEqual(Decimal(summary['net_cash_generated']), Decimal('15000.00'))
 
     def test_net_cash_generated_uses_collections_recoveries_and_completed_outflows(self):
         self.sale.total_amount = Decimal('100.00')

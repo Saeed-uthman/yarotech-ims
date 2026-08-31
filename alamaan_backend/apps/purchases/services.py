@@ -300,12 +300,13 @@ def cancel_purchase(*, purchase, cancelled_by, reason=''):
 
 
 @transaction.atomic
-def process_purchase_return(*, purchase, items, refund_method, reason, processed_by):
+def process_purchase_return(
+    *, purchase, items, refund_method, reason, processed_by,
+    cash_refund_amount=None, payable_credit_amount=None,
+):
     purchase = StockPurchase.objects.select_for_update().get(pk=purchase.pk)
     if purchase.status != StockPurchase.Status.COMPLETED:
         raise ValidationError({'detail': 'Only completed purchases can be returned.'})
-    if purchase.payment_status != StockPurchase.PaymentStatus.PAID:
-        raise ValidationError({'detail': 'Returns for unpaid or partially paid purchases will be enabled with supplier payment allocation.'})
 
     requested_ids = [item['purchase_item_id'] for item in items]
     purchase_items = {
@@ -333,10 +334,48 @@ def process_purchase_return(*, purchase, items, refund_method, reason, processed
         prepared.append((purchase_item, batch, quantity, subtotal))
         total_amount += subtotal
 
+    if cash_refund_amount is None and payable_credit_amount is None:
+        payable_credit_amount = min(total_amount, purchase.outstanding_amount)
+        cash_refund_amount = total_amount - payable_credit_amount
+    elif cash_refund_amount is None:
+        payable_credit_amount = Decimal(str(payable_credit_amount))
+        cash_refund_amount = total_amount - payable_credit_amount
+    elif payable_credit_amount is None:
+        cash_refund_amount = Decimal(str(cash_refund_amount))
+        payable_credit_amount = total_amount - cash_refund_amount
+    else:
+        cash_refund_amount = Decimal(str(cash_refund_amount))
+        payable_credit_amount = Decimal(str(payable_credit_amount))
+
+    if cash_refund_amount < 0 or payable_credit_amount < 0 or cash_refund_amount + payable_credit_amount != total_amount:
+        raise ValidationError({'allocation': 'Cash refund plus payable credit must equal the return total.'})
+    if cash_refund_amount > purchase.amount_paid:
+        raise ValidationError({'cash_refund_amount': 'Cash refund exceeds the net amount paid on this purchase.'})
+    if payable_credit_amount > purchase.outstanding_amount:
+        raise ValidationError({'payable_credit_amount': 'Payable credit exceeds the outstanding supplier balance.'})
+    if cash_refund_amount > 0 and not refund_method:
+        raise ValidationError({'refund_method': 'Refund method is required when cash is received.'})
+
+    purchase.amount_paid -= cash_refund_amount
+    purchase.outstanding_amount -= payable_credit_amount
+    purchase.credited_amount += total_amount
+    purchase.payment_status = (
+        StockPurchase.PaymentStatus.PAID if purchase.outstanding_amount == 0
+        else StockPurchase.PaymentStatus.PARTIAL if purchase.amount_paid > 0
+        else StockPurchase.PaymentStatus.UNPAID
+    )
+    purchase.updated_by = processed_by
+    purchase.save(update_fields=[
+        'amount_paid', 'outstanding_amount', 'credited_amount', 'payment_status',
+        'updated_by', 'updated_at',
+    ])
+
     return_record = PurchaseReturn.objects.create(
         return_number=_generate_purchase_return_number(),
         purchase=purchase,
         total_amount=total_amount,
+        cash_refund_amount=cash_refund_amount,
+        payable_credit_amount=payable_credit_amount,
         refund_method=refund_method,
         reason=reason.strip(),
         processed_by=processed_by,
@@ -383,18 +422,19 @@ def process_purchase_return(*, purchase, items, refund_method, reason, processed
             reference_id=str(return_record.id),
         )
 
-    AccountabilityTransaction.objects.create(
-        transaction_number=next_accountability_transaction_number(),
-        direction=AccountabilityTransaction.Direction.IN,
-        type=AccountabilityTransaction.TxType.PURCHASE_RETURN,
-        category='Stock Purchase Return',
-        amount=total_amount,
-        payment_method=refund_method,
-        reference_type='PurchaseReturn',
-        reference_id=str(return_record.id),
-        description=f'Purchase refund for {purchase.purchase_number}',
-        note=reason.strip(),
-        created_by=processed_by,
-        updated_by=processed_by,
-    )
+    if cash_refund_amount > 0:
+        AccountabilityTransaction.objects.create(
+            transaction_number=next_accountability_transaction_number(),
+            direction=AccountabilityTransaction.Direction.IN,
+            type=AccountabilityTransaction.TxType.PURCHASE_RETURN,
+            category='Stock Purchase Return',
+            amount=cash_refund_amount,
+            payment_method=refund_method,
+            reference_type='PurchaseReturn',
+            reference_id=str(return_record.id),
+            description=f'Purchase refund for {purchase.purchase_number}',
+            note=reason.strip(),
+            created_by=processed_by,
+            updated_by=processed_by,
+        )
     return return_record

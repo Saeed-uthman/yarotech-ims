@@ -93,16 +93,41 @@ def get_cashbook_summary(*, date_range=None, start_date=None, end_date=None):
 
     total_in = aggregates['total_in'] or Decimal('0.00')
     total_out = aggregates['total_out'] or Decimal('0.00')
+    owner_fund_types = [
+        AccountabilityTransaction.TxType.OPENING_BALANCE,
+        AccountabilityTransaction.TxType.OWNER_CAPITAL,
+        AccountabilityTransaction.TxType.OWNER_WITHDRAWAL,
+    ]
+    operational = queryset.exclude(type__in=owner_fund_types).aggregate(
+        total_in=Sum('amount', filter=Q(direction=AccountabilityTransaction.Direction.IN)),
+        total_out=Sum('amount', filter=Q(direction=AccountabilityTransaction.Direction.OUT)),
+    )
+
+    overall = AccountabilityTransaction.objects.filter(
+        status=AccountabilityTransaction.Status.COMPLETED
+    ).aggregate(
+        total_in=Sum('amount', filter=Q(direction=AccountabilityTransaction.Direction.IN)),
+        total_out=Sum('amount', filter=Q(direction=AccountabilityTransaction.Direction.OUT)),
+        opening_balance=Sum('amount', filter=Q(type=AccountabilityTransaction.TxType.OPENING_BALANCE)),
+        owner_capital=Sum('amount', filter=Q(type=AccountabilityTransaction.TxType.OWNER_CAPITAL)),
+        owner_withdrawals=Sum('amount', filter=Q(type=AccountabilityTransaction.TxType.OWNER_WITHDRAWAL)),
+    )
 
     return {
         'total_inflow': total_in,
         'total_outflow': total_out,
         'net_movement': total_in - total_out,
+        'net_cash_generated': (operational['total_in'] or Decimal('0.00')) - (operational['total_out'] or Decimal('0.00')),
         'total_transactions_count': aggregates['transaction_count'] or 0,
         'sales_income': aggregates['sales_income'] or Decimal('0.00'),
         'debt_payments_income': aggregates['debt_income'] or Decimal('0.00'),
         'purchases_expense': aggregates['purchase_expense'] or Decimal('0.00'),
         'other_expenses_expense': aggregates['other_expense'] or Decimal('0.00'),
+        'current_business_funds': (overall['total_in'] or Decimal('0.00')) - (overall['total_out'] or Decimal('0.00')),
+        'opening_balance': overall['opening_balance'] or Decimal('0.00'),
+        'owner_capital': overall['owner_capital'] or Decimal('0.00'),
+        'owner_withdrawals': overall['owner_withdrawals'] or Decimal('0.00'),
+        'opening_balance_recorded': bool(overall['opening_balance']),
     }
 
 

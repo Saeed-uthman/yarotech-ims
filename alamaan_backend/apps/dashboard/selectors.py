@@ -213,6 +213,18 @@ def get_dashboard_data(*, user, date_range=None, start_date=None, end_date=None)
         - operating_expenses
         - cash_reversals
     )
+    all_time_funds = AccountabilityTransaction.objects.filter(
+        status=AccountabilityTransaction.Status.COMPLETED,
+    ).aggregate(
+        money_in=Sum('amount', filter=Q(direction=AccountabilityTransaction.Direction.IN)),
+        money_out=Sum('amount', filter=Q(direction=AccountabilityTransaction.Direction.OUT)),
+        opening_balance=Sum('amount', filter=Q(type=AccountabilityTransaction.TxType.OPENING_BALANCE)),
+        owner_capital=Sum('amount', filter=Q(type=AccountabilityTransaction.TxType.OWNER_CAPITAL)),
+        owner_withdrawals=Sum('amount', filter=Q(type=AccountabilityTransaction.TxType.OWNER_WITHDRAWAL)),
+    ) if is_admin else {}
+    current_business_funds = (
+        (all_time_funds.get('money_in') or ZERO) - (all_time_funds.get('money_out') or ZERO)
+    ) if is_admin else ZERO
 
     sales_daily = {
         row['date']: row
@@ -360,6 +372,10 @@ def get_dashboard_data(*, user, date_range=None, start_date=None, end_date=None)
         'cash_reversals': cash_reversals,
         'purchase_returns': purchase_returns,
         'net_cash_generated': net_cash_generated,
+        'current_business_funds': current_business_funds,
+        'opening_balance': all_time_funds.get('opening_balance') or ZERO,
+        'owner_capital': all_time_funds.get('owner_capital') or ZERO,
+        'owner_withdrawals': all_time_funds.get('owner_withdrawals') or ZERO,
         'outstanding_debt': outstanding_debt,
         'debtor_count': debtor_count,
         'inventory_value': (inventory_agg['inventory_value'] or ZERO) if is_admin else ZERO,

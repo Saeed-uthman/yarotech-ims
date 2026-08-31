@@ -281,6 +281,16 @@ SPECTACULAR_SETTINGS = {
             ('admin', 'Administrator'),
             ('cashier', 'Cashier'),
         ],
+        'InventoryMovementTypeEnum': [
+            ('STOCK_IN', 'Stock In'),
+            ('STOCK_OUT', 'Stock Out'),
+            ('ADJUSTMENT', 'Manual Adjustment'),
+        ],
+        'BusinessFundMovementTypeEnum': [
+            ('OPENING_BALANCE', 'Opening Balance'),
+            ('OWNER_CAPITAL', 'Owner Capital Added'),
+            ('OWNER_WITHDRAWAL', 'Owner Withdrawal'),
+        ],
     },
 }
 

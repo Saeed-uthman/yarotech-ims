@@ -256,7 +256,15 @@ def get_financial_movement_report(*, date_range=None, start_date=None, end_date=
             rows.append(row)
         return rows
     type_totals = {row['type']: row['total'] for row in by_type}
-    return {'summary': {'money_in': inflow, 'money_out': outflow, 'net_movement': inflow - outflow, 'sales_income': type_totals.get('SALE', ZERO), 'debt_payments_income': type_totals.get('DEBT_PAYMENT', ZERO), 'purchases_expense': type_totals.get('STOCK_PURCHASE', ZERO) + type_totals.get('SUPPLIER_PAYMENT', ZERO), 'operating_expenses': type_totals.get('OTHER_EXPENSE', ZERO)}, 'trends': trends, 'money_in_breakdown': breakdown('IN'), 'money_out_breakdown': breakdown('OUT'), 'total_inflow': inflow, 'total_outflow': outflow, 'net_movement': inflow - outflow, 'by_type': by_type}
+    owner_types = {'OPENING_BALANCE', 'OWNER_CAPITAL', 'OWNER_WITHDRAWAL'}
+    operational_in = sum(row['total'] for row in by_type if row['direction'] == 'IN' and row['type'] not in owner_types)
+    operational_out = sum(row['total'] for row in by_type if row['direction'] == 'OUT' and row['type'] not in owner_types)
+    all_time = AccountabilityTransaction.objects.filter(status=AccountabilityTransaction.Status.COMPLETED).aggregate(
+        money_in=Sum('amount', filter=Q(direction='IN')),
+        money_out=Sum('amount', filter=Q(direction='OUT')),
+    )
+    current_business_funds = (all_time['money_in'] or ZERO) - (all_time['money_out'] or ZERO)
+    return {'summary': {'money_in': inflow, 'money_out': outflow, 'net_movement': inflow - outflow, 'net_cash_generated': operational_in - operational_out, 'current_business_funds': current_business_funds, 'opening_balance': type_totals.get('OPENING_BALANCE', ZERO), 'owner_capital': type_totals.get('OWNER_CAPITAL', ZERO), 'owner_withdrawals': type_totals.get('OWNER_WITHDRAWAL', ZERO), 'sales_income': type_totals.get('SALE', ZERO), 'debt_payments_income': type_totals.get('DEBT_PAYMENT', ZERO), 'purchases_expense': type_totals.get('STOCK_PURCHASE', ZERO) + type_totals.get('SUPPLIER_PAYMENT', ZERO), 'operating_expenses': type_totals.get('OTHER_EXPENSE', ZERO)}, 'trends': trends, 'money_in_breakdown': breakdown('IN'), 'money_out_breakdown': breakdown('OUT'), 'total_inflow': inflow, 'total_outflow': outflow, 'net_movement': inflow - outflow, 'by_type': by_type}
 
 
 def get_product_performance_report(*, date_range=None, start_date=None, end_date=None, category_id=None, company_id=None, product_id=None):

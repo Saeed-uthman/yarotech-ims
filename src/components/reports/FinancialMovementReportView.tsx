@@ -56,7 +56,12 @@ export const FinancialMovementReportView: React.FC<FinancialMovementReportViewPr
   return (
     <div className="space-y-6" id="financial-movement-report-view">
       {/* 4 Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="cashflow-kpi-summary">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4" id="cashflow-kpi-summary">
+        <div className="bg-slate-900 text-white rounded-xl border border-slate-700 p-4 shadow-xs">
+          <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Current Business Funds</span>
+          <p className="text-2xl font-bold mt-1">₦{summary.currentBusinessFunds.toLocaleString()}</p>
+          <p className="text-xs text-slate-300 mt-1">All-time combined shop balance</p>
+        </div>
         {/* Money In */}
         <div className="bg-white rounded-xl border border-gray-200/90 p-4 shadow-xs">
           <div className="flex items-center justify-between">

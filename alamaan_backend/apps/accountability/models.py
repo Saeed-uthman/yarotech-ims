@@ -45,6 +45,9 @@ class AccountabilityTransaction(AuditableModel):
         SALE_REFUND = 'SALE_REFUND', 'Customer Sale Refund'
         PURCHASE_RETURN = 'PURCHASE_RETURN', 'Stock Purchase Return'
         SUPPLIER_PAYMENT = 'SUPPLIER_PAYMENT', 'Supplier Payment'
+        OPENING_BALANCE = 'OPENING_BALANCE', 'Opening Business Funds'
+        OWNER_CAPITAL = 'OWNER_CAPITAL', 'Owner Capital Added'
+        OWNER_WITHDRAWAL = 'OWNER_WITHDRAWAL', 'Owner Withdrawal'
 
     class PaymentMethod(models.TextChoices):
         CASH = 'CASH', 'Cash'
@@ -79,3 +82,33 @@ class AccountabilityTransaction(AuditableModel):
 
     def __str__(self):
         return f'{self.transaction_number} {self.direction} {self.amount}'
+
+
+class BusinessFundMovement(AuditableModel):
+    class MovementType(models.TextChoices):
+        OPENING_BALANCE = 'OPENING_BALANCE', 'Opening Balance'
+        OWNER_CAPITAL = 'OWNER_CAPITAL', 'Owner Capital Added'
+        OWNER_WITHDRAWAL = 'OWNER_WITHDRAWAL', 'Owner Withdrawal'
+
+    id = models.BigAutoField(primary_key=True)
+    movement_number = models.CharField(max_length=32, unique=True, db_index=True)
+    movement_type = models.CharField(max_length=30, choices=MovementType.choices, db_index=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    note = models.TextField(blank=True, default='')
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount__gt=0),
+                name='business_fund_movement_positive_amount',
+            ),
+            models.UniqueConstraint(
+                fields=['movement_type'],
+                condition=models.Q(movement_type='OPENING_BALANCE'),
+                name='one_business_opening_balance',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.movement_number} - {self.get_movement_type_display()}'

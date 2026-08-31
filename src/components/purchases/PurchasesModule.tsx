@@ -17,6 +17,7 @@ import {
   usePurchases,
   usePurchaseSummary,
   usePurchaseChart,
+  usePurchaseDetails,
 } from '../../hooks/usePurchases';
 import { PurchaseSummaryCards } from './PurchaseSummaryCards';
 import { PurchaseFilters } from './PurchaseFilters';
@@ -80,6 +81,13 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
     isLoading: isLoadingChart,
     refetch: refetchChart,
   } = usePurchaseChart(filters.dateRange, role, filters.startDate, filters.endDate);
+
+  const {
+    purchase: detailedPurchase,
+    isLoading: isLoadingPurchaseDetails,
+    error: purchaseDetailsError,
+    refetch: refetchPurchaseDetails,
+  } = usePurchaseDetails(selectedPurchaseForDetails?.id || null, role);
 
   // Filter handlers
   const handleFilterChange = (updates: Partial<PurchaseFilterParams>) => {
@@ -246,8 +254,11 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
 
       {/* Purchase Details Modal */}
       <PurchaseDetailsModal
-        purchase={selectedPurchaseForDetails}
+        purchase={detailedPurchase}
         isOpen={!!selectedPurchaseForDetails}
+        isLoading={isLoadingPurchaseDetails}
+        error={purchaseDetailsError}
+        onRetry={refetchPurchaseDetails}
         onClose={() => setSelectedPurchaseForDetails(null)}
         onCancelPurchase={(p) => setSelectedPurchaseForCancel(p)}
         onReturnPurchase={(p) => setSelectedPurchaseForReturn(p)}

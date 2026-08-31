@@ -35,6 +35,11 @@ export const PurchaseReturnModal: React.FC<Props> = ({ purchase, isOpen, onClose
   const selected = useMemo(() => (detail?.items || [])
     .map((item) => ({ purchaseItemId: item.id, quantity: quantities[item.id] || 0 }))
     .filter((item) => item.quantity > 0), [detail, quantities]);
+  const returnTotal = useMemo(() => (detail?.items || []).reduce(
+    (sum, item) => sum + (quantities[item.id] || 0) * item.unitPurchasePrice, 0
+  ), [detail, quantities]);
+  const payableCredit = Math.min(returnTotal, detail?.outstandingAmount || 0);
+  const cashRefund = Math.max(0, returnTotal - payableCredit);
 
   if (!isOpen || !purchase) return null;
 
@@ -44,7 +49,11 @@ export const PurchaseReturnModal: React.FC<Props> = ({ purchase, isOpen, onClose
     setSubmitting(true);
     setError('');
     try {
-      await purchaseService.returnPurchase(purchase.id, { items: selected, refundMethod, reason });
+      await purchaseService.returnPurchase(purchase.id, {
+        items: selected,
+        refundMethod: cashRefund > 0 ? refundMethod : null,
+        reason,
+      });
       onSuccess();
       onClose();
     } catch (err) {
@@ -76,10 +85,15 @@ export const PurchaseReturnModal: React.FC<Props> = ({ purchase, isOpen, onClose
             </div>
           )}
           <div className="grid sm:grid-cols-2 gap-3">
-            <select value={refundMethod} onChange={(e) => setRefundMethod(e.target.value as typeof refundMethod)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900">
+            <select value={refundMethod} disabled={cashRefund === 0} onChange={(e) => setRefundMethod(e.target.value as typeof refundMethod)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 disabled:bg-slate-100">
               <option value="CASH">Cash received</option><option value="TRANSFER">Bank transfer received</option><option value="POS">POS reversal</option>
             </select>
             <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Required return reason" maxLength={500} className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900" />
+          </div>
+          <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-xs space-y-1">
+            <div className="flex justify-between"><span>Total return value</span><strong>{formatNaira(returnTotal)}</strong></div>
+            <div className="flex justify-between"><span>Supplier payable reduced</span><strong>{formatNaira(payableCredit)}</strong></div>
+            <div className="flex justify-between"><span>Cash refund received</span><strong>{formatNaira(cashRefund)}</strong></div>
           </div>
           <p className="text-xs text-amber-700">Only units still available in the original batch can be returned. Already sold units are protected.</p>
         </div>

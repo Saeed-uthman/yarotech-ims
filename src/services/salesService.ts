@@ -18,6 +18,8 @@ import { apiCache } from './apiCache';
 
 function mapBackendSaleItem(raw: any): SaleItem {
   const i = toCamelCaseKeys(raw);
+  const sellingPrice = Number(i.unitSellingPrice ?? i.actualSellingPrice ?? 0);
+  const quantity = Number(i.quantity || 0);
   return {
     id: String(i.id),
     productId: '',
@@ -25,15 +27,15 @@ function mapBackendSaleItem(raw: any): SaleItem {
     productName: i.productName || '',
     genericName: '',
     companyName: i.companyName || '',
-    quantity: Number(i.quantity || 0),
+    quantity,
     actualSellingPrice: Number(i.actualSellingPrice || 0),
-    sellingPrice: Number(i.unitSellingPrice || i.actualSellingPrice || 0),
+    sellingPrice,
     historicalBasePrice: Number(i.historicalBasePrice || 0),
     basePrice: Number(i.unitBasePrice || 0),
     minSellingPrice: Number(i.minSellingPrice || 0),
     defaultSellingPrice: Number(i.defaultSellingPrice || 0),
     maxSellingPrice: Number(i.maxSellingPrice || 0),
-    subtotal: Number(i.subtotal || 0),
+    subtotal: Number(i.subtotal ?? (quantity * sellingPrice)),
     profit: Number(i.profit || 0),
   };
 }

@@ -192,6 +192,16 @@ class PurchaseApiTests(APITestCase):
         self.assertEqual(payment.balance_after, Decimal('40000.00'))
         tx = AccountabilityTransaction.objects.get(type=AccountabilityTransaction.TxType.SUPPLIER_PAYMENT)
         self.assertEqual(tx.amount, Decimal('10000.00'))
+        dashboard = self.client.get(reverse('dashboard'))
+        self.assertEqual(
+            Decimal(dashboard.data['data']['summary']['stock_purchase_spend']),
+            Decimal('35000.00'),
+        )
+        cashbook = self.client.get(reverse('accountability-summary'))
+        self.assertEqual(
+            Decimal(cashbook.data['data']['purchases_expense']),
+            Decimal('35000.00'),
+        )
 
     def test_supplier_payment_is_idempotent_and_cannot_overpay(self):
         self.client.force_authenticate(self.admin)
@@ -270,6 +280,19 @@ class PurchaseApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['data']['purchase_number'], purchase.purchase_number)
         self.assertEqual(len(response.data['data']['items']), 1)
+        self.assertEqual(
+            Decimal(response.data['data']['items'][0]['unit_purchase_price']),
+            Decimal('1500.00'),
+        )
+        self.assertEqual(
+            Decimal(response.data['data']['items'][0]['subtotal']),
+            Decimal('75000.00'),
+        )
+
+        list_response = self.client.get(reverse('purchases-list'))
+        listed_item = list_response.data['data'][0]['items_summary'][0]
+        self.assertEqual(Decimal(listed_item['unit_purchase_price']), Decimal('1500.00'))
+        self.assertEqual(Decimal(listed_item['subtotal']), Decimal('75000.00'))
 
     def test_admin_can_return_unsold_purchase_stock(self):
         self.client.force_authenticate(self.admin)
@@ -295,6 +318,55 @@ class PurchaseApiTests(APITestCase):
             type=AccountabilityTransaction.TxType.PURCHASE_RETURN,
             direction=AccountabilityTransaction.Direction.IN,
             amount=Decimal('15000.00'),
+        ).exists())
+
+    def test_unpaid_purchase_return_reduces_payable_without_cash_inflow(self):
+        self.client.force_authenticate(self.admin)
+        created = self.client.post(
+            reverse('purchases-list'), self._purchase_payload(amount_paid='0.00', payment_method=None), format='json'
+        )
+        purchase = StockPurchase.objects.get(pk=created.data['data']['id'])
+        item = purchase.items.get()
+
+        response = self.client.post(reverse('purchases-return', args=[purchase.id]), {
+            'items': [{'purchase_item_id': item.id, 'quantity': 10}],
+            'reason': 'Supplier credit note',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        purchase.refresh_from_db()
+        returned = PurchaseReturn.objects.get()
+        self.assertEqual(returned.cash_refund_amount, Decimal('0.00'))
+        self.assertEqual(returned.payable_credit_amount, Decimal('15000.00'))
+        self.assertEqual(purchase.outstanding_amount, Decimal('60000.00'))
+        self.assertEqual(purchase.credited_amount, Decimal('15000.00'))
+        self.assertFalse(AccountabilityTransaction.objects.filter(type=AccountabilityTransaction.TxType.PURCHASE_RETURN).exists())
+
+    def test_partial_purchase_return_splits_payable_credit_and_cash_refund(self):
+        self.client.force_authenticate(self.admin)
+        created = self.client.post(
+            reverse('purchases-list'), self._purchase_payload(amount_paid='25000.00'), format='json'
+        )
+        purchase = StockPurchase.objects.get(pk=created.data['data']['id'])
+        item = purchase.items.get()
+
+        response = self.client.post(reverse('purchases-return', args=[purchase.id]), {
+            'items': [{'purchase_item_id': item.id, 'quantity': 40}],
+            'refund_method': 'TRANSFER',
+            'reason': 'Large supplier return',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        purchase.refresh_from_db()
+        returned = PurchaseReturn.objects.get()
+        self.assertEqual(returned.payable_credit_amount, Decimal('50000.00'))
+        self.assertEqual(returned.cash_refund_amount, Decimal('10000.00'))
+        self.assertEqual(purchase.outstanding_amount, Decimal('0.00'))
+        self.assertEqual(purchase.amount_paid, Decimal('15000.00'))
+        self.assertEqual(purchase.credited_amount, Decimal('60000.00'))
+        self.assertTrue(AccountabilityTransaction.objects.filter(
+            type=AccountabilityTransaction.TxType.PURCHASE_RETURN,
+            amount=Decimal('10000.00'),
         ).exists())
 
     def test_purchase_return_cannot_remove_stock_already_used(self):

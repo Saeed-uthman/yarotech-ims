@@ -351,11 +351,14 @@ Before release, run Django's deployment checks and the complete acceptance gate 
 - Restrict administrator-only actions such as purchases, settings, reporting, inventory adjustment, and staff approval.
 - Verify physical medicine details, current NAFDAC registration, prices, storage requirements, and prescription controls before use.
 - Reconcile daily sales, purchases, customer debt, stock movements, and accountability totals.
+- Use **Current Business Funds** for the combined amount presently held by the shop. It is calculated as opening balance plus owner capital plus all completed receipts, less purchases, expenses, refunds, and owner withdrawals.
+- **Net Cash Generated** excludes opening balance, owner capital, and owner withdrawals. It measures operational cash generation for the selected period and is not accounting profit.
+- Run `python manage.py reconcile_business_funds` after restoration, before release, and whenever dashboard and physical cash totals appear inconsistent. The command is read-only and fails on missing, duplicate, orphaned, or mismatched owner-fund ledger entries.
 - Protect backups as sensitive business and customer data, and test restoration regularly.
 
 ## Final release gate
 
-Double-click `Run Release Readiness Check.cmd` to run the system check, migration-drift check, OpenAPI validation, hardened production security check, full Django suite, frontend type checking and production build, and verification of the newest backup. The runner does not migrate or modify business data.
+Double-click `Run Release Readiness Check.cmd` to run the system check, migration-drift check, OpenAPI validation, hardened production security check, business-funds reconciliation, full Django suite, frontend type checking and production build, and verification of the newest backup. The runner does not migrate or modify business data.
 
 After the automated gate passes, complete [RELEASE_UAT_CHECKLIST.md](RELEASE_UAT_CHECKLIST.md) with the pharmacy owner. Automated tests do not replace receipt inspection, permission checks, financial reconciliation, backup restoration, or workflow acceptance on the intended computer.
 

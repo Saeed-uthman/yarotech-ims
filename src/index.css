@@ -144,6 +144,15 @@
     background: #ffffff !important;
   }
 
+  html:has(body.printing-sale-receipt),
+  body.printing-sale-receipt,
+  body.printing-sale-receipt #root,
+  body.printing-sale-receipt #sale-receipt-modal,
+  body.printing-sale-receipt #sale-receipt-modal > div {
+    background: #ffffff !important;
+    color-scheme: light !important;
+  }
+
   body.printing-sale-receipt * {
     visibility: hidden !important;
   }
@@ -163,7 +172,7 @@
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
-    background: transparent !important;
+    background: #ffffff !important;
     backdrop-filter: none !important;
   }
 

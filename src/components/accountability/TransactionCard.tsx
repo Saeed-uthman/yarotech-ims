@@ -10,6 +10,7 @@ import {
   User,
   Clock,
   ExternalLink,
+  WalletCards,
 } from 'lucide-react';
 import { AccountabilityTransaction, UserRole } from '../../types';
 
@@ -55,6 +56,12 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
           label: 'Stock Purchase',
           sourcePrefix: 'Purchase',
         };
+      case 'OPENING_BALANCE':
+        return { icon: WalletCards, badgeBg: 'bg-cyan-50 text-cyan-800 border-cyan-200', label: 'Opening Balance', sourcePrefix: 'Funds' };
+      case 'OWNER_CAPITAL':
+        return { icon: WalletCards, badgeBg: 'bg-emerald-50 text-emerald-800 border-emerald-200', label: 'Owner Capital', sourcePrefix: 'Funds' };
+      case 'OWNER_WITHDRAWAL':
+        return { icon: WalletCards, badgeBg: 'bg-rose-50 text-rose-800 border-rose-200', label: 'Owner Withdrawal', sourcePrefix: 'Funds' };
       case 'OTHER_EXPENSE':
       default:
         return {

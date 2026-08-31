@@ -41,6 +41,32 @@ paths:
               schema:
                 $ref: '#/components/schemas/AccountabilityTransactionDetail'
           description: ''
+  /api/v1/accountability/business-funds/:
+    post:
+      operationId: accountability_business_funds_create
+      tags:
+      - accountability
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBusinessFundMovementInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreateBusinessFundMovementInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateBusinessFundMovementInputRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessFundMovementOutput'
+          description: ''
   /api/v1/accountability/expenses/:
     post:
       operationId: accountability_expenses_create
@@ -1911,6 +1937,52 @@ components:
       description: |-
         * `Available` - Available
         * `Inactive` - Inactive
+    BusinessFundMovementOutput:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        movement_number:
+          type: string
+          readOnly: true
+        movement_type:
+          allOf:
+          - $ref: '#/components/schemas/BusinessFundMovementTypeEnum'
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        created_by_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount
+      - created_at
+      - created_by_name
+      - id
+      - movement_number
+      - movement_type
+      - note
+    BusinessFundMovementTypeEnum:
+      enum:
+      - OPENING_BALANCE
+      - OWNER_CAPITAL
+      - OWNER_WITHDRAWAL
+      type: string
+      description: |-
+        * `OPENING_BALANCE` - Opening Balance
+        * `OWNER_CAPITAL` - Owner Capital Added
+        * `OWNER_WITHDRAWAL` - Owner Withdrawal
     CashbookSummary:
       type: object
       properties:
@@ -1923,6 +1995,10 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         net_movement:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        net_cash_generated:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
@@ -1944,10 +2020,34 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        current_business_funds:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        opening_balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        owner_capital:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        owner_withdrawals:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        opening_balance_recorded:
+          type: boolean
       required:
+      - current_business_funds
       - debt_payments_income
+      - net_cash_generated
       - net_movement
+      - opening_balance
+      - opening_balance_recorded
       - other_expenses_expense
+      - owner_capital
+      - owner_withdrawals
       - purchases_expense
       - sales_income
       - total_inflow
@@ -2088,6 +2188,21 @@ components:
       description: |-
         * `COMPLETED` - Completed
         * `CANCELLED` - Cancelled
+    CreateBusinessFundMovementInputRequest:
+      type: object
+      properties:
+        movement_type:
+          $ref: '#/components/schemas/BusinessFundMovementTypeEnum'
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        note:
+          type: string
+          default: ''
+      required:
+      - amount
+      - movement_type
     CreateExpenseInputRequest:
       type: object
       properties:
@@ -2172,8 +2287,21 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PurchaseReturnItemInputRequest'
+        cash_refund_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        payable_credit_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
         refund_method:
-          $ref: '#/components/schemas/PaymentMethodEnum'
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/PaymentMethodEnum'
+          - $ref: '#/components/schemas/NullEnum'
         reason:
           type: string
           minLength: 1
@@ -2181,7 +2309,6 @@ components:
       required:
       - items
       - reason
-      - refund_method
     CreateSaleInputRequest:
       type: object
       properties:
@@ -2548,6 +2675,22 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        current_business_funds:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        opening_balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        owner_capital:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
+        owner_withdrawals:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,16}(?:\.\d{0,2})?$
         outstanding_debt:
           type: string
           format: decimal
@@ -2574,6 +2717,7 @@ components:
           type: integer
       required:
       - cash_reversals
+      - current_business_funds
       - debt_recovered
       - debtor_count
       - inventory_value
@@ -2583,9 +2727,12 @@ components:
       - money_out
       - net_cash_generated
       - net_money_movement
+      - opening_balance
       - operating_expenses
       - out_of_stock_count
       - outstanding_debt
+      - owner_capital
+      - owner_withdrawals
       - purchase_returns
       - purchases_count
       - registered_customers_count
@@ -3011,7 +3158,7 @@ components:
           readOnly: true
         movement_type:
           allOf:
-          - $ref: '#/components/schemas/MovementTypeEnum'
+          - $ref: '#/components/schemas/InventoryMovementTypeEnum'
           readOnly: true
         quantity:
           type: integer
@@ -3098,6 +3245,16 @@ components:
       - total_opening_stock
       - total_stock_in
       - total_stock_out
+    InventoryMovementTypeEnum:
+      enum:
+      - STOCK_IN
+      - STOCK_OUT
+      - ADJUSTMENT
+      type: string
+      description: |-
+        * `STOCK_IN` - Stock In
+        * `STOCK_OUT` - Stock Out
+        * `ADJUSTMENT` - Manual Adjustment
     LoginRequest:
       type: object
       properties:
@@ -3167,16 +3324,6 @@ components:
       - id
       - note
       - payment_method
-    MovementTypeEnum:
-      enum:
-      - STOCK_IN
-      - STOCK_OUT
-      - ADJUSTMENT
-      type: string
-      description: |-
-        * `STOCK_IN` - Stock In
-        * `STOCK_OUT` - Stock Out
-        * `ADJUSTMENT` - Manual Adjustment
     NullEnum:
       enum:
       - null
@@ -4010,6 +4157,9 @@ components:
     PurchaseItemSummary:
       type: object
       properties:
+        id:
+          type: integer
+          readOnly: true
         product_name:
           type: string
           readOnly: true
@@ -4019,10 +4169,23 @@ components:
         quantity:
           type: integer
           readOnly: true
+        unit_purchase_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        subtotal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
       required:
       - company_name
+      - id
       - product_name
       - quantity
+      - subtotal
+      - unit_purchase_price
     PurchasePaymentStatusEnum:
       enum:
       - PAID
@@ -4102,10 +4265,22 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
-        refund_method:
-          allOf:
-          - $ref: '#/components/schemas/PaymentMethodEnum'
+        cash_refund_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
+        payable_credit_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        refund_method:
+          readOnly: true
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/PaymentMethodEnum'
+          - $ref: '#/components/schemas/NullEnum'
         reason:
           type: string
           readOnly: true
@@ -4122,9 +4297,11 @@ components:
           format: date-time
           readOnly: true
       required:
+      - cash_refund_amount
       - created_at
       - id
       - items
+      - payable_credit_amount
       - processed_by_name
       - purchase
       - reason
@@ -4853,6 +5030,11 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
+        credited_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
         payment_status:
           allOf:
           - $ref: '#/components/schemas/PurchasePaymentStatusEnum'
@@ -4892,6 +5074,7 @@ components:
       required:
       - amount_paid
       - created_at
+      - credited_amount
       - id
       - items
       - note
@@ -4937,6 +5120,11 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
+        credited_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
         payment_status:
           allOf:
           - $ref: '#/components/schemas/PurchasePaymentStatusEnum'
@@ -4972,6 +5160,7 @@ components:
       required:
       - amount_paid
       - created_at
+      - credited_amount
       - id
       - items_count
       - items_summary
@@ -5304,6 +5493,9 @@ components:
       - SALE_REFUND
       - PURCHASE_RETURN
       - SUPPLIER_PAYMENT
+      - OPENING_BALANCE
+      - OWNER_CAPITAL
+      - OWNER_WITHDRAWAL
       type: string
       description: |-
         * `SALE` - Sales Revenue
@@ -5314,6 +5506,9 @@ components:
         * `SALE_REFUND` - Customer Sale Refund
         * `PURCHASE_RETURN` - Stock Purchase Return
         * `SUPPLIER_PAYMENT` - Supplier Payment
+        * `OPENING_BALANCE` - Opening Business Funds
+        * `OWNER_CAPITAL` - Owner Capital Added
+        * `OWNER_WITHDRAWAL` - Owner Withdrawal
     User:
       type: object
       properties:

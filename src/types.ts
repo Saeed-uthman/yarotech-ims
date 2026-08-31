@@ -695,6 +695,7 @@ export interface StockPurchase {
   totalAmount: number; // SUM of line item subtotals
   amountPaid: number;
   outstandingAmount: number;
+  creditedAmount: number;
   paymentStatus: PurchasePaymentStatus;
   paymentMethod: PurchasePaymentMethod | null;
   status: StockPurchaseStatus; // COMPLETED | CANCELLED
@@ -760,7 +761,7 @@ export interface CreatePurchaseInput {
 // ==========================================
 
 export type AccountabilityDirection = 'IN' | 'OUT';
-export type AccountabilityType = 'SALE' | 'DEBT_PAYMENT' | 'STOCK_PURCHASE' | 'OTHER_EXPENSE';
+export type AccountabilityType = 'SALE' | 'DEBT_PAYMENT' | 'STOCK_PURCHASE' | 'OTHER_EXPENSE' | 'DEBT_PAYMENT_REVERSAL' | 'SALE_REFUND' | 'PURCHASE_RETURN' | 'SUPPLIER_PAYMENT' | 'OPENING_BALANCE' | 'OWNER_CAPITAL' | 'OWNER_WITHDRAWAL';
 export type ExpenseCategory = 'Transport' | 'Utilities' | 'Stationery' | 'Maintenance' | 'Other';
 export type AccountabilityPaymentMethod = 'CASH' | 'TRANSFER' | 'POS';
 export type AccountabilityDateRange = 'today' | 'this_week' | 'this_month' | 'overall' | 'custom';
@@ -854,12 +855,26 @@ export interface AccountabilitySummary {
   moneyIn: number; // SUM(Amount where direction = IN)
   moneyOut: number; // SUM(Amount where direction = OUT)
   netMovement: number; // moneyIn - moneyOut (Strictly NOT called profit)
+  netCashGenerated: number;
   totalTransactionsCount: number;
   salesIncome: number;
   debtPaymentsIncome: number;
   purchasesExpense: number;
   otherExpensesExpense: number;
   timeframe: AccountabilityDateRange;
+  currentBusinessFunds: number;
+  openingBalance: number;
+  ownerCapital: number;
+  ownerWithdrawals: number;
+  openingBalanceRecorded: boolean;
+}
+
+export type BusinessFundMovementType = 'OPENING_BALANCE' | 'OWNER_CAPITAL' | 'OWNER_WITHDRAWAL';
+
+export interface CreateBusinessFundMovementInput {
+  movementType: BusinessFundMovementType;
+  amount: number;
+  note?: string;
 }
 
 export interface AccountabilityDateGroup {
@@ -1045,6 +1060,11 @@ export interface FinancialMovementReportData {
     debtPaymentsIncome: number;
     purchasesExpense: number;
     operatingExpenses: number;
+    netCashGenerated: number;
+    currentBusinessFunds: number;
+    openingBalance: number;
+    ownerCapital: number;
+    ownerWithdrawals: number;
   };
   trends: {
     date: string;
@@ -1267,6 +1287,10 @@ export interface DashboardSummaryKPIs {
   cashReversals: number; // Completed sale refunds and debt-payment reversals
   purchaseReturns: number; // Cash recovered from stock purchase returns
   netCashGenerated: number; // inflows - purchases - expenses - reversals
+  currentBusinessFunds: number; // all-time combined funds currently held by the business
+  openingBalance: number;
+  ownerCapital: number;
+  ownerWithdrawals: number;
   outstandingDebt: number;
   debtorCount: number;
   inventoryValue: number; // Admin only: current stock * base price

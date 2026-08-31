@@ -13,6 +13,7 @@ import {
   AccountabilityFilterParams,
   AccountabilityTransaction,
   CreateExpenseInput,
+  CreateBusinessFundMovementInput,
   UserRole,
 } from '../../types';
 import {
@@ -25,6 +26,8 @@ import { AccountabilityFilterBar } from './AccountabilityFilterBar';
 import { AccountabilityFeed } from './AccountabilityFeed';
 import { TransactionDetailsModal } from './TransactionDetailsModal';
 import { AddExpenseModal } from './AddExpenseModal';
+import { BusinessFundsModal } from './BusinessFundsModal';
+import { accountabilityService } from '../../services/accountabilityService';
 
 interface AccountabilityModuleProps {
   role?: UserRole;
@@ -55,6 +58,7 @@ export const AccountabilityModule: React.FC<AccountabilityModuleProps> = ({
   const [selectedTransaction, setSelectedTransaction] =
     useState<AccountabilityTransaction | null>(null);
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
+  const [isBusinessFundsOpen, setIsBusinessFundsOpen] = useState(false);
   const [toast, setToast] = useState<{
     type: 'success' | 'error';
     message: string;
@@ -126,6 +130,18 @@ export const AccountabilityModule: React.FC<AccountabilityModuleProps> = ({
     }
   };
 
+  const handleBusinessFundsSubmit = async (input: CreateBusinessFundMovementInput) => {
+    try {
+      const response = await accountabilityService.createBusinessFundMovement(input);
+      showToast('success', response.message || 'Business funds updated successfully.');
+      refetchFeed();
+      refetchSummary();
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Could not update business funds.' };
+    }
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-24">
       {/* Toast Notification */}
@@ -167,6 +183,16 @@ export const AccountabilityModule: React.FC<AccountabilityModuleProps> = ({
 
         {/* Header Action Buttons */}
         <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            id="btn-manage-business-funds"
+            onClick={() => setIsBusinessFundsOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-xs transition-colors"
+          >
+            <Briefcase className="w-4 h-4" />
+            <span>Business Funds</span>
+          </button>
+
           <button
             type="button"
             id="btn-refresh-accountability"
@@ -233,6 +259,16 @@ export const AccountabilityModule: React.FC<AccountabilityModuleProps> = ({
           onClose={() => setIsAddExpenseOpen(false)}
           onSubmit={handleAddExpenseSubmit}
           role={role}
+        />
+      )}
+
+      {isBusinessFundsOpen && (
+        <BusinessFundsModal
+          isOpen={isBusinessFundsOpen}
+          openingBalanceRecorded={summary?.openingBalanceRecorded || false}
+          availableFunds={summary?.currentBusinessFunds || 0}
+          onClose={() => setIsBusinessFundsOpen(false)}
+          onSubmit={handleBusinessFundsSubmit}
         />
       )}
     </div>

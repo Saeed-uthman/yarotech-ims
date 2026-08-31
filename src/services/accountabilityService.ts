@@ -6,6 +6,7 @@ import {
   AccountabilityDateRange,
   ManualExpense,
   CreateExpenseInput,
+  CreateBusinessFundMovementInput,
   UserRole,
   ApiResponse,
 } from '../types';
@@ -28,6 +29,7 @@ export class AccountabilityService {
       CustomerDebtPayment: 'DEBT_PAYMENT',
       StockPurchase: 'STOCK_PURCHASE',
       ManualExpense: 'OTHER_EXPENSE',
+      BusinessFundMovement: item.type,
     };
     return {
       id: String(item.id),
@@ -246,12 +248,18 @@ export class AccountabilityService {
           moneyIn: Number(data.totalInflow || 0),
           moneyOut: Number(data.totalOutflow || 0),
           netMovement: Number(data.netMovement || 0),
+          netCashGenerated: Number(data.netCashGenerated || 0),
           totalTransactionsCount: Number(data.totalTransactionsCount || 0),
           salesIncome: Number(data.salesIncome || 0),
           debtPaymentsIncome: Number(data.debtPaymentsIncome || 0),
           purchasesExpense: Number(data.purchasesExpense || 0),
           otherExpensesExpense: Number(data.otherExpensesExpense || 0),
           timeframe,
+          currentBusinessFunds: Number(data.currentBusinessFunds || 0),
+          openingBalance: Number(data.openingBalance || 0),
+          ownerCapital: Number(data.ownerCapital || 0),
+          ownerWithdrawals: Number(data.ownerWithdrawals || 0),
+          openingBalanceRecorded: Boolean(data.openingBalanceRecorded),
         },
         message: response.message,
       };
@@ -319,6 +327,18 @@ export class AccountabilityService {
       if (error instanceof ApiError) throw error;
       throw new Error('Failed to record expense.');
     }
+  }
+
+  public async createBusinessFundMovement(input: CreateBusinessFundMovementInput): Promise<ApiResponse<any>> {
+    const response = await api.post<any>(
+      '/accountability/business-funds/',
+      { movementType: input.movementType, amount: input.amount, note: input.note || '' },
+      createIdempotencyKey('business-funds'),
+    );
+    apiCache.invalidateByPrefix('accountability:');
+    apiCache.invalidateByPrefix('dashboard:');
+    apiCache.invalidateByPrefix('reports:');
+    return { success: true, data: toCamelCaseKeys(response.data), message: response.message };
   }
 }
 

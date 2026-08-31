@@ -40,6 +40,10 @@ Complete this checklist on the intended operational computer after the automated
 
 ## Finance, settings, and presentation
 
+- [ ] The one-time opening business balance agrees with money physically available when tracking begins.
+- [ ] Owner capital increases Current Business Funds but does not increase Net Cash Generated.
+- [ ] Owner withdrawal reduces Current Business Funds, cannot exceed available funds, and does not reduce operational Net Cash Generated.
+- [ ] `python manage.py reconcile_business_funds` passes and its balance agrees with the dashboard and Accountability page.
 - [ ] Net Cash Generated equals sales collected plus debt recovered minus stock purchases and operating expenses for a manual sample.
 - [ ] Today, week, month, last month, and custom date filters produce the expected figures.
 - [ ] Cancelled transactions do not affect active financial totals.

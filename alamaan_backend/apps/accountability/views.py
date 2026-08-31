@@ -15,10 +15,36 @@ from .serializers import (
     AccountabilityTransactionDetailSerializer,
     AccountabilityTransactionOutputSerializer,
     CashbookSummarySerializer,
+    BusinessFundMovementOutputSerializer,
+    CreateBusinessFundMovementInputSerializer,
     CreateExpenseInputSerializer,
     ManualExpenseCreateOutputSerializer,
     ManualExpenseOutputSerializer,
 )
+
+
+class BusinessFundMovementCreateView(APIView):
+    permission_classes = [IsAdminUserRole]
+
+    @extend_schema(request=CreateBusinessFundMovementInputSerializer, responses={201: BusinessFundMovementOutputSerializer})
+    def post(self, request):
+        def create_response():
+            serializer = CreateBusinessFundMovementInputSerializer(data=request.data, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            movement = serializer.save()
+            return success_response(
+                BusinessFundMovementOutputSerializer(movement).data,
+                'Business funds updated successfully.',
+            ), status.HTTP_201_CREATED
+
+        (body, response_status), replayed = execute_idempotent(
+            request=request,
+            scope='accountability.business-funds.create',
+            operation=create_response,
+        )
+        response = Response(body, status=response_status)
+        response['Idempotency-Replayed'] = str(replayed).lower()
+        return response
 
 
 class CashbookListView(APIView):

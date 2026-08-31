@@ -163,6 +163,7 @@ export const SaleReceiptModal: React.FC<SaleReceiptModalProps> = ({
         <article
           id="printable-receipt"
           className="theme-light-preview receipt-print-sheet p-5 sm:p-6 font-mono text-slate-800 text-xs bg-white space-y-3"
+          style={{ backgroundColor: '#ffffff', color: '#0f172a', colorScheme: 'light' }}
         >
           <header className="receipt-print-section text-center space-y-1.5 border-b border-dashed border-slate-300 pb-3">
             {settings.receiptLogo && settings.logo && (
@@ -268,7 +269,7 @@ export const SaleReceiptModal: React.FC<SaleReceiptModalProps> = ({
                   {formatNaira(item.subtotal, showDecimals)}
                 </span>
                 <div className="text-[9px] text-slate-500 leading-tight">
-                  {item.quantity} × {formatNaira(item.sellingPrice, showDecimals)}
+                  {item.quantity} × {formatNaira(item.sellingPrice || item.actualSellingPrice, showDecimals)}
                   {item.dosage ? ` · ${item.dosage}` : ''}
                 </div>
               </div>

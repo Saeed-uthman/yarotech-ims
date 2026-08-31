@@ -26,6 +26,9 @@ interface PurchaseDetailsModalProps {
   onReturnPurchase?: (purchase: StockPurchase) => void;
   onSupplierPayment?: () => void;
   role: UserRole;
+  isLoading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 export const PurchaseDetailsModal: React.FC<PurchaseDetailsModalProps> = ({
@@ -36,6 +39,9 @@ export const PurchaseDetailsModal: React.FC<PurchaseDetailsModalProps> = ({
   onReturnPurchase,
   onSupplierPayment,
   role,
+  isLoading = false,
+  error = null,
+  onRetry,
 }) => {
   const [isPrinting, setIsPrinting] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -53,7 +59,28 @@ export const PurchaseDetailsModal: React.FC<PurchaseDetailsModalProps> = ({
       .catch(() => setSupplierPayments([]));
   }, [isOpen, purchase?.id]);
 
-  if (!isOpen || !purchase) return null;
+  if (!isOpen) return null;
+  if (isLoading || !purchase) {
+    return (
+      <div className="fixed inset-0 z-50 bg-slate-900/70 flex items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl">
+          {error ? (
+            <>
+              <AlertTriangle className="w-8 h-8 mx-auto text-rose-600" />
+              <p className="mt-3 font-bold text-slate-900">Purchase details could not be loaded</p>
+              <p className="mt-1 text-xs text-slate-600">{error}</p>
+              <div className="mt-4 flex justify-center gap-2">
+                {onRetry && <button type="button" onClick={onRetry} className="rounded-lg bg-indigo-700 px-4 py-2 text-xs font-bold text-white">Retry</button>}
+                <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700">Close</button>
+              </div>
+            </>
+          ) : (
+            <><RotateCw className="w-8 h-8 mx-auto animate-spin text-indigo-600" /><p className="mt-3 text-sm font-bold text-slate-900">Loading complete purchase prices…</p></>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const isCancelled = purchase.status === 'CANCELLED';
   const totalUnits = purchase.totalUnits || purchase.items.reduce((sum, it) => sum + it.quantity, 0);
@@ -315,7 +342,7 @@ export const PurchaseDetailsModal: React.FC<PurchaseDetailsModalProps> = ({
                 <DollarSign className="w-3.5 h-3.5" /> Pay Supplier
               </button>
             )}
-            {!isCancelled && purchase.paymentStatus === 'PAID' && onReturnPurchase && (
+            {!isCancelled && onReturnPurchase && (
               <button
                 type="button"
                 onClick={() => {

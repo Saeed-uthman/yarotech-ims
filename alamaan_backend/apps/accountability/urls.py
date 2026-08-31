@@ -6,6 +6,7 @@ from .views import (
     CashbookSummaryView,
     ManualExpenseCreateView,
     ManualExpenseListView,
+    BusinessFundMovementCreateView,
 )
 
 urlpatterns = [
@@ -14,4 +15,5 @@ urlpatterns = [
     path('accountability/summary/', CashbookSummaryView.as_view(), name='accountability-summary'),
     path('accountability/expenses/', ManualExpenseCreateView.as_view(), name='accountability-expenses-create'),
     path('accountability/expenses/list/', ManualExpenseListView.as_view(), name='accountability-expenses-list'),
+    path('accountability/business-funds/', BusinessFundMovementCreateView.as_view(), name='accountability-business-funds-create'),
 ]

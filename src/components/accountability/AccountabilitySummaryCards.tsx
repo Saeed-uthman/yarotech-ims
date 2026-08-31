@@ -36,12 +36,24 @@ export const AccountabilitySummaryCards: React.FC<
     );
   }
 
-  const isNetPositive = summary.netMovement >= 0;
+  const isNetPositive = summary.netCashGenerated >= 0;
 
   return (
     <div className="space-y-3 mb-6">
       {/* 3 Main KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-4">
+        <div className="relative bg-slate-900 text-white border border-slate-700 rounded-xl p-4 sm:p-5 shadow-xs">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Current Business Funds</span>
+            <Briefcase className="w-5 h-5 text-emerald-300" />
+          </div>
+          <div className="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight">
+            ₦{summary.currentBusinessFunds.toLocaleString()}
+          </div>
+          <div className="mt-2 pt-2 border-t border-slate-700 text-[11px] text-slate-300">
+            Opening + capital + receipts − purchases − expenses − withdrawals
+          </div>
+        </div>
         {/* Money In Card */}
         <div
           id="kpi-card-money-in"
@@ -128,7 +140,7 @@ export const AccountabilitySummaryCards: React.FC<
             }`}
           >
             {isNetPositive ? '+' : '−'}₦
-            {Math.abs(summary.netMovement).toLocaleString()}
+            {Math.abs(summary.netCashGenerated).toLocaleString()}
           </div>
 
           <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-500">

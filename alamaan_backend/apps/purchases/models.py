@@ -27,6 +27,7 @@ class StockPurchase(AuditableModel):
     total_amount = models.DecimalField(max_digits=12, decimal_places=2)
     amount_paid = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     outstanding_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    credited_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     payment_status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.PAID, db_index=True)
     payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices, null=True, blank=True)
     status = models.CharField(
@@ -48,7 +49,8 @@ class StockPurchase(AuditableModel):
             models.CheckConstraint(condition=Q(amount_paid__gte=0), name='purchase_paid_non_negative'),
             models.CheckConstraint(condition=Q(outstanding_amount__gte=0), name='purchase_outstanding_non_negative'),
             models.CheckConstraint(condition=Q(amount_paid__lte=models.F('total_amount')), name='purchase_paid_not_above_total'),
-            models.CheckConstraint(condition=Q(amount_paid=models.F('total_amount') - models.F('outstanding_amount')), name='purchase_payment_balances_total'),
+            models.CheckConstraint(condition=Q(credited_amount__gte=0), name='purchase_credited_non_negative'),
+            models.CheckConstraint(condition=Q(amount_paid=models.F('total_amount') - models.F('outstanding_amount') - models.F('credited_amount')), name='purchase_payment_balances_total'),
         ]
         ordering = ['-created_at']
 
@@ -98,13 +100,20 @@ class PurchaseReturn(AuditableModel):
     return_number = models.CharField(max_length=32, unique=True, db_index=True)
     purchase = models.ForeignKey(StockPurchase, on_delete=models.PROTECT, related_name='returns')
     total_amount = models.DecimalField(max_digits=12, decimal_places=2)
-    refund_method = models.CharField(max_length=20, choices=StockPurchase.PaymentMethod.choices)
+    cash_refund_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    payable_credit_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    refund_method = models.CharField(max_length=20, choices=StockPurchase.PaymentMethod.choices, null=True, blank=True)
     reason = models.CharField(max_length=500)
     processed_by = models.ForeignKey(
         'accounts.User', on_delete=models.PROTECT, related_name='processed_purchase_returns'
     )
 
     class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(cash_refund_amount__gte=0), name='purchase_return_cash_non_negative'),
+            models.CheckConstraint(condition=Q(payable_credit_amount__gte=0), name='purchase_return_credit_non_negative'),
+            models.CheckConstraint(condition=Q(total_amount=models.F('cash_refund_amount') + models.F('payable_credit_amount')), name='purchase_return_allocation_matches_total'),
+        ]
         ordering = ['-created_at']
 
 

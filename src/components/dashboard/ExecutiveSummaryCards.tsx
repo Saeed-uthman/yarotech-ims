@@ -14,7 +14,8 @@ import {
   Boxes, 
   ArrowRight,
   ShieldCheck,
-  Lock
+  Lock,
+  WalletCards
 } from 'lucide-react';
 
 interface ExecutiveSummaryCardsProps {
@@ -231,6 +232,19 @@ export const ExecutiveSummaryCards: React.FC<ExecutiveSummaryCardsProps> = ({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-slate-900 text-white rounded-xl border border-slate-700 p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Current Business Funds</span>
+              <WalletCards className="w-5 h-5 text-emerald-300" />
+            </div>
+            <div className="text-xl sm:text-2xl font-bold tracking-tight">₦{summary.currentBusinessFunds.toLocaleString()}</div>
+            <div className="text-[11px] text-slate-300">
+              Opening ₦{summary.openingBalance.toLocaleString()} • Capital ₦{summary.ownerCapital.toLocaleString()} • Withdrawn ₦{summary.ownerWithdrawals.toLocaleString()}
+            </div>
+          </div>
+          <button type="button" onClick={() => onNavigate('accountability')} className="pt-3 mt-3 border-t border-slate-700 text-left text-xs font-semibold text-emerald-300 hover:text-emerald-200">Manage in Accountability →</button>
+        </div>
         {/* 1. Total Sales */}
         <div 
           id="card-total-sales"

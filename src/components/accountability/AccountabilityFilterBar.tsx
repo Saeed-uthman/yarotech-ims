@@ -10,6 +10,7 @@ import {
   ShoppingCart,
   Users,
   Briefcase,
+  WalletCards,
   RotateCcw,
 } from 'lucide-react';
 import {
@@ -64,6 +65,8 @@ export const AccountabilityFilterBar: React.FC<
     { id: 'DEBT_PAYMENT', label: 'Debt Payments', icon: Users },
     { id: 'STOCK_PURCHASE', label: 'Stock Purchases', icon: ShoppingCart },
     { id: 'OTHER_EXPENSE', label: 'Other Expenses', icon: Briefcase },
+    { id: 'OWNER_CAPITAL', label: 'Owner Capital', icon: WalletCards },
+    { id: 'OWNER_WITHDRAWAL', label: 'Owner Withdrawals', icon: WalletCards },
   ];
 
   const isFiltered =

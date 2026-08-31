@@ -24,8 +24,8 @@ function mapBackendPurchaseItem(raw: any): PurchaseItemEntity {
     genericName: '',
     companyName: i.companyName || '',
     quantity: Number(i.quantity || 0),
-    unitPurchasePrice: Number(i.unitPurchasePrice || 0),
-    subtotal: Number(i.subtotal || 0),
+    unitPurchasePrice: Number(i.unitPurchasePrice ?? i.unitBasePrice ?? 0),
+    subtotal: Number(i.subtotal ?? (Number(i.quantity || 0) * Number(i.unitPurchasePrice ?? i.unitBasePrice ?? 0))),
     batchNumber: i.batchNumber || '',
     expiryDate: i.expiryDate || null,
   };
@@ -55,6 +55,7 @@ function mapBackendPurchase(raw: any): StockPurchase {
     totalAmount: Number(p.totalAmount || 0),
     amountPaid: Number(p.amountPaid || 0),
     outstandingAmount: Number(p.outstandingAmount || 0),
+    creditedAmount: Number(p.creditedAmount || 0),
     paymentStatus: p.paymentStatus || 'PAID',
     paymentMethod: p.paymentMethod || null,
     status: p.status || 'COMPLETED',
@@ -187,14 +188,14 @@ export class PurchaseService {
 
   public async returnPurchase(
     purchaseId: string,
-    input: { items: Array<{ purchaseItemId: string; quantity: number }>; refundMethod: 'CASH' | 'TRANSFER' | 'POS'; reason: string }
+    input: { items: Array<{ purchaseItemId: string; quantity: number }>; refundMethod?: 'CASH' | 'TRANSFER' | 'POS' | null; reason: string }
   ): Promise<ApiResponse<any>> {
     const res = await api.post<any>(`/purchases/${numericId(purchaseId)}/returns/`, {
       items: input.items.map((item) => ({
         purchase_item_id: numericId(item.purchaseItemId),
         quantity: item.quantity,
       })),
-      refund_method: input.refundMethod,
+      refund_method: input.refundMethod || null,
       reason: input.reason.trim(),
     });
     apiCache.invalidateByPrefix('purchases:');

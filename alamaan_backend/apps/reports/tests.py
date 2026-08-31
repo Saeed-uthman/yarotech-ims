@@ -159,6 +159,9 @@ class ReportApiTests(APITestCase):
         purchase = StockPurchase.objects.create(
             purchase_number='PUR-202608-00001',
             total_amount=Decimal('3000.00'),
+            amount_paid=Decimal('3000.00'),
+            outstanding_amount=Decimal('0.00'),
+            payment_status=StockPurchase.PaymentStatus.PAID,
             payment_method=StockPurchase.PaymentMethod.CASH,
             recorded_by=self.admin,
             created_by=self.admin,
@@ -194,6 +197,27 @@ class ReportApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.data['data']
         self.assertEqual(Decimal(data['total_inflow']), Decimal('10000.00'))
+
+    def test_financial_movement_separates_owner_funds_from_cash_generated(self):
+        AccountabilityTransaction.objects.create(
+            transaction_number='ACC-OWNER-CAPITAL', direction='IN', type='OWNER_CAPITAL',
+            category='Owner Funds', amount=Decimal('5000.00'), payment_method='CASH',
+            reference_type='BusinessFundMovement', reference_id='1',
+            created_by=self.admin, updated_by=self.admin,
+        )
+        AccountabilityTransaction.objects.create(
+            transaction_number='ACC-OWNER-WITHDRAWAL', direction='OUT', type='OWNER_WITHDRAWAL',
+            category='Owner Funds', amount=Decimal('1000.00'), payment_method='CASH',
+            reference_type='BusinessFundMovement', reference_id='2',
+            created_by=self.admin, updated_by=self.admin,
+        )
+        self.client.force_authenticate(self.admin)
+        summary = self.client.get(reverse('reports-financial-movement')).data['data']['summary']
+
+        self.assertEqual(Decimal(summary['current_business_funds']), Decimal('14000.00'))
+        self.assertEqual(Decimal(summary['net_cash_generated']), Decimal('10000.00'))
+        self.assertEqual(Decimal(summary['owner_capital']), Decimal('5000.00'))
+        self.assertEqual(Decimal(summary['owner_withdrawals']), Decimal('1000.00'))
 
     def test_inventory_movement_report(self):
         self.client.force_authenticate(self.admin)

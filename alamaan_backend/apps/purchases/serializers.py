@@ -87,7 +87,10 @@ class PurchaseItemSummarySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PurchaseItem
-        fields = ['product_name', 'company_name', 'quantity']
+        fields = [
+            'id', 'product_name', 'company_name', 'quantity',
+            'unit_purchase_price', 'subtotal',
+        ]
         read_only_fields = fields
 
 
@@ -107,6 +110,7 @@ class StockPurchaseListSerializer(serializers.ModelSerializer):
             'total_amount',
             'amount_paid',
             'outstanding_amount',
+            'credited_amount',
             'payment_status',
             'payment_method',
             'status',
@@ -151,6 +155,7 @@ class StockPurchaseDetailSerializer(serializers.ModelSerializer):
             'total_amount',
             'amount_paid',
             'outstanding_amount',
+            'credited_amount',
             'payment_status',
             'payment_method',
             'status',
@@ -214,7 +219,9 @@ class PurchaseReturnItemInputSerializer(serializers.Serializer):
 
 class CreatePurchaseReturnSerializer(serializers.Serializer):
     items = PurchaseReturnItemInputSerializer(many=True, min_length=1)
-    refund_method = serializers.ChoiceField(choices=StockPurchase.PaymentMethod.choices)
+    cash_refund_amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0, required=False, allow_null=True)
+    payable_credit_amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0, required=False, allow_null=True)
+    refund_method = serializers.ChoiceField(choices=StockPurchase.PaymentMethod.choices, required=False, allow_null=True)
     reason = serializers.CharField(max_length=500)
 
     def validate_items(self, value):
@@ -233,7 +240,9 @@ class CreatePurchaseReturnSerializer(serializers.Serializer):
         return process_purchase_return(
             purchase=purchase,
             items=self.validated_data['items'],
-            refund_method=self.validated_data['refund_method'],
+            refund_method=self.validated_data.get('refund_method'),
+            cash_refund_amount=self.validated_data.get('cash_refund_amount'),
+            payable_credit_amount=self.validated_data.get('payable_credit_amount'),
             reason=self.validated_data['reason'],
             processed_by=processed_by,
         )
@@ -256,5 +265,5 @@ class PurchaseReturnOutputSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PurchaseReturn
-        fields = ['id', 'return_number', 'purchase', 'total_amount', 'refund_method', 'reason', 'processed_by_name', 'items', 'created_at']
+        fields = ['id', 'return_number', 'purchase', 'total_amount', 'cash_refund_amount', 'payable_credit_amount', 'refund_method', 'reason', 'processed_by_name', 'items', 'created_at']
         read_only_fields = fields

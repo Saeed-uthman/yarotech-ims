@@ -1,11 +1,35 @@
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from apps.customers.models import CustomerDebtPayment
 from apps.purchases.models import StockPurchase
 from apps.sales.models import Sale
 
-from .models import AccountabilityTransaction, ManualExpense
-from .services import record_manual_expense
+from .models import AccountabilityTransaction, BusinessFundMovement, ManualExpense
+from .services import record_business_fund_movement, record_manual_expense
+
+
+class CreateBusinessFundMovementInputSerializer(serializers.Serializer):
+    movement_type = serializers.ChoiceField(choices=BusinessFundMovement.MovementType.choices)
+    amount = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal('0.01'),
+    )
+    note = serializers.CharField(required=False, allow_blank=True, default='')
+
+    def create(self, validated_data):
+        return record_business_fund_movement(user=self.context['request'].user, **validated_data)
+
+
+class BusinessFundMovementOutputSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
+
+    class Meta:
+        model = BusinessFundMovement
+        fields = ['id', 'movement_number', 'movement_type', 'amount', 'note', 'created_by_name', 'created_at']
+        read_only_fields = fields
 
 
 class CreateExpenseInputSerializer(serializers.Serializer):
@@ -44,6 +68,7 @@ class AccountabilityTransactionOutputSerializer(serializers.ModelSerializer):
             'CustomerDebtPayment': 'Receipt',
             'StockPurchase': 'Purchase',
             'ManualExpense': 'Expense',
+            'BusinessFundMovement': 'Business funds',
         }.get(obj.reference_type, obj.reference_type)
         return f'{prefix} #{obj.reference_id}'
 
@@ -104,6 +129,8 @@ class AccountabilityTransactionDetailSerializer(AccountabilityTransactionOutputS
                 ).first()
             elif obj.reference_type == 'ManualExpense':
                 source = ManualExpense.objects.filter(pk=obj.reference_id).first()
+            elif obj.reference_type == 'BusinessFundMovement':
+                source = BusinessFundMovement.objects.filter(pk=obj.reference_id).first()
             obj._accountability_source = source
         return obj._accountability_source
 
@@ -117,6 +144,8 @@ class AccountabilityTransactionDetailSerializer(AccountabilityTransactionOutputS
             return source.receipt_number
         if isinstance(source, ManualExpense):
             return source.expense_number
+        if isinstance(source, BusinessFundMovement):
+            return source.movement_number
         return super().get_reference_number(obj)
 
     def get_customer_name(self, obj) -> str:
@@ -187,6 +216,8 @@ class AccountabilityTransactionDetailSerializer(AccountabilityTransactionOutputS
             }
         if isinstance(source, ManualExpense):
             return {'note': source.note}
+        if isinstance(source, BusinessFundMovement):
+            return {'note': source.note, 'movement_type': source.movement_type}
         return None
 
 
@@ -218,8 +249,14 @@ class CashbookSummarySerializer(serializers.Serializer):
     total_inflow = serializers.DecimalField(max_digits=12, decimal_places=2)
     total_outflow = serializers.DecimalField(max_digits=12, decimal_places=2)
     net_movement = serializers.DecimalField(max_digits=12, decimal_places=2)
+    net_cash_generated = serializers.DecimalField(max_digits=12, decimal_places=2)
     total_transactions_count = serializers.IntegerField()
     sales_income = serializers.DecimalField(max_digits=12, decimal_places=2)
     debt_payments_income = serializers.DecimalField(max_digits=12, decimal_places=2)
     purchases_expense = serializers.DecimalField(max_digits=12, decimal_places=2)
     other_expenses_expense = serializers.DecimalField(max_digits=12, decimal_places=2)
+    current_business_funds = serializers.DecimalField(max_digits=12, decimal_places=2)
+    opening_balance = serializers.DecimalField(max_digits=12, decimal_places=2)
+    owner_capital = serializers.DecimalField(max_digits=12, decimal_places=2)
+    owner_withdrawals = serializers.DecimalField(max_digits=12, decimal_places=2)
+    opening_balance_recorded = serializers.BooleanField()

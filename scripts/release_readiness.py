@@ -57,6 +57,11 @@ def main() -> int:
                 [sys.executable, str(root / 'scripts' / 'check_production_security.py')],
                 root,
             ),
+            (
+                'Business funds reconciliation',
+                [sys.executable, 'manage.py', 'reconcile_business_funds'],
+                backend,
+            ),
         ]
         if not args.skip_tests:
             steps.append(('Complete Django test suite', [sys.executable, 'manage.py', 'test'], backend))
