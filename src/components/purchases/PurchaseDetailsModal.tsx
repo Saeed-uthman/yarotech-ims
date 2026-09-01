@@ -235,7 +235,7 @@ export const PurchaseDetailsModal: React.FC<PurchaseDetailsModalProps> = ({
           {/* Itemized Table */}
           <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
             <div className="bg-slate-100 px-4 py-2.5 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center justify-between">
-              <span>Itemized Consignment Medicines</span>
+              <span>Itemized Consignment Products</span>
               <span>{purchase.items.length} line(s)</span>
             </div>
 
@@ -243,7 +243,7 @@ export const PurchaseDetailsModal: React.FC<PurchaseDetailsModalProps> = ({
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                   <th className="py-2.5 px-4">#</th>
-                  <th className="py-2.5 px-4">Medicine & Manufacturer</th>
+                  <th className="py-2.5 px-4">Product & Brand</th>
                   <th className="py-2.5 px-4 text-center">Quantity</th>
                   <th className="py-2.5 px-4 text-right">Unit Base Price</th>
                   <th className="py-2.5 px-4 text-right">Subtotal</th>

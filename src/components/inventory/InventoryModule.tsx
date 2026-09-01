@@ -153,9 +153,9 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
     const isAdmin = currentRole === 'admin';
     const headers = [
       'Product Name',
-      'Generic Name',
-      'Dosage & Form',
-      'Manufacturer',
+      'Model / Specification',
+      'Capacity & Type',
+      'Brand / Supplier',
       'Category',
       'Barcode',
       'Stock',
@@ -178,11 +178,11 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
     ]);
 
     exportTableToPDF('inventory_stock_report', headers, rows, {
-      title: 'Current Medicine Store Inventory & Stock Level Report',
+      title: 'Yarotech Group Inventory & Stock Level Report',
       subtitle: `Total Items: ${inventoryItems.length} | Exported on ${new Date().toLocaleDateString()}`,
       orientation: 'landscape',
       includeSignatures: true,
-      footerNote: 'Confidential - Al-Amaan Medicine Store Stock Register',
+      footerNote: 'Confidential - Yarotech Group Stock Register',
     });
   };
 

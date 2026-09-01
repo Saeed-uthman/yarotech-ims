@@ -77,8 +77,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     loadSavedSession();
-    refreshPendingCount();
-  }, [loadSavedSession, refreshPendingCount]);
+  }, [loadSavedSession]);
 
   const login = useCallback(
     async (input: LoginInput): Promise<AuthResponse> => {
@@ -89,7 +88,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (response.success && response.user && response.token) {
           setUser(response.user);
           localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(response.user));
-          refreshPendingCount();
+          if (response.user.role === 'admin') {
+            refreshPendingCount();
+          }
         }
         return response;
       } finally {
@@ -104,15 +105,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       try {
         const response = await authService.register(input);
-        if (response.success) {
-          refreshPendingCount();
-        }
         return response;
       } finally {
         setIsLoading(false);
       }
     },
-    [refreshPendingCount]
+    []
   );
 
   const endSession = useCallback((notice: string | null) => {

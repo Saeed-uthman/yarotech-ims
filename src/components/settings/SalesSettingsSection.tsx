@@ -115,7 +115,7 @@ export const SalesSettingsSection: React.FC<SalesSettingsSectionProps> = ({
               )}
             </div>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-              When enabled, cashiers can quickly checkout walk-in patients without registering or selecting a customer profile. When disabled, every sale strictly requires linking a registered customer profile.
+              When enabled, cashiers can quickly check out walk-in customers without registering or selecting a customer profile. When disabled, every sale strictly requires linking a registered customer profile.
             </p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
@@ -149,7 +149,7 @@ export const SalesSettingsSection: React.FC<SalesSettingsSectionProps> = ({
               )}
             </div>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-              When enabled, customers can purchase medicines on credit or make partial payments, recording outstanding debt on their ledger. When disabled, all sales must be 100% paid at checkout.
+              When enabled, customers can purchase products on credit or make partial payments, recording outstanding debt on their ledger. When disabled, all sales must be 100% paid at checkout.
             </p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">

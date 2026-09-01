@@ -155,7 +155,7 @@ export function exportStockAuditCSV(
   products: Product[],
   options: StockAuditExportOptions,
   currentRole: UserRole,
-  filenamePrefix: string = 'alamaan_stock_audit'
+  filenamePrefix: string = 'yarotech_stock_audit'
 ) {
   const isAdmin = currentRole === 'admin' && options.includeFinancials;
   const items = flattenProductsForAudit(products, currentRole, options.granularity);
@@ -163,7 +163,7 @@ export function exportStockAuditCSV(
   const headers = [
     'S/N',
     'Product Name',
-    'Generic Name',
+    'Model / Specification',
     'Brand / Manufacturer',
     'Category',
     'Dosage',
@@ -239,10 +239,10 @@ export function exportStockAuditCSV(
 
   // Prepend Metadata & Audit Header rows
   const metaRows: string[] = [
-    `"AL-AMAAN MEDICINE STORE - PHYSICAL INVENTORY AUDIT & STOCK COUNT SHEET"`,
+    `"YAROTECH GROUP - PHYSICAL INVENTORY AUDIT & STOCK COUNT SHEET"`,
     `"Generated At:","${new Date().toLocaleString('en-GB')}"`,
     `"Auditor Name:","${(options.auditorName || 'Unassigned').replace(/"/g, '""')}"`,
-    `"Audit Location / Store:","${(options.auditLocation || 'Main Pharmacy Dispensary').replace(/"/g, '""')}"`,
+    `"Audit Location / Store:","${(options.auditLocation || 'Main Showroom / Store').replace(/"/g, '""')}"`,
     `"Active Filters:","${(options.activeFilterSummary || 'All Products').replace(/"/g, '""')}"`,
     `"Total Line Items:","${items.length}"`,
     `"Total Recorded Stock Units:","${items.reduce((s, i) => s + i.systemStock, 0)}"`,
@@ -293,7 +293,7 @@ export function generateStockAuditPrintHTML(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Al-Amaan Medicine Store - Physical Stock Audit Sheet</title>
+  <title>Yarotech Group - Physical Stock Audit Sheet</title>
   <style>
     @page {
       size: A4 landscape;
@@ -466,7 +466,7 @@ export function generateStockAuditPrintHTML(
 
   <div class="header-box">
     <div>
-      <div class="pharmacy-title">Al-Amaan Medicine Store</div>
+      <div class="pharmacy-title">Yarotech Group</div>
       <div class="report-title">Physical Inventory Audit & Stock Verification Worksheet</div>
     </div>
     <div style="text-align: right; font-size: 9px; color: #475569;">
@@ -478,11 +478,11 @@ export function generateStockAuditPrintHTML(
   <div class="meta-grid">
     <div class="meta-item">
       <strong>Auditor / Lead:</strong>
-      <span>${options.auditorName || 'Pharmacist on Duty'}</span>
+      <span>${options.auditorName || 'Storekeeper on Duty'}</span>
     </div>
     <div class="meta-item">
       <strong>Store / Location:</strong>
-      <span>${options.auditLocation || 'Main Pharmacy Dispensary'}</span>
+      <span>${options.auditLocation || 'Main Showroom / Store'}</span>
     </div>
     <div class="meta-item">
       <strong>Filter Scope:</strong>
@@ -565,7 +565,7 @@ export function generateStockAuditPrintHTML(
           <tr style="background-color: #fffbeb;">
             <td style="text-align: center; font-weight: 700; color: #b45309;">${items.length + n}</td>
             <td style="color: #b45309; font-style: italic;">[Write Barcode]</td>
-            <td style="color: #b45309; font-style: italic;">[Unlisted Drug Discovered on Shelf]</td>
+            <td style="color: #b45309; font-style: italic;">[Unlisted Product Discovered on Shelf]</td>
             <td></td>
             <td></td>
             <td style="text-align: right; font-family: monospace;">0</td>
@@ -591,9 +591,9 @@ export function generateStockAuditPrintHTML(
       <div>Staff Signature & Date</div>
     </div>
     <div class="sig-box">
-      <strong>Verified By (Supervising Pharmacist):</strong>
+      <strong>Verified By (Supervising Manager):</strong>
       <div class="sig-line"></div>
-      <div>Pharmacist Signature & Date</div>
+      <div>Manager Signature & Date</div>
     </div>
     <div class="sig-box">
       <strong>Manager / Audit Sign-off:</strong>
@@ -639,7 +639,7 @@ export function exportStockAuditPDF(
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `alamaan_stock_audit_sheet_${new Date().toISOString().split('T')[0]}.html`);
+    link.setAttribute('download', `yarotech_stock_audit_sheet_${new Date().toISOString().split('T')[0]}.html`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

@@ -3,12 +3,12 @@ import { SystemSettings } from '../types';
 
 export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   id: '1',
-  pharmacyName: 'Al-Amaan Pharmacy',
+  pharmacyName: 'Yarotech Group',
   phone: '+234 800 000 0000',
-  email: 'contact@alamaanpharmacy.com',
+  email: 'contact@yarotechgroup.com',
   address: 'Suite 12, Commercial Plaza, Kano, Nigeria',
   logo: '',
-  businessDescription: 'Licensed Retail Pharmacy & Healthcare Provider',
+  businessDescription: 'Networking, Solar & IT Equipment Supplier',
   currency: 'NGN',
   currencySymbol: '₦',
   showDecimals: true,

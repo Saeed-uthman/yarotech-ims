@@ -62,7 +62,7 @@ export const InventorySettingsSection: React.FC<InventorySettingsSectionProps> =
               Default Low Stock Warning Threshold
             </label>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-              When a medicine variant's total available units fall below or equal this number, the system marks it as <strong>Low Stock</strong> on dashboard badges and inventory filters.
+              When a product variant's total available units fall below or equal this number, the system marks it as <strong>Low Stock</strong> on dashboard badges and inventory filters.
             </p>
           </div>
 

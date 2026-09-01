@@ -32,7 +32,7 @@ export const RecentPurchasesCard: React.FC<RecentPurchasesCardProps> = ({
               <span>Recent Stock Purchases</span>
             </h3>
             <p className="text-xs text-slate-500">
-              Procurement orders received from pharmaceutical manufacturers
+              Procurement orders received from brands and equipment suppliers
             </p>
           </div>
 

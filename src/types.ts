@@ -79,18 +79,17 @@ export type CompanyVariantStatus = 'Available' | 'Inactive';
 export type GeneralStatus = 'Active' | 'Inactive';
 
 export type ProductDosageForm = 
-  | 'Tablet'
-  | 'Capsule'
-  | 'Syrup'
-  | 'Suspension'
-  | 'Injection'
-  | 'Cream'
-  | 'Ointment'
-  | 'Drops'
-  | 'Inhaler'
-  | 'Gel'
-  | 'Infusion'
-  | 'Powder';
+  | 'Switch'
+  | 'Router'
+  | 'Access Point'
+  | 'Battery'
+  | 'Inverter'
+  | 'Charge Controller'
+  | 'Solar Panel'
+  | 'Cable'
+  | 'Accessory'
+  | 'Computer Equipment'
+  | 'Other IT Equipment';
 
 // ==========================================
 // 1. Normalized Core Entities (Database Model)

@@ -50,14 +50,14 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
           keys: [metaKeyLabel, 'F'],
           altKeys: [metaKeyLabel, 'K'],
           label: 'Focus Search',
-          description: 'Instantly jump to search medicines or records',
+          description: 'Instantly jump to search products or records',
           actionId: 'search',
         },
         {
           keys: [metaKeyLabel, 'B'],
           altKeys: ['F2'],
           label: 'Barcode Scanner',
-          description: 'Scan medicine barcodes with camera or USB gun',
+          description: 'Scan product barcodes with camera or USB gun',
           actionId: 'barcode',
         },
         {
@@ -85,14 +85,14 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
       icon: Compass,
       shortcuts: [
         { keys: ['Alt', '1'], label: 'Dashboard', description: 'Executive metrics and revenue graphs' },
-        { keys: ['Alt', '2'], label: 'Products', description: 'Master pharmaceutical catalog' },
+        { keys: ['Alt', '2'], label: 'Products', description: 'Master technology and solar catalog' },
         { keys: ['Alt', '3'], label: 'Inventory', description: 'Stock levels and movement history' },
         { keys: ['Alt', '4'], label: 'Stock Purchases', description: 'Supplier orders and invoices' },
-        { keys: ['Alt', '5'], label: 'Customers', description: 'Patient directory and debt ledger' },
-        { keys: ['Alt', '6'], label: 'Sales & POS', description: 'Dispensing terminal and receipt issuance' },
+        { keys: ['Alt', '5'], label: 'Customers', description: 'Customer directory and debt ledger' },
+        { keys: ['Alt', '6'], label: 'Sales & POS', description: 'Sales terminal and receipt issuance' },
         { keys: ['Alt', '7'], label: 'Reports', description: 'Financial analytics and movement audits' },
         { keys: ['Alt', '8'], label: 'Accountability', description: 'Financial postings and audit records' },
-        { keys: ['Alt', '9'], label: 'Settings', description: 'Pharmacy profile and backup preferences' },
+        { keys: ['Alt', '9'], label: 'Settings', description: 'Company profile and backup preferences' },
       ],
     },
   ];
@@ -118,7 +118,7 @@ export const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({
                 Keyboard Shortcuts
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Speed up clinical dispensing, catalog management, and stock auditing
+                Speed up sales, catalog management, and stock auditing
               </p>
             </div>
           </div>

@@ -16,9 +16,9 @@ export function exportToPDF(
 
   exportTableToPDF(filename, headers, rows, {
     title: options.title || formattedTitle,
-    subtitle: options.subtitle || 'Official Pharmacy Analytical Report',
-    pharmacyName: 'MEDSTOCK PHARMACY ERP',
-    footerNote: 'Confidential - MedStock Pharmacy Business Analytics',
+    subtitle: options.subtitle || 'Official Yarotech Group Analytical Report',
+    pharmacyName: 'YAROTECH GROUP',
+    footerNote: 'Confidential - Yarotech Group Business Analytics',
     includeSignatures: true,
     ...options,
   });

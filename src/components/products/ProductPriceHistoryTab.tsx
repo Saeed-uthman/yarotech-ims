@@ -166,7 +166,7 @@ export const ProductPriceHistoryTab: React.FC<ProductPriceHistoryTabProps> = ({
         newSellingPrice: Number(adjustForm.newSellingPrice),
         reason: adjustForm.reason.trim() || 'Scheduled price review & market realignment',
         effectiveDate: adjustForm.effectiveDate,
-        adjustedBy: isAdmin ? 'Administrator' : 'Pharmacy Dispenser',
+        adjustedBy: isAdmin ? 'Administrator' : 'Sales Associate',
       };
 
       await priceHistoryService.addPriceAdjustment(product, input, currentRole);
@@ -227,7 +227,7 @@ export const ProductPriceHistoryTab: React.FC<ProductPriceHistoryTabProps> = ({
       subtitle: `Product: ${product.name} (${product.dosage} ${product.form}) | Category: ${product.category}`,
       orientation: 'landscape',
       includeSignatures: true,
-      footerNote: 'Confidential - Al-Amaan Medicine Store Pricing Ledger',
+      footerNote: 'Confidential - Yarotech Group Pricing Ledger',
     });
   };
 
@@ -720,7 +720,7 @@ export const ProductPriceHistoryTab: React.FC<ProductPriceHistoryTabProps> = ({
                 <th className="py-3 px-4 font-semibold text-right">Selling Price (₦)</th>
                 {isAdmin && <th className="py-3 px-4 font-semibold text-right">Base Cost (₦)</th>}
                 <th className="py-3 px-4 font-semibold text-center">Change Type</th>
-                <th className="py-3 px-4 font-semibold">Reason & Clinical Note</th>
+                <th className="py-3 px-4 font-semibold">Reason & Business Note</th>
                 <th className="py-3 px-4 font-semibold">Authorized By</th>
               </tr>
             </thead>
@@ -899,7 +899,7 @@ export const ProductPriceHistoryTab: React.FC<ProductPriceHistoryTabProps> = ({
                     onChange={(e) => setAdjustForm({ ...adjustForm, newSellingPrice: parseFloat(e.target.value) || 0 })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-slate-900 font-mono font-bold focus:ring-1 focus:ring-blue-500"
                   />
-                  <span className="text-[11px] text-slate-400 mt-1 block">Patient retail price at dispensary</span>
+                  <span className="text-[11px] text-slate-400 mt-1 block">Customer retail price at point of sale</span>
                 </div>
 
                 <div>

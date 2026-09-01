@@ -94,7 +94,7 @@ export const DashboardQuickActions: React.FC<DashboardQuickActionsProps> = ({
             <div className="text-xs font-bold text-slate-900 group-hover:text-violet-700 truncate">
               Stock Levels
             </div>
-            <div className="text-[11px] text-slate-500 truncate">Check medicine stock</div>
+            <div className="text-[11px] text-slate-500 truncate">Check product stock</div>
           </div>
         </button>
       </div>
@@ -135,7 +135,7 @@ export const DashboardQuickActions: React.FC<DashboardQuickActionsProps> = ({
           <div className="text-xs font-bold text-slate-900 group-hover:text-emerald-700 truncate">
             Add Product
           </div>
-          <div className="text-[11px] text-slate-500 truncate">Create new medicine</div>
+          <div className="text-[11px] text-slate-500 truncate">Create new product</div>
         </div>
       </button>
 

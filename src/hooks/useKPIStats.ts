@@ -12,11 +12,15 @@ const INITIAL_STATS: ProductKPIStats = {
   totalInventoryValueCost: 0,
 };
 
-export function useKPIStats(role: UserRole = 'admin') {
+export function useKPIStats(role: UserRole = 'admin', enabled = true) {
   const [stats, setStats] = useState<ProductKPIStats>(INITIAL_STATS);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const fetchStats = useCallback(async () => {
+    if (!enabled) {
+      setIsLoading(false);
+      return;
+    }
     try {
       const res = await productService.getKPIStats(role);
       setStats(res.data);
@@ -25,7 +29,7 @@ export function useKPIStats(role: UserRole = 'admin') {
     } finally {
       setIsLoading(false);
     }
-  }, [role]);
+  }, [enabled, role]);
 
   useEffect(() => {
     fetchStats();

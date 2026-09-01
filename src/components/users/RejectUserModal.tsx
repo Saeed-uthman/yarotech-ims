@@ -11,9 +11,9 @@ interface RejectUserModalProps {
 }
 
 const REASON_PRESETS = [
-  'Registration credentials could not be verified by pharmacy management.',
+  'Registration credentials could not be verified by company management.',
   'Duplicate staff application submitted.',
-  'Applicant is not authorized for dispensary access.',
+  'Applicant is not authorized for sales and inventory access.',
   'Incomplete contact or identification information.',
   'Other / Custom reason',
 ];

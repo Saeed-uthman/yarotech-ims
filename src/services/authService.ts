@@ -48,9 +48,13 @@ class AuthService {
    */
   public async login(input: LoginInput): Promise<AuthResponse> {
     try {
-      const res = await api.post<any>('/auth/login/', {
-        email: input.email,
-        password: input.password,
+      const res = await apiRequest<any>('/auth/login/', {
+        method: 'POST',
+        skipAuth: true,
+        body: {
+          email: input.email,
+          password: input.password,
+        },
       });
 
       // Backend wraps in { success, data: { refresh, access, user }, message }

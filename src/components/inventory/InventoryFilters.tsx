@@ -74,7 +74,7 @@ export const InventoryFilters: React.FC<InventoryFiltersProps> = ({
           <input
             id="inventory-search-input"
             type="text"
-            placeholder="Search medicine, generic name, company, or barcode..."
+            placeholder="Search product, model, brand, category, or barcode..."
             value={filters.search}
             onChange={(e) => onFilterChange({ search: e.target.value, page: 1 })}
             className="block w-full pl-10 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-md text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition-colors"

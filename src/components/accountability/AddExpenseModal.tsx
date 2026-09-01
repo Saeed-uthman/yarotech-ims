@@ -120,7 +120,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                 Record Operating Expense
               </h3>
               <p className="text-xs text-slate-500">
-                Log authorized pharmacy expenditure for cash accountability
+                Log authorized company expenditure for cash accountability
               </p>
             </div>
           </div>

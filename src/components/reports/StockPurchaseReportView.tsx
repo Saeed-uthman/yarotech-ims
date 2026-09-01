@@ -177,7 +177,7 @@ export const StockPurchaseReportView: React.FC<StockPurchaseReportViewProps> = (
           <div>
             <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
               <Package className="w-4 h-4 text-amber-600" />
-              <span>Purchased Medicines Audit</span>
+              <span>Purchased Products Audit</span>
             </h4>
             <p className="text-xs text-gray-500">Products procured from manufacturers in this reporting period</p>
           </div>
@@ -197,7 +197,7 @@ export const StockPurchaseReportView: React.FC<StockPurchaseReportViewProps> = (
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-gray-50/75 border-b border-gray-200 text-gray-500 uppercase font-semibold text-[11px]">
-                <th className="py-3 px-4">Medicine & Manufacturer</th>
+                <th className="py-3 px-4">Product & Brand</th>
                 <th className="py-3 px-4 text-right">Units Acquired</th>
                 <th className="py-3 px-4 text-right">Unit Purchase Price</th>
                 <th className="py-3 px-4 text-right">Total Spent</th>
@@ -207,7 +207,7 @@ export const StockPurchaseReportView: React.FC<StockPurchaseReportViewProps> = (
               {topPurchasedProducts.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="py-8 text-center text-gray-400">
-                    No medicine restock purchases found for this period.
+                    No product restock purchases found for this period.
                   </td>
                 </tr>
               ) : (

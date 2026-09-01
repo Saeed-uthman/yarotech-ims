@@ -31,7 +31,7 @@ export const TopSellingProductsCard: React.FC<TopSellingProductsCardProps> = ({
           <div>
             <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
               <Award className="w-4 h-4 text-amber-500" />
-              <span>Top-Selling Medicines</span>
+              <span>Top-Selling Products</span>
             </h3>
             <p className="text-xs text-slate-500">
               Highest sales volume in selected period (variant-specific)

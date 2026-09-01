@@ -102,7 +102,7 @@ export const ApproveUserModal: React.FC<ApproveUserModalProps> = ({
                 }`}
               >
                 <div className="font-bold text-xs">Cashier</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">Dispensary sales & POS terminal</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Retail sales & POS terminal</div>
               </button>
 
               <button

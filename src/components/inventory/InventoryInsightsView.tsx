@@ -75,7 +75,7 @@ export const InventoryInsightsView: React.FC<InventoryInsightsViewProps> = ({
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
           <ArrowDownRight className="w-3 h-3 text-rose-600" />
-          Dispensed (-{Math.abs(qty)})
+          Sold (-{Math.abs(qty)})
         </span>
       );
     }
@@ -161,7 +161,7 @@ export const InventoryInsightsView: React.FC<InventoryInsightsViewProps> = ({
             <p className="text-xl sm:text-2xl font-bold text-rose-700 font-mono mt-1">
               -{formatNumber(movementSummary.totalStockOut)}
             </p>
-            <p className="text-[11px] text-slate-500 mt-0.5">Units dispensed / sold</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">Units sold</p>
           </div>
           <div className="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
             <ArrowDownRight className="w-5 h-5" />
@@ -268,7 +268,7 @@ export const InventoryInsightsView: React.FC<InventoryInsightsViewProps> = ({
                 <ShieldAlert className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                 <h4 className="text-xs font-bold text-slate-700">Financial Valuation Redacted</h4>
                 <p className="text-[11px] text-slate-500 max-w-xs mx-auto mt-1">
-                  Cost basis valuation rankings are restricted to Pharmacy Administrators.
+                  Cost basis valuation rankings are restricted to Company Administrators.
                 </p>
               </div>
             )}
@@ -284,7 +284,7 @@ export const InventoryInsightsView: React.FC<InventoryInsightsViewProps> = ({
                   Top Stock Volume on Hand
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Largest physical quantities stored on pharmacy shelves
+                  Largest physical quantities currently held in stock
                 </p>
               </div>
               <span className="text-[11px] font-bold px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded">

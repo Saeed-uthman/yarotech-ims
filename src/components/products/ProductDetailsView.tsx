@@ -425,7 +425,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                   <div className="md:col-span-2 space-y-3.5 text-sm">
                     <div className="grid grid-cols-2 gap-4 pb-3 border-b border-slate-100">
                       <div>
-                        <span className="text-xs text-slate-400 font-medium block">Generic Name</span>
+                        <span className="text-xs text-slate-400 font-medium block">Model / Specification</span>
                         <span className="font-bold text-slate-800 text-sm">{product.genericName}</span>
                       </div>
                       <div>
@@ -470,7 +470,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                     <div className="pb-3 border-b border-slate-100">
                       <span className="text-xs text-slate-400 font-medium block">Description</span>
                       <p className="text-slate-600 text-xs sm:text-sm mt-0.5 leading-relaxed">
-                        {product.description || 'No detailed clinical description available.'}
+                        {product.description || 'No detailed product description available.'}
                       </p>
                     </div>
 
@@ -496,7 +496,7 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                       Company Variants ({product.variants.length})
                     </h2>
                     <p className="text-xs text-slate-500">
-                      Manufacturers producing this medicine with independent pricing and stock
+                      Brands or suppliers offering this product with independent pricing and stock
                     </p>
                   </div>
 

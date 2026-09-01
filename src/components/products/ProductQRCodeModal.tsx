@@ -152,7 +152,7 @@ export const ProductQRCodeModal: React.FC<ProductQRCodeModalProps> = ({
 
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 14px sans-serif';
-      ctx.fillText('PHARMACY INVENTORY SHELF TAG', 24, 34);
+      ctx.fillText('YAROTECH INVENTORY SHELF TAG', 24, 34);
 
       // Product Title
       ctx.fillStyle = '#0f172a';
@@ -336,7 +336,7 @@ export const ProductQRCodeModal: React.FC<ProductQRCodeModalProps> = ({
         </head>
         <body>
           <div class="label-card">
-            <div class="header-banner">Pharmacy Stock Item</div>
+            <div class="header-banner">Yarotech Stock Item</div>
             <div class="prod-title">${product.name}</div>
             <div class="prod-sub">${product.genericName} • ${product.category}</div>
             
@@ -415,7 +415,7 @@ export const ProductQRCodeModal: React.FC<ProductQRCodeModalProps> = ({
                 <div className="w-full border-b border-slate-100 pb-2">
                   <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-blue-700 uppercase tracking-wider bg-blue-50 py-0.5 rounded">
                     <Tag className="w-3 h-3" />
-                    <span>Pharmacy Inventory Label</span>
+                    <span>Yarotech Inventory Label</span>
                   </div>
                   <h3 className="font-extrabold text-slate-900 text-sm mt-1.5 truncate">
                     {product.name}

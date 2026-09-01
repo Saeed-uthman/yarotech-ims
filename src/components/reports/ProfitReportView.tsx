@@ -73,7 +73,7 @@ export const ProfitReportView: React.FC<ProfitReportViewProps> = ({
 
   const handleExportPDF = () => {
     if (activeTab === 'products') {
-      const headers = ['Medicine Name', 'Generic Name', 'Manufacturer', 'Units Sold', 'Revenue (₦)', 'Base Cost (₦)', 'Gross Profit (₦)', 'Margin %'];
+      const headers = ['Product Name', 'Model / Specification', 'Brand / Supplier', 'Units Sold', 'Revenue (₦)', 'Base Cost (₦)', 'Gross Profit (₦)', 'Margin %'];
       const rows = topProfitableProducts.map((p) => [
         p.productName,
         p.genericName,
@@ -199,7 +199,7 @@ export const ProfitReportView: React.FC<ProfitReportViewProps> = ({
               }`}
             >
               <Award className="w-3.5 h-3.5" />
-              <span>Top Profitable Medicines ({topProfitableProducts.length})</span>
+              <span>Top Profitable Products ({topProfitableProducts.length})</span>
             </button>
 
             <button
@@ -235,7 +235,7 @@ export const ProfitReportView: React.FC<ProfitReportViewProps> = ({
                 <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Filter medicine or company..."
+                  placeholder="Filter product, brand or supplier..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-8 pr-3 py-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
@@ -262,7 +262,7 @@ export const ProfitReportView: React.FC<ProfitReportViewProps> = ({
               <tr className="bg-gray-50/75 border-b border-gray-200 text-gray-500 uppercase font-semibold text-[11px]">
                 <th className="py-3 px-4">
                   {activeTab === 'products'
-                    ? 'Medicine & Manufacturer'
+                    ? 'Product & Brand'
                     : activeTab === 'categories'
                     ? 'Category'
                     : 'Manufacturer'}
@@ -279,7 +279,7 @@ export const ProfitReportView: React.FC<ProfitReportViewProps> = ({
                 filteredProducts.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-gray-400">
-                      No matching medicine profit records.
+                      No matching product profit records.
                     </td>
                   </tr>
                 ) : (

@@ -157,7 +157,7 @@ export const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({
                   <span className="font-bold text-slate-800 uppercase">{sale.paymentMethod}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block">Dispensed By:</span>
+                  <span className="text-slate-500 block">Sold By:</span>
                   <span className="font-semibold text-slate-800">{sale.servedBy}</span>
                 </div>
                 {sale.notes && (
@@ -175,7 +175,7 @@ export const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                 <Package className="w-4 h-4 text-blue-600" />
-                <span>Dispensed Items ({sale.items.length})</span>
+                <span>Sold Items ({sale.items.length})</span>
               </h3>
             </div>
 
@@ -183,7 +183,7 @@ export const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase">
                   <tr>
-                    <th className="py-2.5 px-3.5">Product & Formulation</th>
+                    <th className="py-2.5 px-3.5">Product & Specification</th>
                     <th className="py-2.5 px-3.5">Company</th>
                     <th className="py-2.5 px-3.5 text-center">Qty</th>
                     <th className="py-2.5 px-3.5 text-right">Price</th>

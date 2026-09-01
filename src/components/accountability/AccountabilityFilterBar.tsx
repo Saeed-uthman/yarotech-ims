@@ -88,7 +88,7 @@ export const AccountabilityFilterBar: React.FC<
             type="text"
             value={filters.search}
             onChange={(e) => onFilterChange({ search: e.target.value, page: 1 })}
-            placeholder="Search by transaction #, reference, description, customer, medicine..."
+            placeholder="Search by transaction #, reference, description, customer, product..."
             className="w-full pl-10 pr-9 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
           />
           {filters.search && (

@@ -24,10 +24,10 @@ export const ModulePlaceholder: React.FC<ModulePlaceholderProps> = ({
 
   const getTitle = () => {
     const map: Record<string, string> = {
-      dashboard: 'Pharmacy Executive Dashboard',
+      dashboard: 'Yarotech Executive Dashboard',
       inventory: 'Inventory & Stock Level Management',
       'stock-purchase': 'Stock Purchases & Procurement',
-      customers: 'Pharmacy Customers & Account History',
+      customers: 'Customers & Account History',
       sales: 'Point of Sale (POS) & Checkout',
       reports: 'Financial & Movement Reports',
       accountability: 'Audit & Accountability Ledger',
@@ -49,7 +49,7 @@ export const ModulePlaceholder: React.FC<ModulePlaceholderProps> = ({
         onClick={onGoToProducts}
         className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-semibold shadow-xs transition-all"
       >
-        <span>Manage Pharmacy Products</span>
+        <span>Manage Technology & Solar Products</span>
         <ArrowRight className="w-4 h-4" />
       </button>
     </div>

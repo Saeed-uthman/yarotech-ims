@@ -38,11 +38,11 @@ export const SettingsReceiptPreview: React.FC<SettingsReceiptPreviewProps> = ({ 
           {settings.receiptLogo && !settings.logo && (
             <div className="flex items-center justify-center gap-1.5 text-blue-600 font-sans font-bold text-xs">
               <Store className="w-4 h-4" />
-              <span>[PHARMACY LOGO]</span>
+              <span>[COMPANY LOGO]</span>
             </div>
           )}
           <h2 className="text-xs font-extrabold uppercase text-slate-900 tracking-tight">
-            {settings.pharmacyName || 'PHARMACY NAME'}
+            {settings.pharmacyName || 'YAROTECH GROUP'}
           </h2>
           {settings.businessDescription && (
             <p className="text-[9px] text-slate-500 font-sans leading-tight">

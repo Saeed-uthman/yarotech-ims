@@ -34,7 +34,7 @@ export const InventoryWatchlistCard: React.FC<InventoryWatchlistCardProps> = ({
               <span>Inventory Stock Watchlist</span>
             </h3>
             <p className="text-xs text-slate-500">
-              Medicines requiring immediate restocking (threshold: ≤ {lowStockThreshold} units)
+              Products requiring immediate restocking (threshold: ≤ {lowStockThreshold} units)
             </p>
           </div>
 
@@ -51,7 +51,7 @@ export const InventoryWatchlistCard: React.FC<InventoryWatchlistCardProps> = ({
         {stockAlerts.length === 0 ? (
           <div className="py-10 text-center text-slate-400 text-xs">
             <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-400 mb-2" />
-            <p className="font-semibold text-slate-600">All medicines in good standing!</p>
+            <p className="font-semibold text-slate-600">All products are in good standing!</p>
             <p className="text-[11px] text-slate-400 mt-0.5">
               No product is currently at or below the {lowStockThreshold} unit threshold.
             </p>

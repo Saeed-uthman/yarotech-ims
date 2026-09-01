@@ -32,18 +32,17 @@ interface ProductWizardProps {
 }
 
 const DOSAGE_FORMS: ProductDosageForm[] = [
-  'Tablet',
-  'Capsule',
-  'Syrup',
-  'Suspension',
-  'Injection',
-  'Cream',
-  'Ointment',
-  'Drops',
-  'Inhaler',
-  'Gel',
-  'Infusion',
-  'Powder',
+  'Switch',
+  'Router',
+  'Access Point',
+  'Battery',
+  'Inverter',
+  'Charge Controller',
+  'Solar Panel',
+  'Cable',
+  'Accessory',
+  'Computer Equipment',
+  'Other IT Equipment',
 ];
 
 const SAMPLE_MED_IMAGES = [
@@ -70,7 +69,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
   const [genericName, setGenericName] = useState('');
   const [category, setCategory] = useState('');
   const [dosage, setDosage] = useState('');
-  const [form, setForm] = useState('Tablet');
+  const [form, setForm] = useState<ProductDosageForm>('Switch');
   const [barcode, setBarcode] = useState('');
   const [description, setDescription] = useState('');
   const [subtitle, setSubtitle] = useState('');
@@ -244,10 +243,10 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
   const validateStep1 = () => {
     const errors: string[] = [];
     if (!name.trim()) errors.push('Product Name is required.');
-    if (!genericName.trim()) errors.push('Generic Name is required.');
+    if (!genericName.trim()) errors.push('Model / Specification is required.');
     if (!category.trim()) errors.push('Category is required.');
-    if (!dosage.trim()) errors.push('Dosage is required.');
-    if (!form.trim()) errors.push('Dosage Form is required.');
+    if (!dosage.trim()) errors.push('Capacity / Rating is required.');
+    if (!form.trim()) errors.push('Equipment Type is required.');
 
     setValidationErrors(errors);
     return errors.length === 0;
@@ -349,7 +348,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
             </h2>
             <p className="text-xs text-slate-500">
               {step === 1 && 'Step 1: General product attributes and image'}
-              {step === 2 && 'Step 2: Add manufacturer company variants & pricing'}
+              {step === 2 && 'Step 2: Add brand or supplier variants & pricing'}
               {step === 3 && 'Step 3: Review summary and finalize'}
             </p>
           </div>
@@ -536,7 +535,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
                   id="wizard-product-name-input"
                   type="text"
                   required
-                  placeholder="e.g. Paracetamol 500mg"
+                  placeholder="e.g. TP-Link 24-Port Gigabit Switch"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-sm font-medium focus:ring-1 focus:ring-blue-500 focus:bg-white transition-all"
@@ -545,13 +544,13 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Generic Name <span className="text-rose-500">*</span>
+                  Model / Specification <span className="text-rose-500">*</span>
                 </label>
                 <input
                   id="wizard-generic-name-input"
                   type="text"
                   required
-                  placeholder="e.g. Paracetamol"
+                  placeholder="e.g. TL-SG1024D, 24-Port Gigabit"
                   value={genericName}
                   onChange={(e) => setGenericName(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-sm font-medium focus:ring-1 focus:ring-blue-500 focus:bg-white transition-all"
@@ -581,13 +580,13 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Dosage <span className="text-rose-500">*</span>
+                  Capacity / Rating <span className="text-rose-500">*</span>
                 </label>
                 <input
                   id="wizard-dosage-input"
                   type="text"
                   required
-                  placeholder="e.g. 500mg, 10ml, 1%"
+                  placeholder="e.g. 24 ports, 5 kVA, 200 Ah, 550 W"
                   value={dosage}
                   onChange={(e) => setDosage(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-sm font-medium focus:ring-1 focus:ring-blue-500"
@@ -596,12 +595,12 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Form <span className="text-rose-500">*</span>
+                  Equipment Type <span className="text-rose-500">*</span>
                 </label>
                 <select
                   id="wizard-form-select"
                   value={form}
-                  onChange={(e) => setForm(e.target.value)}
+                  onChange={(e) => setForm(e.target.value as ProductDosageForm)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-sm font-medium focus:ring-1 focus:ring-blue-500"
                 >
                   {DOSAGE_FORMS.map((f) => (
@@ -639,11 +638,11 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Subtitle / Indication
+                  Subtitle / Key Feature
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Pain reliever / Fever reducer"
+                  placeholder="e.g. Managed PoE+ switch with rack-mount kit"
                   value={subtitle}
                   onChange={(e) => setSubtitle(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-sm font-medium focus:ring-1 focus:ring-blue-500"
@@ -656,7 +655,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
               <label className="block text-xs font-bold text-slate-700 mb-1">Description</label>
               <textarea
                 rows={3}
-                placeholder="Enter product description, uses, and instructions..."
+                placeholder="Enter specifications, features, compatibility, warranty, and usage notes..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-sm focus:ring-1 focus:ring-blue-500"
@@ -692,7 +691,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
               <div>
                 <h3 className="text-sm font-bold text-slate-900">Company Variants & Price Ranges</h3>
                 <p className="text-xs text-slate-500">
-                  Configure manufacturers, wholesale cost (Base Price), and controlled selling price ranges (Min, Default, Max)
+                  Configure brands or suppliers, wholesale cost (Base Price), and controlled selling price ranges (Min, Default, Max)
                 </p>
               </div>
 

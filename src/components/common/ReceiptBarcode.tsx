@@ -24,7 +24,7 @@ export const ReceiptBarcode: React.FC<ReceiptBarcodeProps> = ({
   const payload = useMemo(
     () =>
       [
-        'ALAMAAN-RECEIPT',
+        'YAROTECH-RECEIPT',
         `INVOICE=${invoiceNumber}`,
         `SALE=${saleId || 'N/A'}`,
         `TOTAL=${Number(total || 0).toFixed(2)}`,

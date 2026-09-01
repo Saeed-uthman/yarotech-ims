@@ -94,7 +94,7 @@ export const SalesReportView: React.FC<SalesReportViewProps> = ({
           <p className="text-xl font-bold text-gray-900 mt-1">
             {summary.totalItemsSold.toLocaleString()} units
           </p>
-          <p className="text-xs text-gray-500 mt-1">Across all medicines</p>
+          <p className="text-xs text-gray-500 mt-1">Across all products</p>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200/90 p-4 shadow-xs">

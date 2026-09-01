@@ -118,7 +118,7 @@ export const SalesCardList: React.FC<SalesCardListProps> = ({
             {/* Items snippet */}
             <div className="bg-slate-50 rounded-lg p-2 text-xs text-slate-600">
               <div className="font-semibold text-slate-700 text-[11px] mb-1">
-                {sale.itemCount} Item(s) Dispensed:
+                {sale.itemCount} Item(s) Sold:
               </div>
               <div className="text-[11px] text-slate-500 truncate">
                 {sale.items.map((it) => `${it.productName} (${it.companyName}) x${it.quantity}`).join(', ')}

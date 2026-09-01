@@ -62,9 +62,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onGoToRegister }) => {
     <div className="space-y-5 animate-in fade-in duration-150">
       {/* Title & Subtitle */}
       <div className="space-y-1">
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Sign In to Pharmacy</h2>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Sign In to Yarotech Group</h2>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Enter your authorized credentials to access dispensary and inventory operations.
+          Enter your authorized credentials to access sales and inventory operations.
         </p>
       </div>
 

@@ -133,8 +133,8 @@ export const LowStockAlertModal: React.FC<LowStockAlertModalProps> = ({
     try {
       const headers = [
         'Product Name',
-        'Generic Name',
-        'Manufacturer',
+        'Model / Specification',
+        'Brand / Supplier',
         'Category',
         'Stock',
         'Reorder',
@@ -162,12 +162,12 @@ export const LowStockAlertModal: React.FC<LowStockAlertModalProps> = ({
         ];
       });
 
-      exportTableToPDF('alamaan_low_stock_requisition', headers, rows, {
+      exportTableToPDF('yarotech_low_stock_requisition', headers, rows, {
         title: 'Emergency Stock Requisition & Low Stock Alert List',
         subtitle: `Total Depleted/Low Items: ${filteredItems.length} | Category: ${selectedCategory}`,
         orientation: 'landscape',
         includeSignatures: true,
-        footerNote: 'Confidential - Al-Amaan Medicine Store Requisition Sheet',
+        footerNote: 'Confidential - Yarotech Group Requisition Sheet',
       });
     } finally {
       setIsExporting(false);
@@ -203,7 +203,7 @@ export const LowStockAlertModal: React.FC<LowStockAlertModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Real-time stock monitoring: medicines at or below minimum buffer levels
+                Real-time stock monitoring: products at or below minimum buffer levels
               </p>
             </div>
           </div>
@@ -274,7 +274,7 @@ export const LowStockAlertModal: React.FC<LowStockAlertModalProps> = ({
               {outOfStockItems.length}
             </div>
             <span className="text-[11px] text-rose-600/80 dark:text-rose-400/80">
-              0 units on shelf • Patients at risk
+              0 units on shelf • Sales fulfillment at risk
             </span>
           </div>
 
@@ -314,7 +314,7 @@ export const LowStockAlertModal: React.FC<LowStockAlertModalProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search medicine, manufacturer, barcode..."
+                placeholder="Search product, brand, supplier, barcode..."
                 className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
               {searchQuery && (
@@ -564,7 +564,7 @@ export const LowStockAlertModal: React.FC<LowStockAlertModalProps> = ({
           <div className="flex items-center gap-2">
             <Info className="w-4 h-4 text-amber-500 shrink-0" />
             <span>
-              Thresholds are defined per medicine brand. Reorder suggestions calculate safety stock buffer.
+              Thresholds are defined per product variant. Reorder suggestions calculate the safety stock buffer.
             </span>
           </div>
 

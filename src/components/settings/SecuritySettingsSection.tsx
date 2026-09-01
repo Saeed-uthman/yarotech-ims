@@ -238,7 +238,7 @@ export const SecuritySettingsSection: React.FC<SecuritySettingsSectionProps> = (
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  Can modify pharmacy details, configure business policies, review wholesale costs, and conduct inventory write-offs.
+                  Can modify company details, configure business policies, review wholesale costs, and conduct inventory write-offs.
                 </p>
               </div>
 

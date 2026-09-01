@@ -88,7 +88,7 @@ export const DashboardAlertsBanner: React.FC<DashboardAlertsBannerProps> = ({
                   {summary.outOfStockCount} Product{summary.outOfStockCount > 1 ? 's' : ''} Out of Stock
                 </div>
                 <div className="text-[11px] text-rose-700 mt-0.5 truncate">
-                  Zero units available for dispensing.
+                  Zero units available for sale.
                 </div>
               </div>
             </div>

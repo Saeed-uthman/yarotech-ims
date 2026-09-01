@@ -67,11 +67,11 @@ export const InventoryLowStockAlertBanner: React.FC<InventoryLowStockAlertBanner
                   <strong className="text-rose-700 dark:text-rose-400">
                     {kpis.outOfStockCount} critical out-of-stock
                   </strong>{' '}
-                  and <strong>{kpis.lowStockCount} low stock</strong> medicine variants require procurement reordering.
+                  and <strong>{kpis.lowStockCount} low stock</strong> product variants require procurement reordering.
                 </>
               ) : (
                 <>
-                  <strong>{kpis.lowStockCount} medicine variants</strong> are at or below minimum reorder safety thresholds.
+                  <strong>{kpis.lowStockCount} product variants</strong> are at or below minimum reorder safety thresholds.
                 </>
               )}
             </p>

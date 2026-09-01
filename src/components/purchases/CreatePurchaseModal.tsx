@@ -248,7 +248,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
     if (isSubmitting) return;
 
     if (items.length === 0) {
-      setFormError('Please add at least one medicine item to this purchase order.');
+      setFormError('Please add at least one product item to this purchase order.');
       return;
     }
 
@@ -317,7 +317,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
                 Record Stock Purchase (Restock)
               </h2>
               <p className="text-xs text-slate-300">
-                Log medicine procurement, increment live inventory, and post the capital outflow.
+                Log product procurement, increment live inventory, and post the capital outflow.
               </p>
             </div>
           </div>
@@ -438,7 +438,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
           {/* Medicine Search & Variant Selector */}
           <div className="space-y-2">
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Search & Add Medicines to Restock Order
+              Search & Add Products to Restock Order
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -449,7 +449,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
                 type="text"
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Type any part of a brand, generic name, manufacturer, or barcode..."
+                placeholder="Type any part of a product, model, brand, supplier, or barcode..."
                 autoComplete="off"
                 aria-autocomplete="list"
                 className="w-full pl-9.5 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
@@ -534,7 +534,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
               <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center text-slate-400">
                 <PackageCheck className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                 <p className="text-xs font-medium text-slate-500">
-                  No medicines added to this restock order yet.
+                  No products added to this restock order yet.
                 </p>
                 <p className="text-[11px] text-slate-400 mt-0.5">
                   Use the search box above to add products with their respective manufacturers.

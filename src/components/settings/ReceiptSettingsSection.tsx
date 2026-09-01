@@ -35,14 +35,14 @@ export const ReceiptSettingsSection: React.FC<ReceiptSettingsSectionProps> = ({
     {
       id: 'toggle-receipt-logo',
       field: 'receiptLogo',
-      label: 'Include Pharmacy Logo',
+      label: 'Include Company Logo',
       desc: 'Prints branding logo at the top of thermal slips.',
     },
     {
       id: 'toggle-receipt-phone',
       field: 'receiptPhone',
       label: 'Include Phone / Hotline',
-      desc: 'Prints pharmacy contact telephone numbers.',
+      desc: 'Prints company contact telephone numbers.',
     },
     {
       id: 'toggle-receipt-address',
@@ -169,7 +169,7 @@ export const ReceiptSettingsSection: React.FC<ReceiptSettingsSectionProps> = ({
               </p>
             )}
             <p className="text-[11px] text-slate-400">
-              This message appears at the bottom of every sales receipt printed for patients and customers.
+              This message appears at the bottom of every sales receipt printed for customers.
             </p>
           </div>
         </div>

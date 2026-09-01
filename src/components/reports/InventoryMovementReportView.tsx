@@ -53,7 +53,7 @@ export const InventoryMovementReportView: React.FC<InventoryMovementReportViewPr
 
   const handleExportPDF = () => {
     const headers = [
-      'Medicine Name',
+      'Product Name',
       'Formulation',
       'Manufacturer',
       'Category',
@@ -133,7 +133,7 @@ export const InventoryMovementReportView: React.FC<InventoryMovementReportViewPr
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200/90 p-4 shadow-xs">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tracked Medicines</span>
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tracked Products</span>
           <p className="text-2xl font-bold text-gray-900 mt-1">{items.length}</p>
           <p className="text-xs text-gray-500 mt-1">
             {items.filter((i) => i.status === 'low_stock').length} low stock items
@@ -155,7 +155,7 @@ export const InventoryMovementReportView: React.FC<InventoryMovementReportViewPr
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
-              All Medicines ({items.length})
+              All Products ({items.length})
             </button>
 
             <button
@@ -200,7 +200,7 @@ export const InventoryMovementReportView: React.FC<InventoryMovementReportViewPr
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search medicine, manufacturer..."
+                placeholder="Search product, brand or supplier..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-8 pr-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-emerald-500 focus:outline-hidden w-56"
@@ -224,7 +224,7 @@ export const InventoryMovementReportView: React.FC<InventoryMovementReportViewPr
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-gray-50/75 border-b border-gray-200 text-gray-500 uppercase font-semibold text-[11px]">
-                <th className="py-3 px-4">Medicine & Formulation</th>
+                <th className="py-3 px-4">Product & Specification</th>
                 <th className="py-3 px-4">Manufacturer</th>
                 <th className="py-3 px-4 text-right">Opening Stock</th>
                 <th className="py-3 px-4 text-right">Stock In (+)</th>

@@ -91,7 +91,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
         isRefreshing={isRefreshing}
         onRefresh={refetch}
         lastUpdated={lastUpdated}
-        pharmacyName={settings?.pharmacyName || 'Al-Amaan Medicine Store'}
+        pharmacyName={settings?.pharmacyName || 'Yarotech Group'}
       />
 
       {/* 2. Quick Action Shortcuts */}

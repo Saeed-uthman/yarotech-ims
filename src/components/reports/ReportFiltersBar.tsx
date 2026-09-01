@@ -214,7 +214,7 @@ export const ReportFiltersBar: React.FC<ReportFiltersBarProps> = ({
           {/* Product Filter */}
           <div>
             <label htmlFor="filter-product" className="flex items-center gap-1 text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">
-              <Package className="w-3 h-3" /> Medicine
+              <Package className="w-3 h-3" /> Product
             </label>
             <select
               id="filter-product"

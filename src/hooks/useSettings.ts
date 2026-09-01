@@ -3,7 +3,7 @@ import { SystemSettings, UpdateSettingsInput, ChangePasswordInput, UserRole } fr
 import { settingsService } from '../services/settingsService';
 import { DEFAULT_SYSTEM_SETTINGS } from '../data/defaultSettings';
 
-export function useSettings(role: UserRole = 'admin') {
+export function useSettings(role: UserRole = 'admin', enabled = true) {
   const [settings, setSettings] = useState<SystemSettings>(DEFAULT_SYSTEM_SETTINGS);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -20,6 +20,10 @@ export function useSettings(role: UserRole = 'admin') {
   }, []);
 
   const fetchSettings = useCallback(async (forceRefresh = false) => {
+    if (!enabled) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -40,7 +44,7 @@ export function useSettings(role: UserRole = 'admin') {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
     fetchSettings();

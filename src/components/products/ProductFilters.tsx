@@ -57,7 +57,7 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
           <input
             id="filter-search-input"
             type="text"
-            placeholder="Search medicines, generic name, barcode or company..."
+            placeholder="Search products, model, barcode, brand or category..."
             value={filters.search}
             onChange={(e) => onFilterChange({ search: e.target.value, page: 1 })}
             className="block w-full pl-10 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-md text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition-colors"
@@ -142,7 +142,7 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
               if (onDownloadCsvTemplate) {
                 onDownloadCsvTemplate();
               } else {
-                downloadProductCsvTemplate('alamaan_product_bulk_import_template');
+                downloadProductCsvTemplate('yarotech_product_bulk_import_template');
               }
             }}
             className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs sm:text-sm font-semibold shadow-xs transition-colors cursor-pointer"
@@ -224,7 +224,7 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
                   className="flex-1 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-medium text-slate-700"
                 >
                   <option value="name">Product Name</option>
-                  <option value="genericName">Generic Name</option>
+                  <option value="genericName">Model / Specification</option>
                   <option value="stock">Stock Quantity</option>
                   <option value="price">Selling Price</option>
                   {isAdmin && <option value="basePrice">Base Price (Cost)</option>}

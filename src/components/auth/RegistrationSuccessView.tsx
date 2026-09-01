@@ -27,7 +27,7 @@ export const RegistrationSuccessView: React.FC<RegistrationSuccessViewProps> = (
             Registration Submitted Successfully
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
-            Thank you, <span className="font-semibold text-slate-800 dark:text-slate-200">{user.fullName}</span>. Your account request has been logged and is pending review by the pharmacy administrator.
+            Thank you, <span className="font-semibold text-slate-800 dark:text-slate-200">{user.fullName}</span>. Your account request has been logged and is pending review by the company administrator.
           </p>
         </div>
       </div>
@@ -76,7 +76,7 @@ export const RegistrationSuccessView: React.FC<RegistrationSuccessViewProps> = (
         <div className="text-xs text-blue-900 dark:text-blue-200 space-y-1">
           <p className="font-semibold">Security & Access Policy:</p>
           <p className="text-blue-700 dark:text-blue-300 leading-relaxed text-[11px]">
-            In accordance with pharmacy dispensary security policies, user registration does not equal immediate system access. An administrator will verify your staff credentials and activate your login privileges.
+            In accordance with company security policies, user registration does not equal immediate system access. An administrator will verify your staff credentials and activate your login privileges.
           </p>
         </div>
       </div>

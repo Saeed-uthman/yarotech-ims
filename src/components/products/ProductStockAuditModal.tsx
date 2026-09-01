@@ -55,7 +55,7 @@ export const ProductStockAuditModal: React.FC<ProductStockAuditModalProps> = ({
   const [includeFinancials, setIncludeFinancials] = useState<boolean>(isAdmin);
   const [includeBlankRows, setIncludeBlankRows] = useState<boolean>(true);
   const [auditorName, setAuditorName] = useState<string>('');
-  const [auditLocation, setAuditLocation] = useState<string>('Main Pharmacy Floor');
+  const [auditLocation, setAuditLocation] = useState<string>('Main Showroom / Store');
   const [activeTab, setActiveTab] = useState<'options' | 'preview'>('options');
 
   // Loading state for fetching all filtered items
@@ -151,7 +151,7 @@ export const ProductStockAuditModal: React.FC<ProductStockAuditModalProps> = ({
     includeFinancials: isAdmin && includeFinancials,
     includeBlankRows,
     auditorName: auditorName.trim() || 'Staff Auditor',
-    auditLocation: auditLocation.trim() || 'Main Dispensary',
+    auditLocation: auditLocation.trim() || 'Main Showroom / Store',
     activeFilterSummary: filterSummary,
   };
 
@@ -404,7 +404,7 @@ export const ProductStockAuditModal: React.FC<ProductStockAuditModalProps> = ({
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                      1 row per manufacturer brand variant with exact Barcode, on-hand count, and tally box. Ideal for physical pharmacy shelf audits.
+                      1 row per brand or supplier variant with exact barcode, on-hand count, and tally box. Ideal for physical stock audits.
                     </p>
                   </div>
 
@@ -430,7 +430,7 @@ export const ProductStockAuditModal: React.FC<ProductStockAuditModalProps> = ({
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                      1 row per high-level medicine concept summing all brand variants together. Best for managerial review.
+                      1 row per high-level product summing all brand variants together. Best for managerial review.
                     </p>
                   </div>
                 </div>
@@ -445,7 +445,7 @@ export const ProductStockAuditModal: React.FC<ProductStockAuditModalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                      Auditor / Pharmacist Name
+                      Auditor / Storekeeper Name
                     </label>
                     <div className="relative">
                       <UserCheck className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -461,7 +461,7 @@ export const ProductStockAuditModal: React.FC<ProductStockAuditModalProps> = ({
 
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                      Pharmacy Store / Ward Location
+                      Showroom / Store Location
                     </label>
                     <div className="relative">
                       <Store className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -469,7 +469,7 @@ export const ProductStockAuditModal: React.FC<ProductStockAuditModalProps> = ({
                         type="text"
                         value={auditLocation}
                         onChange={(e) => setAuditLocation(e.target.value)}
-                        placeholder="e.g. Main Dispensary - Bay 4"
+                        placeholder="e.g. Main Showroom - Rack 4"
                         className="w-full pl-9 pr-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:ring-1 focus:ring-blue-500"
                       />
                     </div>

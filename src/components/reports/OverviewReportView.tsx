@@ -288,7 +288,7 @@ export const OverviewReportView: React.FC<OverviewReportViewProps> = ({
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
               <Package className="w-4 h-4 text-emerald-600" />
-              <span>Top Fast-Moving Medicines</span>
+              <span>Top Fast-Moving Products</span>
             </h4>
             <button
               type="button"

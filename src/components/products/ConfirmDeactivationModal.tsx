@@ -69,7 +69,7 @@ export const ConfirmDeactivationModal: React.FC<ConfirmDeactivationModalProps> =
 
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1.5 text-xs text-slate-600">
             <div className="flex justify-between">
-              <span className="text-slate-500">Generic Name:</span>
+              <span className="text-slate-500">Model / Specification:</span>
               <span className="font-semibold text-slate-800">{product.genericName}</span>
             </div>
             <div className="flex justify-between">

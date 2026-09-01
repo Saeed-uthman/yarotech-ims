@@ -171,13 +171,17 @@ export function useInventory(
   };
 }
 
-export function useInventoryKPIs(role: UserRole = 'admin') {
+export function useInventoryKPIs(role: UserRole = 'admin', enabled = true) {
   const [kpis, setKpis] = useState<InventorySummaryKPIs | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchKPIs = useCallback(
     async (forceFresh: boolean = false) => {
+      if (!enabled) {
+        setIsLoading(false);
+        return;
+      }
       const cacheKey = apiCache.generateKey('inventory:kpis', { role });
       if (forceFresh) {
         apiCache.invalidate(cacheKey);
@@ -203,7 +207,7 @@ export function useInventoryKPIs(role: UserRole = 'admin') {
         setIsLoading(false);
       }
     },
-    [role]
+    [enabled, role]
   );
 
   useEffect(() => {
@@ -212,6 +216,8 @@ export function useInventoryKPIs(role: UserRole = 'admin') {
 
   // Smart Polling for KPIs
   useEffect(() => {
+    if (!enabled) return;
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         fetchKPIs(false);
@@ -230,7 +236,7 @@ export function useInventoryKPIs(role: UserRole = 'admin') {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(intervalId);
     };
-  }, [fetchKPIs]);
+  }, [enabled, fetchKPIs]);
 
   return {
     kpis,

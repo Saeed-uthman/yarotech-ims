@@ -113,7 +113,7 @@ export const CustomerSummaryCards: React.FC<CustomerSummaryCardsProps> = ({
             {formatNaira(kpis.totalOutstandingDebt)}
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Pending pharmacy credit settlements
+            Pending customer credit settlements
           </p>
         </div>
       </div>

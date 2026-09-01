@@ -115,7 +115,7 @@ export const PurchaseCardList: React.FC<PurchaseCardListProps> = ({
               ))}
               {purchase.items.length > 2 && (
                 <div className="text-[11px] text-indigo-600 font-medium pt-0.5">
-                  +{purchase.items.length - 2} additional medicine items
+                  +{purchase.items.length - 2} additional product items
                 </div>
               )}
             </div>

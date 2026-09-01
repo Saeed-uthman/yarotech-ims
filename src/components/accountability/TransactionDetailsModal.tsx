@@ -181,7 +181,7 @@ export const TransactionDetailsModal: React.FC<
                   <table className="w-full text-left">
                     <thead className="bg-slate-100 text-slate-600 uppercase font-semibold">
                       <tr>
-                        <th className="p-2.5">Medicine & Manufacturer</th>
+                        <th className="p-2.5">Product & Brand</th>
                         <th className="p-2.5 text-center">Qty</th>
                         <th className="p-2.5 text-right">Cost Price</th>
                         <th className="p-2.5 text-right">Subtotal</th>
@@ -221,7 +221,7 @@ export const TransactionDetailsModal: React.FC<
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                   <Receipt className="w-3.5 h-3.5 text-emerald-600" />
-                  Dispensed Medicines
+                  Sold Products
                 </h4>
                 {transaction.customerName && (
                   <span className="text-xs font-medium text-slate-600">
@@ -235,7 +235,7 @@ export const TransactionDetailsModal: React.FC<
                   <table className="w-full text-left">
                     <thead className="bg-slate-100 text-slate-600 uppercase font-semibold">
                       <tr>
-                        <th className="p-2.5">Medicine</th>
+                        <th className="p-2.5">Product</th>
                         <th className="p-2.5 text-center">Qty</th>
                         <th className="p-2.5 text-right">Price</th>
                         <th className="p-2.5 text-right">Subtotal</th>

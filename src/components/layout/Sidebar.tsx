@@ -35,7 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNavChange,
   isMobileOpen = false,
   onCloseMobile,
-  pharmacyName = 'Al-Amaan Medicine Store',
+  pharmacyName = 'Yarotech Group',
   pharmacyLogo,
 }) => {
   const { user, logout, pendingCount } = useAuth();
@@ -102,7 +102,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (onCloseMobile) onCloseMobile();
   };
 
-  const displayName = user?.fullName || (currentRole === 'admin' ? 'Dr. Abdullahi Sanusi' : 'Dispensary Cashier');
+  const displayName = user?.fullName || (currentRole === 'admin' ? 'Yarotech Administrator' : 'Sales Cashier');
 
   const sidebarContent = (
     <div className="flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 w-64 select-none">
@@ -125,7 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <h1 className="font-bold text-slate-900 dark:text-white text-sm leading-tight tracking-tight truncate" title={pharmacyName}>
               {pharmacyName}
             </h1>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium truncate">Pharmacy Management</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium truncate">Technology & Energy Solutions</p>
           </div>
         </div>
 

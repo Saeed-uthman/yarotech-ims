@@ -522,7 +522,7 @@ export const CustomerProfileModal: React.FC<CustomerProfileModalProps> = ({
 
               <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-xs space-y-4">
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Internal Pharmacy Notes
+                  Internal Company Notes
                 </h4>
 
                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 min-h-[140px]">
@@ -553,7 +553,7 @@ export const CustomerProfileModal: React.FC<CustomerProfileModalProps> = ({
 
         {/* Modal Footer */}
         <div className="bg-slate-100 p-3 px-6 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-          <span>Al-Amaan Medicine Store Customer & Debt Management</span>
+          <span>Yarotech Group Customer & Debt Management</span>
           <button
             onClick={onClose}
             className="px-4 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium rounded-lg shadow-xs transition-colors"

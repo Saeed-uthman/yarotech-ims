@@ -98,7 +98,7 @@ export const ExecutiveSummaryCards: React.FC<ExecutiveSummaryCardsProps> = ({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Units Dispensed
+                  Units Sold
                 </span>
                 <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
                   <Receipt className="w-4 h-4" />
@@ -110,7 +110,7 @@ export const ExecutiveSummaryCards: React.FC<ExecutiveSummaryCardsProps> = ({
                   {summary.itemsSold.toLocaleString()} units
                 </div>
                 <div className="text-xs text-slate-500 font-medium">
-                  Total medicines dispensed to patients
+                  Total products sold to customers
                 </div>
               </div>
             </div>
@@ -148,7 +148,7 @@ export const ExecutiveSummaryCards: React.FC<ExecutiveSummaryCardsProps> = ({
                   {summary.debtorCount} customers
                 </div>
                 <div className="text-xs text-slate-500 font-medium">
-                  Patients with outstanding credit balances
+                  Customers with outstanding credit balances
                 </div>
               </div>
             </div>

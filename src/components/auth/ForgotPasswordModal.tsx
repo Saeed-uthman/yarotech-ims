@@ -44,7 +44,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
                 Contact your system administrator
               </h4>
               <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-                Self-service password reset is not enabled. Ask the pharmacy administrator to verify your identity and restore access through the approved account-recovery process.
+                Self-service password reset is not enabled. Ask the company administrator to verify your identity and restore access through the approved account-recovery process.
               </p>
             </div>
           </div>

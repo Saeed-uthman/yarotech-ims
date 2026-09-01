@@ -438,7 +438,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold tracking-tight text-white">
-                Record New Sale / Dispense Prescription
+                Record New Product Sale
               </h2>
               <p className="text-xs text-slate-400">
                 Point-of-Sale with automatic stock deduction and debt sync
@@ -469,7 +469,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                1. Select Products to Dispense
+                1. Select Products to Sell
               </h3>
               <span className="text-xs text-slate-500 font-medium">
                 {cart.length} item(s) in checkout
@@ -486,7 +486,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                 type="text"
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Type any part of a brand, generic name, manufacturer, or barcode..."
+                placeholder="Type any part of a product, model, brand, supplier, or barcode..."
                 autoComplete="off"
                 aria-autocomplete="list"
                 className="w-full pl-9.5 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
@@ -817,13 +817,13 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
 
                 <div>
                   <label className="font-semibold text-slate-700 block mb-1">
-                    Notes / Prescription Memo (Optional):
+                    Sale Notes / Reference (Optional):
                   </label>
                   <input
                     type="text"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="e.g. Dr. Adamu prescription, take 1 tab BD"
+                    placeholder="e.g. Customer requested installation support"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                   />
                 </div>

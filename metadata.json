@@ -1,6 +1,6 @@
 {
-  "name": "Al-Amaan Medicine Store",
-  "description": "Production-ready Pharmacy & Medicine Store Management System with Authentication, Staff Registration & Admin Approvals, Executive Dashboard, Products Core, Inventory Tracking, Stock Purchases, Customer & Debt Ledgers, Sales History & POS, Accountability Audit Feed, Financial & Movement Reports, and System Preferences & Configurations.",
+  "name": "Yarotech Group",
+  "description": "Business management system for networking devices, solar materials and other IT equipment, with inventory, purchasing, POS, customer ledgers, accountability and reporting.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

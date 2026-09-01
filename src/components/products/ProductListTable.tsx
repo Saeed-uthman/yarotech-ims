@@ -78,7 +78,7 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
     if (onDownloadCsvTemplate) {
       onDownloadCsvTemplate();
     } else {
-      downloadProductCsvTemplate('alamaan_product_import_template');
+      downloadProductCsvTemplate('yarotech_product_import_template');
     }
     setIsDownloadedRecently(true);
     setTimeout(() => {
@@ -173,7 +173,7 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
 
       {/* Table Container */}
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse" aria-label="Pharmaceutical Products Table">
+        <table className="w-full text-left border-collapse" aria-label="Technology and Solar Products Table">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider select-none">
               <th 
@@ -181,7 +181,7 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
                 onClick={() => handleHeaderSort('name')}
               >
                 <div className="flex items-center gap-1.5">
-                  <span>Product & Generic Name</span>
+                  <span>Product & Model</span>
                   {sortBy === 'name' && (
                     <span className="text-blue-600 font-bold">{sortOrder === 'asc' ? '↑' : '↓'}</span>
                   )}

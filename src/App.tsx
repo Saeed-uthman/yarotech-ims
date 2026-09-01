@@ -96,12 +96,12 @@ function MainPharmacyApp() {
     refetch: refetchProducts,
     updateOptimisticStatus,
     rollbackOptimisticStatus,
-  } = useProducts(filters, currentRole);
+  } = useProducts(filters, currentRole, isAuthenticated);
 
-  const { stats, isLoading: isKPIsLoading, refetch: refetchKPIs } = useKPIStats(currentRole);
-  const { kpis: inventoryKPIs, refetch: refetchInventoryKPIs } = useInventoryKPIs(currentRole);
-  const { categories, companies, refetch: refetchReferenceData } = useReferenceData();
-  const { settings, refetch: refetchSettings } = useSettings(currentRole);
+  const { stats, isLoading: isKPIsLoading, refetch: refetchKPIs } = useKPIStats(currentRole, isAuthenticated);
+  const { kpis: inventoryKPIs, refetch: refetchInventoryKPIs } = useInventoryKPIs(currentRole, isAuthenticated);
+  const { categories, companies, refetch: refetchReferenceData } = useReferenceData(isAuthenticated);
+  const { settings, refetch: refetchSettings } = useSettings(currentRole, isAuthenticated);
 
   const sessionTimeout = settings?.sessionTimeout || '30m';
   const handleInactivityTimeout = useCallback(() => {
@@ -140,7 +140,7 @@ function MainPharmacyApp() {
 
   // Background smart polling: revalidates every 45s if tab is visible & online
   useSmartPolling({
-    enabled: true,
+    enabled: isAuthenticated,
     intervalMs: 45000,
     onPoll: () => {
       refetchProducts();
@@ -448,7 +448,7 @@ function MainPharmacyApp() {
           </div>
           <div className="space-y-1">
             <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              {settings?.pharmacyName || 'Al-Amaan Medicine Store'}
+              {settings?.pharmacyName || 'Yarotech Group'}
             </h2>
             <p className="text-xs text-slate-400">Loading authorized session...</p>
           </div>
@@ -462,7 +462,7 @@ function MainPharmacyApp() {
   if (!isAuthenticated || !user || user.status !== 'ACTIVE') {
     return (
       <AuthContainer
-        pharmacyName={settings?.pharmacyName || 'Al-Amaan Medicine Store'}
+        pharmacyName={settings?.pharmacyName || 'Yarotech Group'}
         pharmacyLogo={settings?.logo}
       />
     );
@@ -636,7 +636,7 @@ function MainPharmacyApp() {
               ) : (
                 <AccessDeniedCard
                   title="System Settings Restricted"
-                  message="System configurations and pharmacy profile settings are restricted to Administrators."
+                  message="System configurations and company profile settings are restricted to Administrators."
                   onReturn={() => setActiveNav('sales')}
                 />
               )
@@ -700,7 +700,7 @@ function MainPharmacyApp() {
                   isSearching={isSearching}
                   onOpenExportAudit={() => setIsStockAuditModalOpen(true)}
                   onDownloadCsvTemplate={() => {
-                    downloadProductCsvTemplate('alamaan_product_bulk_import_template');
+                    downloadProductCsvTemplate('yarotech_product_bulk_import_template');
                     addToast({
                       type: 'success',
                       title: 'CSV Template Downloaded',
@@ -734,7 +734,7 @@ function MainPharmacyApp() {
                     }}
                     onOpenExportAudit={() => setIsStockAuditModalOpen(true)}
                     onDownloadCsvTemplate={() => {
-                      downloadProductCsvTemplate('alamaan_product_bulk_import_template');
+                      downloadProductCsvTemplate('yarotech_product_bulk_import_template');
                       addToast({
                         type: 'success',
                         title: 'CSV Template Downloaded',

@@ -51,7 +51,7 @@ export const ProductImage: React.FC<ProductImageProps> = ({
           )}
           <img
             src={src}
-            alt={alt || 'Pharmaceutical product image'}
+            alt={alt || 'Product image'}
             loading="lazy"
             referrerPolicy="no-referrer"
             onLoad={() => setIsLoading(false)}

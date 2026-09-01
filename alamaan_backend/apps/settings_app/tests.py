@@ -29,13 +29,13 @@ class SystemSettingsApiTests(APITestCase):
         self.client.force_authenticate(self.cashier)
         response = self.client.get(reverse('system-settings'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['data']['pharmacy_name'], 'Al-Amaan Pharmacy')
+        self.assertEqual(response.data['data']['pharmacy_name'], 'Yarotech Group')
 
     def test_cashier_cannot_update_settings(self):
         self.client.force_authenticate(self.cashier)
         response = self.client.put(
             reverse('system-settings'),
-            {'pharmacy_name': 'Hacked Pharmacy'},
+            {'pharmacy_name': 'Unauthorized Company'},
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -46,9 +46,9 @@ class SystemSettingsApiTests(APITestCase):
         response = self.client.put(
             reverse('system-settings'),
             {
-                'pharmacy_name': 'Al-Amaan Medical Store',
+                'pharmacy_name': 'Yarotech Group Nigeria',
                 'phone': '+234 801 234 5678',
-                'email': 'info@alamaan.com',
+                'email': 'info@yarotechgroup.com',
                 'require_sale_confirmation': True,
                 'receipt_cashier': False,
                 'large_transaction_threshold': '250000.00',
@@ -59,7 +59,7 @@ class SystemSettingsApiTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.settings.refresh_from_db()
-        self.assertEqual(self.settings.pharmacy_name, 'Al-Amaan Medical Store')
+        self.assertEqual(self.settings.pharmacy_name, 'Yarotech Group Nigeria')
         self.assertEqual(self.settings.phone, '+234 801 234 5678')
         self.assertTrue(self.settings.require_sale_confirmation)
         self.assertFalse(self.settings.receipt_cashier)
@@ -77,7 +77,7 @@ class SystemSettingsApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.settings.refresh_from_db()
-        self.assertEqual(self.settings.pharmacy_name, 'Al-Amaan Pharmacy')
+        self.assertEqual(self.settings.pharmacy_name, 'Yarotech Group')
         self.assertEqual(self.settings.theme, SystemSettings.Theme.SYSTEM)
         self.assertTrue(self.settings.receipt_cashier)
         self.assertEqual(self.settings.updated_by, self.admin)

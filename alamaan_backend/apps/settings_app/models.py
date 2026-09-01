@@ -18,12 +18,12 @@ class SystemSettings(TimeStampedModel):
 
     id = models.PositiveIntegerField(primary_key=True, default=1, editable=False)
 
-    pharmacy_name = models.CharField(max_length=150, default='Al-Amaan Pharmacy')
+    pharmacy_name = models.CharField(max_length=150, default='Yarotech Group')
     phone = models.CharField(max_length=50, default='+234 800 000 0000')
-    email = models.EmailField(default='contact@alamaanpharmacy.com')
+    email = models.EmailField(default='contact@yarotechgroup.com')
     address = models.TextField(default='Suite 12, Commercial Plaza, Kano, Nigeria')
     logo = models.ImageField(upload_to='settings/', null=True, blank=True)
-    business_description = models.TextField(blank=True, default='Licensed Retail Pharmacy & Healthcare Provider')
+    business_description = models.TextField(blank=True, default='Networking, Solar & IT Equipment Supplier')
 
     currency = models.CharField(max_length=10, default='NGN')
     currency_symbol = models.CharField(max_length=5, default='\u20a6')
@@ -45,7 +45,7 @@ class SystemSettings(TimeStampedModel):
     receipt_customer = models.BooleanField(default=True)
     receipt_datetime = models.BooleanField(default=True)
     receipt_number = models.BooleanField(default=True)
-    receipt_footer = models.TextField(default='Thank you for your patronage. Get well soon!')
+    receipt_footer = models.TextField(default='Thank you for choosing Yarotech Group.')
 
     low_stock_notifications = models.BooleanField(default=True)
     out_of_stock_notifications = models.BooleanField(default=True)

@@ -117,7 +117,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
     const newErrors: Record<string, string> = {};
 
     if (!formData.pharmacyName || !formData.pharmacyName.trim()) {
-      newErrors.pharmacyName = 'Pharmacy name is required.';
+      newErrors.pharmacyName = 'Company name is required.';
     }
 
     if (formData.lowStockThreshold < 0 || isNaN(formData.lowStockThreshold)) {
@@ -198,7 +198,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
   }[] = [
     {
       id: 'general',
-      label: 'Pharmacy Info',
+      label: 'Company Info',
       icon: Building2,
       keywords: ['name', 'phone', 'email', 'address', 'logo', 'description', 'contact'],
     },
@@ -256,7 +256,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center max-w-xl mx-auto my-8">
         <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
         <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Loading System Preferences...</h3>
-        <p className="text-xs text-slate-400 mt-1">Retrieving pharmacy configuration and security rules.</p>
+        <p className="text-xs text-slate-400 mt-1">Retrieving company configuration and security rules.</p>
       </div>
     );
   }
@@ -312,7 +312,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-start gap-3 text-xs text-amber-900">
           <Lock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
           <div className="leading-relaxed">
-            <strong>Cashier Operational View:</strong> Business configurations (Pharmacy Name, POS rules, Inventory triggers, and Receipt formats) are managed by Administrators. You can customize your local interface Theme and update your account password.
+            <strong>Cashier Operational View:</strong> Business configurations (Company Name, POS rules, inventory triggers, and receipt formats) are managed by Administrators. You can customize your local interface theme and update your account password.
           </div>
         </div>
       )}

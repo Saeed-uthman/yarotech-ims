@@ -43,6 +43,18 @@ class Company(TimeStampedModel):
 
 class Product(AuditableModel):
     class DosageForm(models.TextChoices):
+        SWITCH = 'Switch', 'Switch'
+        ROUTER = 'Router', 'Router'
+        ACCESS_POINT = 'Access Point', 'Access Point'
+        BATTERY = 'Battery', 'Battery'
+        INVERTER = 'Inverter', 'Inverter'
+        CHARGE_CONTROLLER = 'Charge Controller', 'Charge Controller'
+        SOLAR_PANEL = 'Solar Panel', 'Solar Panel'
+        CABLE = 'Cable', 'Cable'
+        ACCESSORY = 'Accessory', 'Accessory'
+        COMPUTER_EQUIPMENT = 'Computer Equipment', 'Computer Equipment'
+        OTHER_IT_EQUIPMENT = 'Other IT Equipment', 'Other IT Equipment'
+        # Legacy values remain valid so existing records and imports continue to work.
         TABLET = 'Tablet', 'Tablet'
         CAPSULE = 'Capsule', 'Capsule'
         SYRUP = 'Syrup', 'Syrup'

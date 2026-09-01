@@ -48,7 +48,7 @@ export const FinancialMovementReportView: React.FC<FinancialMovementReportViewPr
       ['NET CASH MOVEMENT', isNetPositive ? 'POSITIVE' : 'NEGATIVE', summary.netMovement, '-', '100%'],
     ];
     exportToPDF('financial-movement-report', headers, rows, {
-      title: 'Pharmacy Cash Flow & Financial Movement Report',
+      title: 'Yarotech Group Cash Flow & Financial Movement Report',
       subtitle: `Money In: NGN ${summary.moneyIn.toLocaleString()} | Money Out: NGN ${summary.moneyOut.toLocaleString()} | Net: NGN ${summary.netMovement.toLocaleString()}`,
     });
   };

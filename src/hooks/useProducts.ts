@@ -18,7 +18,8 @@ export interface UseProductsResult {
 
 export function useProducts(
   filters: ProductFilterParams,
-  role: UserRole = 'admin'
+  role: UserRole = 'admin',
+  enabled = true
 ): UseProductsResult {
   const [products, setProducts] = useState<Product[]>([]);
   const [meta, setMeta] = useState<ApiMeta>({
@@ -54,6 +55,10 @@ export function useProducts(
   // 2. Fetch Products with Stale-While-Revalidate and Obsolete Response Protection
   const fetchProductsData = useCallback(
     async (forceFresh: boolean = false) => {
+      if (!enabled) {
+        setIsLoading(false);
+        return;
+      }
       const requestId = ++latestRequestSeq.current;
       const activeFilters: ProductFilterParams = {
         ...filters,
@@ -130,6 +135,7 @@ export function useProducts(
       filters.limit,
       debouncedSearch,
       role,
+      enabled,
     ]
   );
 

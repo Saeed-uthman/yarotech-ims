@@ -237,8 +237,8 @@ SIMPLE_JWT = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Al-Amaan Pharmacy IMS API',
-    'DESCRIPTION': 'Backend API for Al-Amaan Pharmacy Management & Financial Accountability System',
+    'TITLE': 'Yarotech Group IMS API',
+    'DESCRIPTION': 'Backend API for Yarotech Group networking, solar and IT equipment management and financial accountability',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,

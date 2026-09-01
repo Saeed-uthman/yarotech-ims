@@ -32,10 +32,10 @@ export function exportTableToPDF(
   options: PDFExportOptions = {}
 ): void {
   const {
-    title = 'Pharmacy Report',
+    title = 'Business Report',
     subtitle,
     orientation = headers.length > 6 ? 'landscape' : 'portrait',
-    pharmacyName = 'AL-AMAAN MEDICINE STORE',
+    pharmacyName = 'YAROTECH GROUP',
     metadata = {},
     footerNote,
     includeSignatures = false,
@@ -136,7 +136,7 @@ export function exportTableToPDF(
       doc.setTextColor(148, 163, 184); // slate-400
 
       // Left footer
-      const leftFoot = footerNote ? sanitizeTextForPDF(footerNote) : 'Confidential - Al-Amaan Medicine Store Records';
+      const leftFoot = footerNote ? sanitizeTextForPDF(footerNote) : 'Confidential - Yarotech Group Records';
       doc.text(leftFoot, margin, pageHeight - 8);
 
       // Right footer
@@ -163,7 +163,7 @@ export function exportTableToPDF(
       // Right signature
       const rightSigX = pageWidth - margin - 50;
       doc.line(rightSigX, finalY + 12, rightSigX + 50, finalY + 12);
-      doc.text('Pharmacist-in-Charge / Approved', rightSigX, finalY + 16);
+      doc.text('Manager-in-Charge / Approved', rightSigX, finalY + 16);
     }
   }
 

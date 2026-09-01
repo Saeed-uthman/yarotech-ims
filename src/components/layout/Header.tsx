@@ -38,12 +38,12 @@ export interface HeaderProps {
 const MODULE_META: Record<string, { title: string; subtitle: string; icon: React.ElementType }> = {
   dashboard: {
     title: 'Executive Dashboard',
-    subtitle: 'Real-time revenue, gross profit margins, and pharmacy stock health.',
+    subtitle: 'Real-time revenue, gross profit margins, and inventory health.',
     icon: LayoutDashboard,
   },
   products: {
     title: 'Product Management',
-    subtitle: 'Manage medicines and company-specific pricing variants.',
+    subtitle: 'Manage networking, solar and IT products with supplier-specific pricing.',
     icon: Package,
   },
   inventory: {
@@ -58,7 +58,7 @@ const MODULE_META: Record<string, { title: string; subtitle: string; icon: React
   },
   customers: {
     title: 'Customer Ledgers',
-    subtitle: 'Patient accounts, credit limits, and debt recovery records.',
+    subtitle: 'Customer accounts, credit limits, and debt recovery records.',
     icon: Users,
   },
   sales: {
@@ -83,7 +83,7 @@ const MODULE_META: Record<string, { title: string; subtitle: string; icon: React
   },
   settings: {
     title: 'System Preferences',
-    subtitle: 'Pharmacy profile, receipt, tax, currency, and inventory preferences.',
+    subtitle: 'Company profile, receipt, tax, currency, and inventory preferences.',
     icon: SettingsIcon,
   },
 };
@@ -91,7 +91,7 @@ const MODULE_META: Record<string, { title: string; subtitle: string; icon: React
 export const Header: React.FC<HeaderProps> = ({
   activeNav = 'products',
   onNavChange,
-  pharmacyName = 'Al-Amaan Medicine Store',
+  pharmacyName = 'Yarotech Group',
   pharmacyLogo,
   currentRole,
   onOpenAddProduct,
@@ -106,8 +106,8 @@ export const Header: React.FC<HeaderProps> = ({
   const metaLabel = isMac ? '⌘' : 'Ctrl';
 
   const activeMeta = MODULE_META[activeNav] || {
-    title: 'Pharmacy System',
-    subtitle: 'Pharmacy management and inventory control.',
+    title: 'Business System',
+    subtitle: 'Technology products, sales and inventory control.',
     icon: Package,
   };
 
@@ -184,7 +184,7 @@ export const Header: React.FC<HeaderProps> = ({
                 id="open-add-product-modal-btn"
                 type="button"
                 onClick={onOpenAddProduct}
-                title={`Create Medicine Product (${metaLabel}+P)`}
+                title={`Create Product (${metaLabel}+P)`}
                 className="p-2 sm:px-3 sm:py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg text-xs sm:text-sm font-semibold shadow-2xs transition-colors flex items-center gap-1.5 min-h-[38px] sm:min-h-[42px] min-w-[38px] justify-center focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                 aria-label="Add new product"
               >

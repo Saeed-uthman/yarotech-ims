@@ -75,8 +75,8 @@ export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
     logout();
   };
 
-  const displayName = user?.fullName || (currentRole === 'admin' ? 'Dr. Abdullahi Sanusi' : 'Dispensary Cashier');
-  const displayEmail = user?.email || (currentRole === 'admin' ? 'admin@alamaan.test' : 'cashier@alamaan.test');
+  const displayName = user?.fullName || (currentRole === 'admin' ? 'Yarotech Administrator' : 'Sales Cashier');
+  const displayEmail = user?.email || (currentRole === 'admin' ? 'admin@yarotech.test' : 'cashier@yarotech.test');
 
   return (
     <div className="relative">
@@ -131,7 +131,7 @@ export const HeaderUserMenu: React.FC<HeaderUserMenuProps> = ({
             </span>
           </div>
           <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
-            {currentRole === 'admin' ? 'System Administrator' : 'Dispensary & POS'}
+            {currentRole === 'admin' ? 'System Administrator' : 'Sales & POS'}
           </p>
         </div>
 
