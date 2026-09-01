@@ -148,6 +148,24 @@ else:
         f'Unsupported DB_ENGINE {DATABASE_ENGINE!r}. Use sqlite or postgresql.'
     )
 
+# Optional read-only source used by the one-time legacy product importer. It is
+# deliberately absent unless configured so ordinary application traffic cannot
+# accidentally depend on the retired MySQL database.
+LEGACY_DB_NAME = env.str('LEGACY_DB_NAME', default='').strip()
+if LEGACY_DB_NAME:
+    DATABASES['legacy'] = {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': LEGACY_DB_NAME,
+        'USER': env.str('LEGACY_DB_USER'),
+        'PASSWORD': env.str('LEGACY_DB_PASSWORD'),
+        'HOST': env.str('LEGACY_DB_HOST', default='127.0.0.1'),
+        'PORT': env.str('LEGACY_DB_PORT', default='3306'),
+        'CONN_MAX_AGE': 0,
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+        },
+    }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
