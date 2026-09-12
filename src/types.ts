@@ -115,6 +115,7 @@ export interface CompanyEntity {
 }
 
 export interface ProductEntity {
+  vatEnabled?: boolean;
   id: string;
   name: string;
   genericName: string;
@@ -183,6 +184,7 @@ export interface ProductVariantInput {
 }
 
 export interface ProductCreateInput {
+  vatEnabled?: boolean;
   name: string;
   genericName: string;
   categoryId?: string;
@@ -489,6 +491,9 @@ export type SalePaymentMethod = 'CASH' | 'TRANSFER' | 'POS' | 'CREDIT';
 export type SalesDateRange = 'today' | 'this_week' | 'this_month' | 'overall' | 'custom';
 
 export interface SaleItem {
+  vatAmount?: number;
+  vatRate?: number;
+  lineDiscount?: number;
   id: string;
   productId: string;
   productVariantId: string;
@@ -513,6 +518,7 @@ export interface SaleItem {
 }
 
 export interface Sale {
+  vatAmount?: number;
   id: string;
   invoiceNumber: string; // e.g. "Sale #000145"
   date: string; // e.g. "19 Aug 2026, 10:30 AM"
@@ -633,7 +639,7 @@ export interface CustomerSummaryKPIs {
 
 export interface CreateCustomerInput {
   name: string;
-  phone: string;
+  phone?: string | null;
   address?: string;
   email?: string;
   notes?: string;
@@ -642,7 +648,7 @@ export interface CreateCustomerInput {
 
 export interface UpdateCustomerInput {
   name?: string;
-  phone?: string;
+  phone?: string | null;
   address?: string;
   email?: string;
   notes?: string;
@@ -1199,6 +1205,8 @@ export type AppLanguage = 'English';
 export type SessionTimeout = '15m' | '30m' | '60m' | 'never';
 
 export interface SystemSettings {
+  vatEnabled?: boolean;
+  vatRate?: number;
   id: string;
   // 1. Pharmacy Identity & Info
   pharmacyName: string;

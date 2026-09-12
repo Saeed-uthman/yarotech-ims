@@ -20,3 +20,5 @@ backups/
 alamaan_backend/logs/
 alamaan_backend/media/*
 !alamaan_backend/media/.gitkeep
+
+.tmp/

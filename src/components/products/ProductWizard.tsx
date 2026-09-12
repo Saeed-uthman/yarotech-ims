@@ -66,6 +66,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
 
   // Step 1: Product Information State
   const [name, setName] = useState('');
+  const [vatEnabled, setVatEnabled] = useState(false);
   const [genericName, setGenericName] = useState('');
   const [category, setCategory] = useState('');
   const [dosage, setDosage] = useState('');
@@ -98,6 +99,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
   useEffect(() => {
     if (initialProduct) {
       setName(initialProduct.name);
+      setVatEnabled(Boolean(initialProduct.vatEnabled));
       setGenericName(initialProduct.genericName);
       setCategory(initialProduct.category);
       setDosage(initialProduct.dosage);
@@ -312,6 +314,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
     if (!validateStep1() || !validateStep2()) return;
 
     onSave({
+      vatEnabled,
       name: name.trim(),
       genericName: genericName.trim(),
       category: category.trim(),
@@ -447,6 +450,10 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
         </div>
       )}
 
+      {step === 1 && <label className="mx-6 my-4 flex items-start gap-3 p-4 bg-slate-50 border rounded-lg text-sm">
+        <input type="checkbox" checked={vatEnabled} onChange={event => setVatEnabled(event.target.checked)} />
+        <span><strong>Apply VAT to this product</strong><span className="block text-xs text-slate-500">Uses the admin VAT percentage when VAT is enabled in Settings. Applies to all variants.</span></span>
+      </label>}
       {/* Wizard Step Content */}
       <div className="p-5 sm:p-6 max-h-[70vh] overflow-y-auto">
         {/* STEP 1: Product Information */}

@@ -12,7 +12,7 @@ from .services import create_customer, record_customer_debt_payment, reverse_cus
 
 class CustomerCreateUpdateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=150)
-    phone = serializers.CharField(max_length=20)
+    phone = serializers.CharField(max_length=20, required=False, allow_blank=True, allow_null=True)
     email = serializers.EmailField(required=False, allow_blank=True, default='')
     address = serializers.CharField(required=False, allow_blank=True, default='')
     notes = serializers.CharField(required=False, allow_blank=True, default='')
@@ -24,9 +24,9 @@ class CustomerCreateUpdateSerializer(serializers.Serializer):
         return name
 
     def validate_phone(self, value):
-        phone = value.strip()
-        if not phone:
-            raise serializers.ValidationError('Phone number is required.')
+        phone = (value or "").strip() or None
+        if phone is None:
+            return None
         instance = getattr(self, 'instance', None)
         qs = Customer.objects.filter(phone=phone)
         if instance:
@@ -221,7 +221,7 @@ class DebtPaymentInputSerializer(serializers.Serializer):
 
 class DebtPaymentOutputSerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField(source='customer.name', read_only=True)
-    customer_phone = serializers.CharField(source='customer.phone', read_only=True)
+    customer_phone = serializers.CharField(source='customer.phone', read_only=True, allow_null=True)
     recorded_by_name = serializers.CharField(source='recorded_by.full_name', read_only=True)
 
     class Meta:
@@ -272,17 +272,9 @@ class DebtPaymentReversalOutputSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class SaleOutputSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Sale
-        fields = [
-            'id',
-            'invoice_number',
-            'total_amount',
-            'amount_paid',
-            'outstanding_amount',
-            'payment_status',
-            'payment_method',
-            'created_at',
-        ]
-        read_only_fields = fields
+# Keep history consistent with sale details, including role-filtered item fields.
+from apps.sales.serializers import SaleDetailSerializer
+
+
+class SaleOutputSerializer(SaleDetailSerializer):
+    pass

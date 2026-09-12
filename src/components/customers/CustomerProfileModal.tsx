@@ -109,11 +109,11 @@ export const CustomerProfileModal: React.FC<CustomerProfileModalProps> = ({
 
               <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-slate-300">
                 <a
-                  href={`tel:${customer.phone}`}
+                  href={customer.phone ? `tel:${customer.phone || 'No phone number'}` : undefined}
                   className="inline-flex items-center gap-1 text-slate-200 hover:text-white font-mono hover:underline"
                 >
                   <Phone className="w-3.5 h-3.5 text-slate-400" />
-                  {customer.phone}
+                  {customer.phone || 'No phone number'}
                 </a>
 
                 {customer.email && (
@@ -339,7 +339,7 @@ export const CustomerProfileModal: React.FC<CustomerProfileModalProps> = ({
                   </p>
                 </div>
               ) : (
-                <div className="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
+                <div className="bg-white border border-slate-200 rounded-lg shadow-xs overflow-x-auto">
                   <table className="w-full text-left text-sm border-collapse">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -370,10 +370,10 @@ export const CustomerProfileModal: React.FC<CustomerProfileModalProps> = ({
                             </div>
                           </td>
                           <td className="py-3 px-4 text-right font-semibold text-slate-800 whitespace-nowrap">
-                            {formatNaira(sale.totalAmount)}
+                            {formatNaira(sale.total)}
                           </td>
                           <td className="py-3 px-4 text-right text-emerald-700 font-medium whitespace-nowrap">
-                            {formatNaira(sale.paidAmount)}
+                            {formatNaira(sale.amountPaid)}
                           </td>
                           <td className="py-3 px-4 text-right whitespace-nowrap">
                             {sale.outstandingAmount > 0 ? (
@@ -427,7 +427,7 @@ export const CustomerProfileModal: React.FC<CustomerProfileModalProps> = ({
                   </p>
                 </div>
               ) : (
-                <div className="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
+                <div className="bg-white border border-slate-200 rounded-lg shadow-xs overflow-x-auto">
                   <table className="w-full text-left text-sm border-collapse">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -497,7 +497,7 @@ export const CustomerProfileModal: React.FC<CustomerProfileModalProps> = ({
 
                 <div>
                   <label className="text-xs text-slate-400 block font-medium">Phone Number</label>
-                  <p className="text-sm font-mono text-slate-800 mt-0.5">{customer.phone}</p>
+                  <p className="text-sm font-mono text-slate-800 mt-0.5">{customer.phone || 'No phone number'}</p>
                 </div>
 
                 <div>

@@ -32,6 +32,7 @@ export function mapBackendProduct(raw: any): Product {
     form: p.dosageForm || '',
     barcode: p.barcode || '',
     description: p.description || '',
+    vatEnabled: Boolean(p.vatEnabled),
     subtitle: p.subtitle || '',
     image: p.image || undefined,
     status: p.status === 'Active' ? 'Active' : 'Inactive',
@@ -264,6 +265,7 @@ export class ProductService {
       const payload: any = {
         name: input.name,
         generic_name: input.genericName,
+        vat_enabled: input.vatEnabled ?? false,
         category_id: categoryId,
         dosage: input.dosage,
         dosage_form: input.form,
@@ -296,6 +298,7 @@ export class ProductService {
   ): Promise<ApiResponse<Product>> {
     try {
       const payload: any = {};
+      if (updates.vatEnabled !== undefined) payload.vat_enabled = updates.vatEnabled;
       if (updates.name !== undefined) payload.name = updates.name;
       if (updates.genericName !== undefined) payload.generic_name = updates.genericName;
       if (updates.categoryId !== undefined) {

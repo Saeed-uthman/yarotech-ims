@@ -42,6 +42,8 @@ export class SettingsService {
       currency: data.currency || 'NGN',
       currencySymbol: data.currencySymbol || '₦',
       showDecimals: data.showDecimals ?? true,
+      vatEnabled: data.vatEnabled ?? false,
+      vatRate: Number(data.vatRate || 0),
       allowWalkingSales: data.allowWalkingSales ?? true,
       allowCreditSales: data.allowCreditSales ?? true,
       requireCustomerForCredit: data.requireCustomerForCredit ?? true,

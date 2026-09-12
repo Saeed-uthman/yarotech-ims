@@ -68,9 +68,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
       newErrors.name = 'Customer name is required.';
     }
 
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required.';
-    } else {
+    if (formData.phone.trim()) {
       // Check duplicate phone
       const isDuplicate = await customerService.checkDuplicatePhone(
         formData.phone.trim(),
@@ -99,7 +97,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
     try {
       await onSubmit({
         name: formData.name.trim(),
-        phone: formData.phone.trim(),
+        phone: formData.phone.trim() || null,
         email: formData.email.trim() || undefined,
         address: formData.address.trim() || undefined,
         notes: formData.notes.trim() || undefined,
@@ -163,7 +161,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
 
           {/* Customer Name */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label htmlFor="input-customer-name" className="block text-xs font-semibold text-slate-700 mb-1">
               Customer Full Name <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
@@ -187,8 +185,8 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
 
           {/* Phone Number */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Phone Number <span className="text-rose-500">*</span>
+            <label htmlFor="input-customer-phone" className="block text-xs font-semibold text-slate-700 mb-1">
+              Phone Number <span className="text-slate-400">(Optional)</span>
             </label>
             <div className="relative">
               <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />

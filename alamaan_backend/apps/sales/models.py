@@ -29,6 +29,7 @@ class Sale(AuditableModel):
         blank=True,
         related_name='sales',
     )
+    vat_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     subtotal = models.DecimalField(max_digits=12, decimal_places=2)
     discount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2)
@@ -77,6 +78,8 @@ class SaleItem(TimeStampedModel):
         related_name='sale_items',
     )
     quantity = models.IntegerField()
+    vat_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    line_discount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     actual_selling_price = models.DecimalField(max_digits=12, decimal_places=2)
     unit_selling_price = models.DecimalField(max_digits=12, decimal_places=2)
     historical_base_price = models.DecimalField(max_digits=12, decimal_places=2)
@@ -84,6 +87,7 @@ class SaleItem(TimeStampedModel):
     min_selling_price = models.DecimalField(max_digits=12, decimal_places=2)
     default_selling_price = models.DecimalField(max_digits=12, decimal_places=2)
     max_selling_price = models.DecimalField(max_digits=12, decimal_places=2)
+    vat_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     subtotal = models.DecimalField(max_digits=12, decimal_places=2)
     profit = models.DecimalField(max_digits=12, decimal_places=2)
 
@@ -98,6 +102,7 @@ class SaleReturn(AuditableModel):
     id = models.BigAutoField(primary_key=True)
     return_number = models.CharField(max_length=32, unique=True, db_index=True)
     sale = models.ForeignKey(Sale, on_delete=models.PROTECT, related_name='returns')
+    vat_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2)
     debt_reduction = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     refund_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
@@ -116,6 +121,7 @@ class SaleReturnItem(TimeStampedModel):
     sale_item = models.ForeignKey(SaleItem, on_delete=models.PROTECT, related_name='return_items')
     quantity = models.PositiveIntegerField()
     unit_refund_price = models.DecimalField(max_digits=12, decimal_places=2)
+    vat_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     subtotal = models.DecimalField(max_digits=12, decimal_places=2)
     historical_cost = models.DecimalField(max_digits=12, decimal_places=2)
     profit_reversal = models.DecimalField(max_digits=12, decimal_places=2)
@@ -133,3 +139,14 @@ class SaleReturnBatchRestoration(TimeStampedModel):
         constraints = [
             models.UniqueConstraint(fields=['return_item', 'batch'], name='unique_return_item_batch'),
         ]
+
+
+class VatMovement(TimeStampedModel):
+    sale = models.ForeignKey(Sale, on_delete=models.PROTECT, related_name='vat_movements')
+    source = models.CharField(max_length=100)
+    vat_billed = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    vat_collected = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['sale', 'source'], name='unique_sale_vat_source')]
+        ordering = ['-created_at', '-pk']

@@ -13,6 +13,7 @@ from apps.inventory.services import record_stock_movement
 from apps.products.models import ProductVariant
 from apps.settings_app.models import SystemSettings
 
+from .vat import money, price_lines, record_vat_position
 from .models import Sale, SaleItem, SaleReturn, SaleReturnBatchRestoration, SaleReturnItem
 
 
@@ -84,9 +85,13 @@ def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'),
         subtotal += actual_price * item['quantity']
 
     discount = Decimal(str(discount))
-    total_amount = subtotal - discount
-    if total_amount < 0:
-        raise ValidationError({'discount': 'Discount cannot exceed subtotal.'})
+    priced_lines = price_lines([
+        {'subtotal': Decimal(str(item['actual_selling_price'])) * item['quantity'],
+         'vat_enabled': variants[item['product_variant_id']].product.vat_enabled}
+        for item in items
+    ], discount, system_settings.vat_rate if system_settings.vat_enabled else Decimal('0.00'))
+    vat_amount = sum((line['vat_amount'] for line in priced_lines), Decimal('0.00'))
+    total_amount = subtotal - discount + vat_amount
 
     amount_paid = Decimal(str(amount_paid))
     if amount_paid < 0:
@@ -117,6 +122,7 @@ def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'),
         invoice_number=invoice_number,
         customer_id=customer_id,
         subtotal=subtotal,
+        vat_amount=vat_amount,
         discount=discount,
         total_amount=total_amount,
         amount_paid=amount_paid,
@@ -129,7 +135,7 @@ def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'),
         updated_by=user,
     )
 
-    for item in items:
+    for item, tax in zip(items, priced_lines):
         variant = variants[item['product_variant_id']]
         actual_price = Decimal(str(item['actual_selling_price']))
         quantity = item['quantity']
@@ -191,6 +197,7 @@ def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'),
             default_selling_price=variant.default_selling_price,
             max_selling_price=variant.max_selling_price,
             subtotal=item_subtotal,
+            **tax,
             profit=item_profit,
         )
         SaleBatchAllocation.objects.bulk_create([
@@ -237,6 +244,7 @@ def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'),
             updated_by=user,
         )
 
+    record_vat_position(sale, 'sale')
     return sale
 
 
@@ -315,6 +323,7 @@ def cancel_sale(*, sale, cancelled_by, reason=''):
     sale.status = Sale.Status.CANCELLED
     sale.updated_by = cancelled_by
     sale.save(update_fields=['status', 'updated_by', 'updated_at'])
+    record_vat_position(sale, 'cancel')
 
     return sale
 
@@ -351,10 +360,17 @@ def process_sale_return(*, sale, items, refund_method, reason, processed_by):
             raise ValidationError({
                 'items': f'Return quantity for item {sale_item.id} exceeds the remaining returnable quantity.'
             })
-        discount_factor = sale.total_amount / sale.subtotal if sale.subtotal else Decimal('0.00')
-        unit_refund_price = (sale_item.actual_selling_price * discount_factor).quantize(Decimal('0.01'))
-        subtotal = unit_refund_price * quantity
-        prepared.append((sale_item, quantity, unit_refund_price, subtotal))
+        if sale.vat_amount:
+            line_total = sale_item.subtotal - sale_item.line_discount + sale_item.vat_amount
+            subtotal = money(line_total * (already_returned + quantity) / sale_item.quantity) - money(line_total * already_returned / sale_item.quantity)
+            return_vat = money(sale_item.vat_amount * (already_returned + quantity) / sale_item.quantity) - money(sale_item.vat_amount * already_returned / sale_item.quantity)
+            unit_refund_price = money(subtotal / quantity)
+        else:
+            discount_factor = sale.total_amount / sale.subtotal if sale.subtotal else Decimal('0.00')
+            unit_refund_price = money(sale_item.actual_selling_price * discount_factor)
+            subtotal = unit_refund_price * quantity
+            return_vat = Decimal('0.00')
+        prepared.append((sale_item, quantity, unit_refund_price, subtotal, return_vat))
         total_amount += subtotal
 
     previously_returned = sale.returns.aggregate(total=Sum('total_amount'))['total'] or Decimal('0.00')
@@ -370,6 +386,7 @@ def process_sale_return(*, sale, items, refund_method, reason, processed_by):
         return_number=_generate_return_number(),
         sale=sale,
         total_amount=total_amount,
+        vat_amount=sum((entry[4] for entry in prepared), Decimal('0.00')),
         debt_reduction=debt_reduction,
         refund_amount=refund_amount,
         refund_method=refund_method,
@@ -382,10 +399,10 @@ def process_sale_return(*, sale, items, refund_method, reason, processed_by):
     locked_variants = {
         variant.id: variant
         for variant in ProductVariant.objects.select_for_update().filter(
-            id__in=[sale_item.variant_id for sale_item, _, _, _ in prepared]
+            id__in=[sale_item.variant_id for sale_item, _, _, _, _ in prepared]
         )
     }
-    for sale_item, quantity, unit_refund_price, subtotal in prepared:
+    for sale_item, quantity, unit_refund_price, subtotal, return_vat in prepared:
         cost = sale_item.unit_base_price * quantity
         return_item = SaleReturnItem.objects.create(
             return_record=return_record,
@@ -394,7 +411,8 @@ def process_sale_return(*, sale, items, refund_method, reason, processed_by):
             unit_refund_price=unit_refund_price,
             subtotal=subtotal,
             historical_cost=cost,
-            profit_reversal=subtotal - cost,
+            profit_reversal=subtotal - return_vat - cost,
+            vat_amount=return_vat,
         )
 
         remaining = quantity
@@ -466,4 +484,5 @@ def process_sale_return(*, sale, items, refund_method, reason, processed_by):
             created_by=processed_by,
             updated_by=processed_by,
         )
+    record_vat_position(sale, f'return:{return_record.pk}')
     return return_record

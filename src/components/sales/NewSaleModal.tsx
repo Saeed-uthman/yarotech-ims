@@ -26,8 +26,9 @@ import {
   SystemSettings,
 } from '../../types';
 import { productService } from '../../services/productService';
-import { customerService } from '../../services/customerService';
+import { CustomerSearchField } from './CustomerSearchField';
 import { salesService } from '../../services/salesService';
+import { calculateVat } from '../../utils/vat';
 import { formatNaira } from '../../utils/formatters';
 
 function roundMoney(value: number): number {
@@ -43,6 +44,7 @@ interface NewSaleModalProps {
 }
 
 interface CartItem {
+  vatEnabled: boolean;
   variantId: string;
   productId: string;
   productName: string;
@@ -69,14 +71,13 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   const [cart, setCart] = useState<CartItem[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
-  const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [productSearchError, setProductSearchError] = useState<string | null>(null);
 
   // Customer choice
   const [customerType, setCustomerType] = useState<'walking' | 'registered'>('walking');
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
-  const [customerSearch, setCustomerSearch] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const selectedCustomerId = selectedCustomer?.id || '';
 
   // Payment details
   const [discount, setDiscount] = useState<number>(0);
@@ -87,24 +88,6 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   // Form states & submission
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-
-  // Fetch registered customers when the form opens. Products are searched on
-  // demand so the sale form is not restricted to the first catalogue page.
-  useEffect(() => {
-    if (!isOpen) return;
-    async function loadData() {
-      try {
-        const custRes = await customerService.getCustomers(
-          { page: 1, limit: 100, status: 'active' },
-          role
-        );
-        setAllCustomers(custRes.data);
-      } catch (err: any) {
-        setFormError('Failed to load the customer list.');
-      }
-    }
-    loadData();
-  }, [role, isOpen]);
 
   // Query Django after a short pause in typing. Fetch every result page so a
   // partial query such as "pa" is not limited to the first 100 products.
@@ -163,17 +146,6 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
     };
   }, [isOpen, productSearch, role]);
 
-  // Filter customers based on search input
-  const filteredCustomers = allCustomers.filter((c) => {
-    if (!customerSearch.trim()) return true;
-    const q = customerSearch.toLowerCase().trim();
-    return (
-      c.name.toLowerCase().includes(q) ||
-      c.phone.toLowerCase().includes(q) ||
-      (c.email && c.email.toLowerCase().includes(q)) ||
-      (c.address && c.address.toLowerCase().includes(q))
-    );
-  });
   useEffect(() => {
     if (isOpen) {
       setCart([]);
@@ -181,8 +153,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
       setAvailableProducts([]);
       setProductSearchError(null);
       setCustomerType(settings.allowWalkingSales ? 'walking' : 'registered');
-      setSelectedCustomerId('');
-      setCustomerSearch('');
+      setSelectedCustomer(null);
       setDiscount(0);
       setPaymentMethod('CASH');
       setAmountPaid('');
@@ -196,7 +167,10 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
     cart.reduce((sum, item) => sum + (item.actualSellingPrice || item.sellingPrice) * item.quantity, 0)
   );
   const numericDiscount = roundMoney(Math.max(0, Number(discount) || 0));
-  const grandTotal = roundMoney(Math.max(0, subtotal - numericDiscount));
+  const vatAmount = calculateVat(cart.map(item => ({
+    subtotal: roundMoney(item.actualSellingPrice * item.quantity), vatEnabled: item.vatEnabled,
+  })), Math.min(numericDiscount, subtotal), settings.vatEnabled ? (settings.vatRate || 0) : 0);
+  const grandTotal = roundMoney(Math.max(0, subtotal - numericDiscount) + vatAmount);
 
   // Keep checkout fully paid by default. Selecting a partial/credit option
   // afterwards is preserved until the cart total changes again.
@@ -260,6 +234,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
           {
             variantId: variant.id,
             productId: product.id,
+            vatEnabled: Boolean(product.vatEnabled),
             productName: product.name,
             genericName: product.genericName,
             companyName: variant.companyName,
@@ -422,7 +397,6 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
     }
   };
 
-  const selectedCustomer = allCustomers.find((c) => c.id === selectedCustomerId);
 
   return (
     <div
@@ -700,7 +674,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                   checked={customerType === 'walking'}
                   onChange={() => {
                     setCustomerType('walking');
-                    setSelectedCustomerId('');
+                    setSelectedCustomer(null);
                   }}
                   className="mt-0.5 text-blue-600 focus:ring-blue-500"
                 />
@@ -739,30 +713,19 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
               </label>
             </div>
 
-            {/* Registered Customer Dropdown Selector */}
+            {/* Registered Customer Search */}
             {customerType === 'registered' && (
               <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2 animate-in fade-in duration-150">
-                <label className="text-xs font-semibold text-slate-700 block">
-                  Select Registered Customer:
-                </label>
-                <select
-                  id="registered-customer-select"
-                  value={selectedCustomerId}
-                  onChange={(e) => setSelectedCustomerId(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">-- Choose Customer --</option>
-                  {allCustomers.map((cust) => (
-                    <option key={cust.id} value={cust.id}>
-                      {cust.name} ({cust.phone}) • Current Debt: {formatNaira(cust.outstandingDebt)}
-                    </option>
-                  ))}
-                </select>
+                <CustomerSearchField
+                  initialCustomer={selectedCustomer}
+                  disabled={isSubmitting}
+                  onSelect={setSelectedCustomer}
+                />
 
                 {selectedCustomer && (
                   <div className="flex items-center justify-between text-[11px] text-slate-600 bg-white p-2 rounded-md border border-slate-200 mt-1">
                     <span>
-                      Selected: <strong>{selectedCustomer.name}</strong> ({selectedCustomer.phone})
+                      Selected: <strong>{selectedCustomer.name}</strong> {selectedCustomer.phone ? `(${selectedCustomer.phone})` : ''}
                     </span>
                     <span className="font-semibold text-amber-700">
                       Existing Balance: {formatNaira(selectedCustomer.outstandingDebt)}
@@ -850,6 +813,10 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                   />
                 </div>
 
+                <div className="flex justify-between text-slate-700">
+                  <span>VAT ({settings.vatEnabled ? settings.vatRate || 0 : 0}% on enabled products):</span>
+                  <span>{formatNaira(vatAmount)}</span>
+                </div>
                 <div className="flex justify-between font-extrabold text-sm text-slate-900 pt-2 border-t border-slate-200">
                   <span>Grand Total:</span>
                   <span className="text-base text-blue-700">{formatNaira(grandTotal)}</span>

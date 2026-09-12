@@ -49,7 +49,7 @@ def list_customers(*, search='', status=None, ordering='name'):
     ordering_field = ordering_map.get(ordering_key, 'name')
     if descending:
         ordering_field = f'-{ordering_field}'
-    return queryset.order_by(ordering_field)
+    return queryset.order_by(ordering_field, 'pk')
 
 
 def get_customer_detail(*, customer_id):

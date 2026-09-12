@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 from apps.common.models import TimeStampedModel
 
@@ -28,6 +29,9 @@ class SystemSettings(TimeStampedModel):
     currency = models.CharField(max_length=10, default='NGN')
     currency_symbol = models.CharField(max_length=5, default='\u20a6')
     show_decimals = models.BooleanField(default=True)
+
+    vat_enabled = models.BooleanField(default=False)
+    vat_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0, validators=[MinValueValidator(0), MaxValueValidator(100)])
 
     allow_walking_sales = models.BooleanField(default=True)
     allow_credit_sales = models.BooleanField(default=True)

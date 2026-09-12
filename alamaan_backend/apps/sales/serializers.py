@@ -38,34 +38,6 @@ class CreateSaleInputSerializer(serializers.Serializer):
             raise serializers.ValidationError('At least one item is required.')
         return value
 
-    def validate(self, attrs):
-        customer_id = attrs.get('customer_id')
-        amount_paid = attrs.get('amount_paid', Decimal('0.00'))
-        items = attrs.get('items', [])
-
-        subtotal = Decimal('0.00')
-        for item in items:
-            subtotal += item['actual_selling_price'] * item['quantity']
-
-        discount = attrs.get('discount', Decimal('0.00'))
-        total_amount = subtotal - discount
-        outstanding = total_amount - amount_paid
-
-        if outstanding < 0:
-            raise serializers.ValidationError({'amount_paid': 'Amount paid cannot exceed total amount.'})
-
-        is_credit = outstanding > 0
-        if is_credit and customer_id is None:
-            raise serializers.ValidationError({'customer_id': 'Credit sales require a registered customer.'})
-
-        if customer_id is not None:
-            try:
-                Customer.objects.get(pk=customer_id.pk)
-            except Customer.DoesNotExist:
-                raise serializers.ValidationError({'customer_id': 'Customer not found.'})
-
-        return attrs
-
     def create(self, validated_data):
         items_data = validated_data.pop('items')
         customer = validated_data.pop('customer_id', None)
@@ -111,6 +83,9 @@ class SaleItemOutputSerializer(serializers.ModelSerializer):
             'default_selling_price',
             'max_selling_price',
             'subtotal',
+            'vat_amount',
+            'vat_rate',
+            'line_discount',
             'profit',
         ]
         read_only_fields = fields
@@ -139,6 +114,7 @@ class SaleListSerializer(serializers.ModelSerializer):
             'customer',
             'customer_name',
             'subtotal',
+            'vat_amount',
             'discount',
             'total_amount',
             'amount_paid',
@@ -172,6 +148,7 @@ class SaleDetailSerializer(serializers.ModelSerializer):
             'customer',
             'customer_name',
             'subtotal',
+            'vat_amount',
             'discount',
             'total_amount',
             'amount_paid',
@@ -191,7 +168,7 @@ class SaleDetailSerializer(serializers.ModelSerializer):
 class SaleReceiptSerializer(serializers.ModelSerializer):
     customer = serializers.PrimaryKeyRelatedField(read_only=True)
     customer_name = serializers.CharField(source='customer.name', read_only=True, default='Walk-in')
-    customer_phone = serializers.CharField(source='customer.phone', read_only=True, default='')
+    customer_phone = serializers.CharField(source='customer.phone', read_only=True, allow_null=True, default='')
     customer_address = serializers.CharField(source='customer.address', read_only=True, default='')
     served_by_name = serializers.CharField(source='served_by.full_name', read_only=True)
     items = SaleItemOutputSerializer(many=True, read_only=True)
@@ -206,6 +183,7 @@ class SaleReceiptSerializer(serializers.ModelSerializer):
             'customer_phone',
             'customer_address',
             'subtotal',
+            'vat_amount',
             'discount',
             'total_amount',
             'amount_paid',
@@ -282,7 +260,7 @@ class SaleReturnItemOutputSerializer(serializers.ModelSerializer):
         model = SaleReturnItem
         fields = [
             'id', 'sale_item', 'product_name', 'company_name', 'quantity',
-            'unit_refund_price', 'subtotal', 'historical_cost', 'profit_reversal',
+            'unit_refund_price', 'subtotal', 'vat_amount', 'historical_cost', 'profit_reversal',
         ]
         read_only_fields = fields
 
@@ -294,7 +272,7 @@ class SaleReturnOutputSerializer(serializers.ModelSerializer):
     class Meta:
         model = SaleReturn
         fields = [
-            'id', 'return_number', 'sale', 'total_amount', 'debt_reduction',
+            'id', 'return_number', 'sale', 'total_amount', 'vat_amount', 'debt_reduction',
             'refund_amount', 'refund_method', 'reason', 'processed_by_name',
             'items', 'created_at',
         ]

@@ -60,6 +60,88 @@ class CustomerApiTests(APITestCase):
         data.update(overrides)
         return data
 
+    def test_phone_constraint_and_missing_phone_data_migration(self):
+        from importlib import import_module
+        from django.apps import apps
+        from django.db import connection, IntegrityError, transaction
+        supplied = Customer.objects.create(name='Supplied', phone='08012345678')
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Customer.objects.create(name='Duplicate', phone=supplied.phone)
+        blanks = [Customer.objects.create(name='Blank', phone=phone) for phone in ('', '   ')]
+        migration = import_module('apps.customers.migrations.0004_customer_optional_phone')
+        class SchemaEditor:
+            pass
+        editor = SchemaEditor()
+        editor.connection = connection
+        migration.normalize_missing_phones(apps, editor)
+        migration.normalize_missing_phones(apps, editor)
+        for customer in blanks:
+            customer.refresh_from_db()
+            self.assertIsNone(customer.phone)
+            self.assertEqual(str(customer), 'Blank')
+        supplied.refresh_from_db()
+        self.assertEqual(supplied.phone, '08012345678')
+
+    def test_missing_phone_variants_are_stored_as_null_and_names_remain_nonunique(self):
+        self.client.force_authenticate(self.cashier)
+        for phone_fields in ({}, {'phone': ''}, {'phone': None}, {'phone': '   '}):
+            response = self.client.post(reverse('customers-list'), {
+                'name': '  Name Only  ', **phone_fields,
+            }, format='json')
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            customer = Customer.objects.get(pk=response.data['data']['id'])
+            self.assertEqual(customer.name, 'Name Only')
+            self.assertIsNone(customer.phone)
+            self.assertIsNone(response.data['data']['phone'])
+        self.assertEqual(Customer.objects.filter(name='Name Only', phone__isnull=True).count(), 4)
+
+    def test_optional_phone_update_preserves_omitted_and_clears_explicit_missing(self):
+        self.client.force_authenticate(self.admin)
+        customer = Customer.objects.create(name='Before', phone='08012345678')
+        url = reverse('customers-detail', args=[customer.pk])
+        response = self.client.patch(url, {'name': 'After'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        customer.refresh_from_db()
+        self.assertEqual(customer.phone, '08012345678')
+        for phone in ('', None, '   '):
+            response = self.client.patch(url, {'phone': phone}, format='json')
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            customer.refresh_from_db()
+            self.assertIsNone(customer.phone)
+        response = self.client.put(url, {'name': 'Still No Phone'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        customer.refresh_from_db()
+        self.assertIsNone(customer.phone)
+
+    def test_services_normalize_optional_phone_and_reject_supplied_duplicates(self):
+        from rest_framework.exceptions import ValidationError
+        from .services import create_customer, update_customer
+        first = create_customer(created_by=self.admin, name='First')
+        second = create_customer(created_by=self.admin, name='Second', phone=' ')
+        self.assertIsNone(first.phone)
+        self.assertIsNone(second.phone)
+        update_customer(customer=first, updated_by=self.admin, phone=' 08012345678 ')
+        with self.assertRaises(ValidationError):
+            update_customer(customer=second, updated_by=self.admin, phone='08012345678')
+        with self.assertRaises(ValidationError):
+            create_customer(created_by=self.admin, name='Third', phone='08012345678')
+        update_customer(customer=first, updated_by=self.admin, phone=None)
+        first.refresh_from_db()
+        self.assertIsNone(first.phone)
+
+    def test_customer_search_paginates_past_100_with_stable_same_name_order(self):
+        self.client.force_authenticate(self.cashier)
+        Customer.objects.bulk_create([Customer(name='Match Customer') for _ in range(101)])
+        first = self.client.get(reverse('customers-list'), {'search': 'Match', 'per_page': 100})
+        second = self.client.get(reverse('customers-list'), {'search': 'Match', 'per_page': 100, 'page': 2})
+        self.assertEqual(first.status_code, status.HTTP_200_OK)
+        self.assertEqual(second.status_code, status.HTTP_200_OK)
+        self.assertEqual(first.data['meta']['total_pages'], 2)
+        ids = [row['id'] for row in first.data['data'] + second.data['data']]
+        self.assertEqual(len(ids), 101)
+        self.assertEqual(len(set(ids)), 101)
+        self.assertEqual(ids, sorted(ids))
+
     def test_register_customer(self):
         self.client.force_authenticate(self.cashier)
         response = self.client.post(reverse('customers-list'), self._customer_payload())

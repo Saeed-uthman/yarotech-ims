@@ -44,6 +44,7 @@ class ProductVariantInputSerializer(serializers.Serializer):
 
 
 class ProductCreateUpdateSerializer(serializers.Serializer):
+    vat_enabled = serializers.BooleanField(required=False)
     name = serializers.CharField(max_length=200)
     generic_name = serializers.CharField(max_length=200)
     category_id = serializers.PrimaryKeyRelatedField(queryset=Category.objects.filter(is_active=True), source='category')
@@ -137,6 +138,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             'subtitle',
             'image',
             'status',
+            'vat_enabled',
             'variants',
             'created_at',
             'updated_at',

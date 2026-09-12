@@ -75,6 +75,23 @@ class SalesApiTests(APITestCase):
         data.update(overrides)
         return data
 
+    def test_name_only_customer_is_attached_to_credit_sale(self):
+        self.client.force_authenticate(self.cashier)
+        created = self.client.post(reverse('customers-list'), {'name': 'Name Only'}, format='json')
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED)
+        customer_id = created.data['data']['id']
+        response = self.client.post(reverse('sales-list'), self._sale_payload(
+            customer_id=customer_id, amount_paid='1000.00',
+        ), format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        sale = Sale.objects.get(pk=response.data['data']['id'])
+        self.assertEqual(sale.customer_id, customer_id)
+        self.assertIsNone(sale.customer.phone)
+        self.assertEqual(sale.outstanding_amount, Decimal('2600.00'))
+        receipt = self.client.get(reverse('sales-receipt', args=[sale.pk]))
+        self.assertEqual(receipt.status_code, status.HTTP_200_OK)
+        self.assertIsNone(receipt.data['data']['customer_phone'])
+
     def test_successful_paid_sale(self):
         self.client.force_authenticate(self.cashier)
         response = self.client.post(reverse('sales-list'), self._sale_payload(), format='json')

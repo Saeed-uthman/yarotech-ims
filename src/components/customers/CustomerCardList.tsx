@@ -128,11 +128,11 @@ export const CustomerCardList: React.FC<CustomerCardListProps> = ({
                     )}
                   </div>
                   <a
-                    href={`tel:${customer.phone}`}
+                    href={customer.phone ? `tel:${customer.phone || 'No phone number'}` : undefined}
                     className="text-xs text-slate-500 hover:text-blue-600 inline-flex items-center gap-1 font-mono mt-0.5"
                   >
                     <Phone className="w-3 h-3 text-slate-400" />
-                    {customer.phone}
+                    {customer.phone || 'No phone number'}
                   </a>
                 </div>
               </div>

@@ -2389,7 +2389,7 @@ components:
           maxLength: 150
         phone:
           type: string
-          minLength: 1
+          nullable: true
           maxLength: 20
         email:
           type: string
@@ -2403,7 +2403,6 @@ components:
           default: ''
       required:
       - name
-      - phone
     CustomerDetail:
       type: object
       properties:
@@ -2415,6 +2414,7 @@ components:
           readOnly: true
         phone:
           type: string
+          nullable: true
           readOnly: true
         email:
           type: string
@@ -2495,6 +2495,7 @@ components:
           readOnly: true
         phone:
           type: string
+          nullable: true
           readOnly: true
         email:
           type: string
@@ -2778,6 +2779,7 @@ components:
           readOnly: true
         customer_phone:
           type: string
+          nullable: true
           readOnly: true
         amount:
           type: string
@@ -3424,7 +3426,7 @@ components:
           maxLength: 150
         phone:
           type: string
-          minLength: 1
+          nullable: true
           maxLength: 20
         email:
           type: string
@@ -4709,6 +4711,7 @@ components:
           default: Walk-in
         customer_phone:
           type: string
+          nullable: true
           readOnly: true
           default: ''
         customer_address:

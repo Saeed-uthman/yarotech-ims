@@ -8,6 +8,7 @@ from apps.accountability.models import AccountabilityTransaction
 from apps.accountability.sequences import next_accountability_transaction_number
 from apps.common.sequences import next_document_number
 from apps.sales.models import Sale
+from apps.sales.vat import record_vat_position
 
 from .models import Customer, CustomerDebtPayment, CustomerDebtPaymentAllocation, DebtPaymentReversal
 
@@ -25,9 +26,9 @@ def _generate_receipt_number():
 
 
 @transaction.atomic
-def create_customer(*, created_by, name, phone, email='', address='', notes=''):
-    phone = phone.strip()
-    if Customer.objects.filter(phone=phone).exists():
+def create_customer(*, created_by, name, phone=None, email='', address='', notes=''):
+    phone = (phone or "").strip() or None
+    if phone is not None and Customer.objects.filter(phone=phone).exists():
         raise ValidationError({'phone': 'A customer with this phone number already exists.'})
 
     return Customer.objects.create(
@@ -45,8 +46,8 @@ def create_customer(*, created_by, name, phone, email='', address='', notes=''):
 def update_customer(*, customer, updated_by, **fields):
     for field, value in fields.items():
         if field == 'phone':
-            value = value.strip()
-            if Customer.objects.filter(phone=value).exclude(pk=customer.pk).exists():
+            value = (value or "").strip() or None
+            if value is not None and Customer.objects.filter(phone=value).exclude(pk=customer.pk).exists():
                 raise ValidationError({'phone': 'A customer with this phone number already exists.'})
         setattr(customer, field, value)
 
@@ -73,13 +74,13 @@ def record_customer_debt_payment(*, user, customer, amount, payment_method, note
     customer = Customer.objects.select_for_update().get(pk=customer.pk)
 
     unpaid_sales = (
-        Sale.objects
+        Sale.objects.select_for_update()
         .filter(
             customer=customer,
             status=Sale.Status.COMPLETED,
             payment_status__in=[Sale.PaymentStatus.PARTIAL, Sale.PaymentStatus.UNPAID],
         )
-        .order_by('created_at')
+        .order_by('created_at', 'pk')
     )
 
     total_outstanding = sum(sale.outstanding_amount for sale in unpaid_sales)
@@ -131,6 +132,9 @@ def record_customer_debt_payment(*, user, customer, amount, payment_method, note
         for sale, allocated_amount in allocation_rows
     ])
 
+    for sale, _ in allocation_rows:
+        record_vat_position(sale, f'payment:{payment.pk}')
+
     AccountabilityTransaction.objects.create(
         transaction_number=next_accountability_transaction_number(),
         direction=AccountabilityTransaction.Direction.IN,
@@ -152,6 +156,7 @@ def record_customer_debt_payment(*, user, customer, amount, payment_method, note
 @transaction.atomic
 def reverse_customer_debt_payment(*, payment, reversed_by, reason):
     payment = CustomerDebtPayment.objects.select_for_update().select_related('customer').get(pk=payment.pk)
+    Customer.objects.select_for_update().get(pk=payment.customer_id)
     if payment.is_reversed:
         raise ValidationError({'detail': 'This debt payment has already been reversed.'})
 
@@ -165,7 +170,7 @@ def reverse_customer_debt_payment(*, payment, reversed_by, reason):
         sale.id: sale
         for sale in Sale.objects.select_for_update().filter(
             id__in=[allocation.sale_id for allocation in allocations]
-        )
+        ).order_by('created_at', 'pk')
     }
     for allocation in allocations:
         sale = locked_sales[allocation.sale_id]
@@ -202,4 +207,6 @@ def reverse_customer_debt_payment(*, payment, reversed_by, reason):
         created_by=reversed_by,
         updated_by=reversed_by,
     )
+    for sale in locked_sales.values():
+        record_vat_position(sale, f'payment-reversal:{reversal.pk}')
     return reversal

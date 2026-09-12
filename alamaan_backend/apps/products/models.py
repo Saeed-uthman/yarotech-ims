@@ -72,6 +72,7 @@ class Product(AuditableModel):
         ACTIVE = 'Active', 'Active'
         INACTIVE = 'Inactive', 'Inactive'
 
+    vat_enabled = models.BooleanField(default=False)
     name = models.CharField(max_length=200, db_index=True)
     generic_name = models.CharField(max_length=200, db_index=True)
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='products')

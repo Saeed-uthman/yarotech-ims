@@ -12,6 +12,7 @@ import {
 } from '../types';
 import { api, ApiError, createIdempotencyKey, mapPaginationMeta, toCamelCaseKeys } from './apiClient';
 import { apiCache } from './apiCache';
+import { mapBackendSale } from './salesService';
 
 // ==========================================
 // Backend → Frontend Transform Helpers
@@ -94,44 +95,29 @@ function mapBackendDebtPayment(raw: any): CustomerDebtPayment {
   };
 }
 
-function mapBackendSale(raw: any): CustomerSale {
-  const s = toCamelCaseKeys(raw);
-  const createdAt = s.createdAt || '';
-  const dateObj = createdAt ? new Date(createdAt) : new Date();
-  const dateStr = dateObj.toLocaleDateString('en-NG', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  return {
-    id: String(s.id),
-    invoiceNumber: s.invoiceNumber || `Sale #${s.id}`,
-    date: dateStr,
-    rawDate: createdAt,
-    customerId: null,
-    customerName: '',
-    items: [],
-    itemCount: 0,
-    subtotal: Number(s.subtotal || 0),
-    discount: Number(s.discount || 0),
-    total: Number(s.totalAmount || 0),
-    amountPaid: Number(s.amountPaid || 0),
-    outstandingAmount: Number(s.outstandingAmount || 0),
-    paymentStatus: s.paymentStatus || 'PAID',
-    paymentMethod: s.paymentMethod || 'CASH',
-    servedBy: '',
-    status: s.status || 'COMPLETED',
-  };
-}
-
 // ==========================================
 // Customer Service
 // ==========================================
 
 export class CustomerService {
+  /** Fresh database search, including every page and inactive exact-name matches. */
+  public async searchForSale(query: string, isCurrent: () => boolean = () => true): Promise<Customer[]> {
+    const matches: Customer[] = [];
+    let page = 1;
+    let lastPage = 1;
+    do {
+      const res = await api.get<any>('/customers/', {
+        search: query.trim(), page, per_page: 100, ordering: 'name',
+      });
+      if (!isCurrent()) return [];
+      if (!res.success || !Array.isArray(res.data)) throw new Error('Customer search failed.');
+      matches.push(...res.data.map(mapBackendCustomerList));
+      lastPage = mapPaginationMeta(res.meta).lastPage;
+      page += 1;
+    } while (page <= lastPage);
+    return matches;
+  }
+
   /**
    * Fetch customers from backend
    */
@@ -317,17 +303,16 @@ export class CustomerService {
     _page = 1,
     _limit = 10
   ): Promise<ApiResponse<CustomerSale[]>> {
-    const key = apiCache.generateKey(`customer:sales:${customerId}`);
-    return apiCache.deduplicate(key, async () => {
-      try {
-        const res = await api.get<any>(`/customers/${customerId}/sales/`);
-        const sales = (res.data || []).map(mapBackendSale);
-        return { success: true, data: sales };
-      } catch (err) {
-        if (err instanceof ApiError) throw err;
-        return { success: false, data: [], message: 'Failed to fetch sales history.' };
-      }
-    });
+    const sales: CustomerSale[] = [];
+    let page = _page;
+    let lastPage = page;
+    do {
+      const res = await api.get<any>(`/customers/${customerId}/sales/`, { page, per_page: _limit });
+      sales.push(...(res.data || []).map(mapBackendSale));
+      lastPage = mapPaginationMeta(res.meta).lastPage;
+      page += 1;
+    } while (page <= lastPage);
+    return { success: true, data: sales };
   }
 
   /**

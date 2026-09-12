@@ -91,6 +91,19 @@ export const SalesSettingsSection: React.FC<SalesSettingsSectionProps> = ({
         </div>
       </div>
 
+      <div className="p-4 border rounded-xl space-y-3">
+        <label className="flex items-center gap-3 font-semibold text-sm">
+          <input type="checkbox" checked={Boolean(formData.vatEnabled)} disabled={isReadOnly}
+            onChange={event => onChange('vatEnabled', event.target.checked)} />
+          Enable VAT on products marked for VAT
+        </label>
+        <label htmlFor="settings-vat-rate" className="block text-sm">VAT percentage (%)</label>
+        <input id="settings-vat-rate" type="number" min="0" max="100" step="0.01" value={formData.vatRate ?? 0}
+          disabled={isReadOnly} onChange={event => onChange('vatRate', Number(event.target.value))}
+          className="border rounded-lg p-2 w-32" />
+        <p className="text-xs text-slate-500">VAT is added after discounts. Existing sales retain their saved VAT rate and amount. View billed and collected VAT in Reports ? VAT.</p>
+      </div>
+
       {/* POS Behavioral Toggles */}
       <div className="space-y-4">
         <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">

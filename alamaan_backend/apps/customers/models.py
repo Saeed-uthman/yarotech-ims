@@ -10,7 +10,7 @@ class Customer(AuditableModel):
 
     id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=150, db_index=True)
-    phone = models.CharField(max_length=20, unique=True, db_index=True)
+    phone = models.CharField(max_length=20, unique=True, db_index=True, null=True, blank=True)
     email = models.EmailField(blank=True, default='')
     address = models.TextField(blank=True, default='')
     notes = models.TextField(blank=True, default='')
@@ -25,7 +25,7 @@ class Customer(AuditableModel):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f'{self.name} ({self.phone})'
+        return f'{self.name} ({self.phone})' if self.phone else self.name
 
 
 class CustomerDebtPayment(AuditableModel):

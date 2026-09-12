@@ -120,10 +120,13 @@ class CustomerSalesHistoryView(APIView):
     def get(self, request, pk):
         get_object_or_404(Customer, pk=pk)
         from apps.sales.models import Sale
-        sales = Sale.objects.filter(customer_id=pk).order_by('-created_at')
+        sales = (Sale.objects.filter(customer_id=pk)
+                 .select_related('customer', 'served_by')
+                 .prefetch_related('items__variant__product', 'items__variant__company')
+                 .order_by('-created_at', '-pk'))
         if getattr(request.user, 'role', None) != 'admin':
             sales = sales.filter(served_by=request.user)
-        return paginated_response(request, sales, SaleOutputSerializer)
+        return paginated_response(request, sales, SaleOutputSerializer, context={'request': request})
 
 
 class CustomerPaymentsHistoryView(APIView):

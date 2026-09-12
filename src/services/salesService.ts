@@ -35,12 +35,15 @@ function mapBackendSaleItem(raw: any): SaleItem {
     minSellingPrice: Number(i.minSellingPrice || 0),
     defaultSellingPrice: Number(i.defaultSellingPrice || 0),
     maxSellingPrice: Number(i.maxSellingPrice || 0),
+    vatAmount: Number(i.vatAmount || 0),
+    vatRate: Number(i.vatRate || 0),
+    lineDiscount: Number(i.lineDiscount || 0),
     subtotal: Number(i.subtotal ?? (quantity * sellingPrice)),
     profit: Number(i.profit || 0),
   };
 }
 
-function mapBackendSale(raw: any): Sale {
+export function mapBackendSale(raw: any): Sale {
   const s = toCamelCaseKeys(raw);
   const createdAt = s.createdAt || '';
   const dateObj = createdAt ? new Date(createdAt) : new Date();
@@ -62,6 +65,7 @@ function mapBackendSale(raw: any): Sale {
     customerPhone: s.customerPhone || '',
     items: (s.items || []).map(mapBackendSaleItem),
     itemCount: s.items?.length || Number(s.itemsCount || 0),
+    vatAmount: Number(s.vatAmount || 0),
     subtotal: Number(s.subtotal || 0),
     discount: Number(s.discount || 0),
     total: Number(s.totalAmount || 0),

@@ -162,12 +162,12 @@ export const CustomerTable: React.FC<CustomerTableProps> = ({
                   {/* Phone */}
                   <td className="py-3.5 px-4 font-mono text-xs text-slate-700 whitespace-nowrap">
                     <a
-                      href={`tel:${customer.phone}`}
+                      href={customer.phone ? `tel:${customer.phone || 'No phone number'}` : undefined}
                       className="inline-flex items-center gap-1.5 hover:text-blue-600 transition-colors"
                       title="Call customer"
                     >
                       <Phone className="w-3 h-3 text-slate-400" />
-                      {customer.phone}
+                      {customer.phone || 'No phone number'}
                     </a>
                   </td>
 
