@@ -24,6 +24,7 @@ import { formatNaira, formatNumber } from '../../utils/formatters';
 
 interface CustomerProfileModalProps {
   customer: Customer | null;
+  error?: string | null;
   sales: CustomerSale[];
   debtPayments: CustomerDebtPayment[];
   isOpen: boolean;
@@ -40,6 +41,7 @@ interface CustomerProfileModalProps {
 
 export const CustomerProfileModal: React.FC<CustomerProfileModalProps> = ({
   customer,
+  error,
   sales,
   debtPayments,
   isOpen,
@@ -318,6 +320,7 @@ export const CustomerProfileModal: React.FC<CustomerProfileModalProps> = ({
 
         {/* Tab Content Body */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-50/50">
+          {error && <div role="alert" className="mb-3 p-3 bg-rose-50 text-rose-700 text-sm rounded-lg">{error} <button type="button" onClick={onRefresh} className="underline">Retry</button></div>}
           {/* TAB 1: SALES HISTORY */}
           {activeTab === 'sales' && (
             <div>
@@ -357,6 +360,7 @@ export const CustomerProfileModal: React.FC<CustomerProfileModalProps> = ({
                         <tr key={sale.id} className="hover:bg-slate-50/70 transition-colors text-xs">
                           <td className="py-3 px-4 font-mono font-semibold text-slate-800">
                             {sale.invoiceNumber}
+                            {sale.status === 'CANCELLED' && <span className="block text-xs text-rose-700">Cancelled</span>}
                           </td>
                           <td className="py-3 px-4 text-slate-600 whitespace-nowrap">
                             {sale.date}
@@ -370,15 +374,15 @@ export const CustomerProfileModal: React.FC<CustomerProfileModalProps> = ({
                             </div>
                           </td>
                           <td className="py-3 px-4 text-right font-semibold text-slate-800 whitespace-nowrap">
-                            {formatNaira(sale.total)}
+                            {formatNaira(sale.total, true)}
                           </td>
                           <td className="py-3 px-4 text-right text-emerald-700 font-medium whitespace-nowrap">
-                            {formatNaira(sale.amountPaid)}
+                            {formatNaira(sale.amountPaid, true)}
                           </td>
                           <td className="py-3 px-4 text-right whitespace-nowrap">
                             {sale.outstandingAmount > 0 ? (
                               <span className="font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                                {formatNaira(sale.outstandingAmount)}
+                                {formatNaira(sale.outstandingAmount, true)}
                               </span>
                             ) : (
                               <span className="text-slate-400">₦0</span>

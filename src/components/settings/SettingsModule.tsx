@@ -120,6 +120,10 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
       newErrors.pharmacyName = 'Company name is required.';
     }
 
+    if (!Number.isFinite(formData.vatRate ?? 0) || (formData.vatRate ?? 0) < 0 || (formData.vatRate ?? 0) > 100) {
+      newErrors.vatRate = 'VAT percentage must be between 0 and 100.';
+    }
+
     if (formData.lowStockThreshold < 0 || isNaN(formData.lowStockThreshold)) {
       newErrors.lowStockThreshold = 'Low stock threshold must be at least 0.';
     }
@@ -147,6 +151,8 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
       currency: formData.currency,
       currencySymbol: formData.currencySymbol,
       showDecimals: formData.showDecimals,
+      vatEnabled: formData.vatEnabled ?? false,
+      vatRate: formData.vatRate ?? 0,
       allowWalkingSales: formData.allowWalkingSales,
       allowCreditSales: formData.allowCreditSales,
       requireCustomerForCredit: formData.requireCustomerForCredit,
@@ -206,7 +212,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
       id: 'sales',
       label: 'Sales & POS',
       icon: ShoppingBag,
-      keywords: ['sales', 'credit', 'walking', 'cashier', 'confirmation', 'pos', 'currency', 'decimals'],
+      keywords: ['vat', 'tax', 'sales', 'credit', 'walking', 'cashier', 'confirmation', 'pos', 'currency', 'decimals'],
     },
     {
       id: 'inventory',
@@ -423,6 +429,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ role, onSettings
 
           {activeTab === 'sales' && (
             <SalesSettingsSection
+              vatRateError={errors.vatRate}
               formData={formData}
               onChange={handleFieldChange}
               role={role}

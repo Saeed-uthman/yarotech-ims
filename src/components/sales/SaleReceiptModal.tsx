@@ -267,6 +267,7 @@ export const SaleReceiptModal: React.FC<SaleReceiptModalProps> = ({
                 </div>
                 <span className="font-extrabold text-[10px] text-right text-slate-900 whitespace-nowrap">
                   {formatNaira(item.subtotal, showDecimals)}
+                  {(item.vatAmount || 0) > 0 && <div className="text-[10px]">VAT {item.vatRate}%: {formatNaira(item.vatAmount || 0, showDecimals)}</div>}
                 </span>
                 <div className="text-[9px] text-slate-500 leading-tight">
                   {item.quantity} × {formatNaira(item.sellingPrice || item.actualSellingPrice, showDecimals)}
@@ -286,6 +287,7 @@ export const SaleReceiptModal: React.FC<SaleReceiptModalProps> = ({
               <span>Subtotal</span>
               <span>{formatNaira(sale.subtotal, showDecimals)}</span>
             </div>
+            {(sale.vatAmount || 0) > 0 && <div className="flex justify-between"><span>VAT</span><span>{formatNaira(sale.vatAmount || 0, showDecimals)}</span></div>}
             {sale.discount > 0 && (
               <div className="flex justify-between text-slate-700">
                 <span>Discount</span>

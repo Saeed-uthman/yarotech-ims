@@ -13,6 +13,8 @@ RESETTABLE_FIELDS = [
     'currency',
     'currency_symbol',
     'show_decimals',
+    'vat_enabled',
+    'vat_rate',
     'allow_walking_sales',
     'allow_credit_sales',
     'require_customer_for_credit',

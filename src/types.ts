@@ -589,6 +589,7 @@ export interface CreateSaleItemInput {
 }
 
 export interface CreateSaleInput {
+  expectedTotal?: number;
   customerId: string | null; // null for Walking Customer
   customerName?: string;
   customerPhone?: string;

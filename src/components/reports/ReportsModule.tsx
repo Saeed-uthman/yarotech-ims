@@ -37,6 +37,7 @@ import { StockPurchaseReportView } from './StockPurchaseReportView';
 import { FinancialMovementReportView } from './FinancialMovementReportView';
 import { ProductPerformanceReportView } from './ProductPerformanceReportView';
 import { InventoryMovementReportView } from './InventoryMovementReportView';
+import { VatReportView } from './VatReportView';
 import { DebtMovementReportView } from './DebtMovementReportView';
 
 interface ReportsModuleProps {
@@ -47,6 +48,7 @@ interface ReportsModuleProps {
 }
 
 export type ReportTab =
+  | 'vat'
   | 'overview'
   | 'sales'
   | 'profit'
@@ -57,6 +59,7 @@ export type ReportTab =
   | 'debt';
 
 const TABS: { id: ReportTab; label: string; icon: React.ElementType; adminOnly?: boolean }[] = [
+  { id: 'vat', label: 'VAT', icon: DollarSign, adminOnly: true },
   { id: 'overview', label: 'Executive Overview', icon: BarChart3 },
   { id: 'sales', label: 'Sales & Revenue', icon: TrendingUp },
   { id: 'profit', label: 'Gross Profit', icon: DollarSign, adminOnly: true },
@@ -78,6 +81,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     dateRange: 'this_month',
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [vatRevision, setVatRevision] = useState(0);
 
   // Hook instances for all report categories
   const summaryHook = useFinancialSummaryReport(filters, role);
@@ -104,6 +108,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
   const handleRefreshAll = async () => {
     setIsRefreshing(true);
+    setVatRevision(value => value + 1);
     await Promise.all([
       summaryHook.refetch(),
       salesHook.refetch(),
@@ -161,6 +166,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
       {/* Date & Dimension Filters Bar */}
       <ReportFiltersBar
+        dateOnly={activeTab === 'vat'}
         filters={filters}
         onFilterChange={handleFilterChange}
         onReset={handleResetFilters}
@@ -181,7 +187,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       {/* Navigation Tabs Bar */}
       <div className="border-b border-gray-200 bg-white rounded-xl shadow-xs px-2 pt-2" id="reports-tab-navigation">
         <nav className="flex flex-wrap gap-1" aria-label="Report Views">
-          {TABS.map((tab) => {
+          {TABS.filter(tab => !tab.adminOnly || role === 'admin').map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
@@ -223,6 +229,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             onNavigateTab={(tab) => setActiveTab(tab as ReportTab)}
           />
         )}
+
+        {activeTab === 'vat' && role === 'admin' && <VatReportView filters={filters} revision={vatRevision} />}
 
         {activeTab === 'sales' && (
           <SalesReportView

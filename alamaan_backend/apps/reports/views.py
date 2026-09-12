@@ -6,6 +6,7 @@ from apps.common.permissions import IsAdminUserRole
 from apps.common.responses import success_response
 
 from .selectors import (
+    get_vat_report,
     get_debt_report,
     get_financial_movement_report,
     get_inventory_movement_report,
@@ -16,6 +17,7 @@ from .selectors import (
     get_sales_report,
 )
 from .serializers import (
+    VatReportSerializer,
     DebtReportSerializer,
     FinancialMovementReportSerializer,
     InventoryMovementReportSerializer,
@@ -51,6 +53,14 @@ class ReportOverviewView(APIView):
     def get(self, request):
         data = get_overview_report(**_report_params(request))
         return Response(success_response(data))
+
+
+class ReportVatView(APIView):
+    permission_classes = [IsAdminUserRole]
+
+    @extend_schema(responses={200: VatReportSerializer})
+    def get(self, request):
+        return Response(success_response(VatReportSerializer(get_vat_report(**_report_params(request))).data))
 
 
 class ReportSalesView(APIView):

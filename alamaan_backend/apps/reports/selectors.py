@@ -11,10 +11,25 @@ from apps.customers.models import Customer, CustomerDebtPayment
 from apps.inventory.models import InventoryMovement
 from apps.products.models import ProductVariant
 from apps.purchases.models import PurchaseItem, StockPurchase
-from apps.sales.models import Sale, SaleItem
+from apps.sales.models import Sale, SaleItem, VatMovement
 
 
 ZERO = Decimal('0.00')
+
+
+def get_vat_report(*, date_range=None, start_date=None, end_date=None):
+    movements = _filter_period(VatMovement.objects.all(), date_range=date_range,
+                               start_date=start_date, end_date=end_date)
+    totals = movements.aggregate(billed=Sum('vat_billed'), collected=Sum('vat_collected'))
+    current = VatMovement.objects.aggregate(billed=Sum('vat_billed'), collected=Sum('vat_collected'))
+    return {
+        'vat_billed': totals['billed'] or ZERO,
+        'vat_collected': totals['collected'] or ZERO,
+        'vat_awaiting_payment': (current['billed'] or ZERO) - (current['collected'] or ZERO),
+        'daily': list(movements.annotate(date=TruncDate('created_at')).values('date')
+                      .annotate(vat_billed=Sum('vat_billed'), vat_collected=Sum('vat_collected'))
+                      .order_by('date')),
+    }
 
 
 def _filter_period(queryset, *, date_range=None, start_date=None, end_date=None, date_field='created_at'):

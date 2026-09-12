@@ -262,6 +262,7 @@ export const SaleDetailsModal: React.FC<SaleDetailsModalProps> = ({
                 <span>Subtotal:</span>
                 <span className="font-semibold text-slate-800">{formatNaira(sale.subtotal)}</span>
               </div>
+              {(sale.vatAmount || 0) > 0 && <div className="flex justify-between"><span>VAT:</span><span>{formatNaira(sale.vatAmount || 0)}</span></div>}
               {sale.discount > 0 && (
                 <div className="flex justify-between text-rose-600">
                   <span>Discount:</span>

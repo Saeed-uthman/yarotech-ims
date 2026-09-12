@@ -19,6 +19,7 @@ import {
 } from '../../types';
 
 interface ReportFiltersBarProps {
+  dateOnly?: boolean;
   filters: ReportFilterParams;
   onFilterChange: (updates: Partial<ReportFilterParams>) => void;
   onReset: () => void;
@@ -39,6 +40,7 @@ const DATE_RANGE_OPTIONS: { id: ReportDateRange; label: string }[] = [
 ];
 
 export const ReportFiltersBar: React.FC<ReportFiltersBarProps> = ({
+  dateOnly = false,
   filters,
   onFilterChange,
   onReset,
@@ -87,6 +89,7 @@ export const ReportFiltersBar: React.FC<ReportFiltersBarProps> = ({
         <div className="flex items-center gap-2">
           <button
             type="button"
+            disabled={dateOnly}
             onClick={() => setShowAdvanced((prev) => !prev)}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
               hasActiveAdvancedFilters || showAdvanced
@@ -169,7 +172,7 @@ export const ReportFiltersBar: React.FC<ReportFiltersBarProps> = ({
       )}
 
       {/* Advanced Filters Panel: Category, Manufacturer, Product, Payment Method */}
-      {showAdvanced && (
+      {!dateOnly && showAdvanced && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-gray-100 animate-in fade-in duration-150" id="advanced-report-filters-grid">
           {/* Category Filter */}
           <div>

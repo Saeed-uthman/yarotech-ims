@@ -1,6 +1,19 @@
 from rest_framework import serializers
 
 
+class VatDailySerializer(serializers.Serializer):
+    date = serializers.DateField()
+    vat_billed = serializers.DecimalField(max_digits=16, decimal_places=2)
+    vat_collected = serializers.DecimalField(max_digits=16, decimal_places=2)
+
+
+class VatReportSerializer(serializers.Serializer):
+    vat_billed = serializers.DecimalField(max_digits=16, decimal_places=2)
+    vat_collected = serializers.DecimalField(max_digits=16, decimal_places=2)
+    vat_awaiting_payment = serializers.DecimalField(max_digits=16, decimal_places=2)
+    daily = VatDailySerializer(many=True)
+
+
 class OverviewReportSerializer(serializers.Serializer):
     total_sales_count = serializers.IntegerField()
     total_revenue = serializers.DecimalField(max_digits=12, decimal_places=2)

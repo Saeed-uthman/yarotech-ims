@@ -1241,6 +1241,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/InventoryMovementReport'
           description: ''
+  /api/v1/reports/vat/:
+    get:
+      operationId: reports_vat_retrieve
+      tags:
+      - reports
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VatReport'
+          description: ''
   /api/v1/reports/overview/:
     get:
       operationId: reports_overview_retrieve
@@ -2312,6 +2326,10 @@ components:
     CreateSaleInputRequest:
       type: object
       properties:
+        expected_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         customer_id:
           type: integer
           nullable: true
@@ -2392,9 +2410,12 @@ components:
           nullable: true
           maxLength: 20
         email:
-          type: string
-          format: email
-          default: ''
+          oneOf:
+          - type: string
+            format: email
+            default: ''
+          - type: string
+            maxLength: 0
         address:
           type: string
           default: ''
@@ -2414,8 +2435,8 @@ components:
           readOnly: true
         phone:
           type: string
-          nullable: true
           readOnly: true
+          nullable: true
         email:
           type: string
           format: email
@@ -2495,8 +2516,8 @@ components:
           readOnly: true
         phone:
           type: string
-          nullable: true
           readOnly: true
+          nullable: true
         email:
           type: string
           format: email
@@ -3429,9 +3450,12 @@ components:
           nullable: true
           maxLength: 20
         email:
-          type: string
-          format: email
-          default: ''
+          oneOf:
+          - type: string
+            format: email
+            default: ''
+          - type: string
+            maxLength: 0
         address:
           type: string
           default: ''
@@ -3441,6 +3465,8 @@ components:
     PatchedProductCreateUpdateRequest:
       type: object
       properties:
+        vat_enabled:
+          type: boolean
         name:
           type: string
           minLength: 1
@@ -3510,6 +3536,12 @@ components:
           maxLength: 5
         show_decimals:
           type: boolean
+        vat_enabled:
+          type: boolean
+        vat_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
         allow_walking_sales:
           type: boolean
         allow_credit_sales:
@@ -3520,8 +3552,9 @@ components:
           type: boolean
         low_stock_threshold:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         allow_negative_stock:
           type: boolean
         require_admin_stock_adjustment:
@@ -3710,6 +3743,8 @@ components:
     ProductCreateUpdateRequest:
       type: object
       properties:
+        vat_enabled:
+          type: boolean
         name:
           type: string
           minLength: 1
@@ -3783,6 +3818,8 @@ components:
           nullable: true
         status:
           $ref: '#/components/schemas/ActiveStatusEnum'
+        vat_enabled:
+          type: boolean
         variants:
           type: array
           items:
@@ -3847,6 +3884,8 @@ components:
           nullable: true
         status:
           $ref: '#/components/schemas/ActiveStatusEnum'
+        vat_enabled:
+          type: boolean
         variants:
           type: array
           items:
@@ -4418,6 +4457,11 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
+        vat_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
         discount:
           type: string
           format: decimal
@@ -4487,6 +4531,7 @@ components:
       - subtotal
       - total_amount
       - updated_at
+      - vat_amount
     SaleItemOutput:
       type: object
       properties:
@@ -4535,11 +4580,27 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
+        vat_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        vat_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          readOnly: true
+        line_discount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
       required:
       - actual_selling_price
       - company_name
       - default_selling_price
       - id
+      - line_discount
       - max_selling_price
       - min_selling_price
       - product_name
@@ -4547,6 +4608,8 @@ components:
       - subtotal
       - unit_selling_price
       - variant_id
+      - vat_amount
+      - vat_rate
     SaleList:
       type: object
       properties:
@@ -4564,6 +4627,11 @@ components:
           readOnly: true
           default: Walk-in
         subtotal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        vat_amount:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
@@ -4626,6 +4694,7 @@ components:
       - status
       - subtotal
       - total_amount
+      - vat_amount
     SaleOutput:
       type: object
       properties:
@@ -4634,6 +4703,28 @@ components:
           readOnly: true
         invoice_number:
           type: string
+          readOnly: true
+        customer:
+          type: integer
+          readOnly: true
+        customer_name:
+          type: string
+          readOnly: true
+          default: Walk-in
+        subtotal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        vat_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        discount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
         total_amount:
           type: string
@@ -4658,19 +4749,48 @@ components:
           allOf:
           - $ref: '#/components/schemas/SalePaymentMethodEnum'
           readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/CompletionStatusEnum'
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+        served_by_name:
+          type: string
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SaleItemOutput'
+          readOnly: true
         created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
           type: string
           format: date-time
           readOnly: true
       required:
       - amount_paid
       - created_at
+      - customer
+      - customer_name
+      - discount
       - id
       - invoice_number
+      - items
+      - notes
       - outstanding_amount
       - payment_method
       - payment_status
+      - served_by_name
+      - status
+      - subtotal
       - total_amount
+      - updated_at
+      - vat_amount
     SalePaymentMethodEnum:
       enum:
       - CASH
@@ -4711,14 +4831,19 @@ components:
           default: Walk-in
         customer_phone:
           type: string
-          nullable: true
           readOnly: true
+          nullable: true
           default: ''
         customer_address:
           type: string
           readOnly: true
           default: ''
         subtotal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        vat_amount:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
@@ -4789,6 +4914,7 @@ components:
       - status
       - subtotal
       - total_amount
+      - vat_amount
     SaleReturnItemInputRequest:
       type: object
       properties:
@@ -4829,6 +4955,11 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
+        vat_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
         historical_cost:
           type: string
           format: decimal
@@ -4849,6 +4980,7 @@ components:
       - sale_item
       - subtotal
       - unit_refund_price
+      - vat_amount
     SaleReturnOutput:
       type: object
       properties:
@@ -4862,6 +4994,11 @@ components:
           type: integer
           readOnly: true
         total_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        vat_amount:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
@@ -4907,6 +5044,7 @@ components:
       - return_number
       - sale
       - total_amount
+      - vat_amount
     SalesReport:
       type: object
       properties:
@@ -5293,6 +5431,12 @@ components:
           maxLength: 5
         show_decimals:
           type: boolean
+        vat_enabled:
+          type: boolean
+        vat_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
         allow_walking_sales:
           type: boolean
         allow_credit_sales:
@@ -5303,8 +5447,9 @@ components:
           type: boolean
         low_stock_threshold:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         allow_negative_stock:
           type: boolean
         require_admin_stock_adjustment:
@@ -5391,6 +5536,12 @@ components:
           maxLength: 5
         show_decimals:
           type: boolean
+        vat_enabled:
+          type: boolean
+        vat_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
         allow_walking_sales:
           type: boolean
         allow_credit_sales:
@@ -5401,8 +5552,9 @@ components:
           type: boolean
         low_stock_threshold:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         allow_negative_stock:
           type: boolean
         require_admin_stock_adjustment:
@@ -5676,6 +5828,49 @@ components:
       - default_selling_price
       - max_selling_price
       - min_selling_price
+    VatDaily:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        vat_billed:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,14}(?:\.\d{0,2})?$
+        vat_collected:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,14}(?:\.\d{0,2})?$
+      required:
+      - date
+      - vat_billed
+      - vat_collected
+    VatReport:
+      type: object
+      properties:
+        vat_billed:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,14}(?:\.\d{0,2})?$
+        vat_collected:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,14}(?:\.\d{0,2})?$
+        vat_awaiting_payment:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,14}(?:\.\d{0,2})?$
+        daily:
+          type: array
+          items:
+            $ref: '#/components/schemas/VatDaily'
+      required:
+      - daily
+      - vat_awaiting_payment
+      - vat_billed
+      - vat_collected
+  securitySchemes:
   securitySchemes:
     jwtAuth:
       type: http

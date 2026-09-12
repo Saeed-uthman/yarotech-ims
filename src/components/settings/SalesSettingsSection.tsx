@@ -15,12 +15,14 @@ interface SalesSettingsSectionProps {
   formData: SystemSettings;
   onChange: (field: keyof SystemSettings, value: any) => void;
   role: UserRole;
+  vatRateError?: string;
 }
 
 export const SalesSettingsSection: React.FC<SalesSettingsSectionProps> = ({
   formData,
   onChange,
   role,
+  vatRateError,
 }) => {
   const isReadOnly = role === 'cashier';
 
@@ -99,9 +101,11 @@ export const SalesSettingsSection: React.FC<SalesSettingsSectionProps> = ({
         </label>
         <label htmlFor="settings-vat-rate" className="block text-sm">VAT percentage (%)</label>
         <input id="settings-vat-rate" type="number" min="0" max="100" step="0.01" value={formData.vatRate ?? 0}
+          aria-invalid={Boolean(vatRateError)} aria-describedby={vatRateError ? 'settings-vat-rate-error' : undefined}
           disabled={isReadOnly} onChange={event => onChange('vatRate', Number(event.target.value))}
           className="border rounded-lg p-2 w-32" />
-        <p className="text-xs text-slate-500">VAT is added after discounts. Existing sales retain their saved VAT rate and amount. View billed and collected VAT in Reports ? VAT.</p>
+        {vatRateError && <p id="settings-vat-rate-error" role="alert" className="text-sm text-red-600">{vatRateError}</p>}
+        <p className="text-xs text-slate-500">VAT is added after discounts. Existing sales retain their saved VAT rate and amount. View billed and collected VAT in Reports / VAT.</p>
       </div>
 
       {/* POS Behavioral Toggles */}

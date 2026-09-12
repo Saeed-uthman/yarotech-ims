@@ -80,6 +80,7 @@ export const CustomerModule: React.FC<CustomerModuleProps> = ({ currentRole }) =
 
   const {
     customer: activeProfileCustomer,
+    error: profileError,
     sales: customerSales,
     debtPayments: customerDebtPayments,
     isCustomerLoading,
@@ -356,7 +357,8 @@ export const CustomerModule: React.FC<CustomerModuleProps> = ({ currentRole }) =
 
       {/* Modals */}
       <CustomerProfileModal
-        customer={activeProfileCustomer}
+        error={profileError}
+        customer={activeProfileCustomer || customers.find(customer => customer.id === selectedCustomerId) || null}
         sales={customerSales}
         debtPayments={customerDebtPayments}
         isOpen={isProfileModalOpen}

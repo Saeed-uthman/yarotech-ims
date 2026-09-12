@@ -82,8 +82,9 @@ try {
   };
   const reset = async (rows = [], sale = false) => {
     await evaluate('delete window.fixture');
-    await command('Page.navigate', { url: `${origin}/${sale ? '?sale' : ''}` });
-    await waitFor('Boolean(window.fixture && document.querySelector("input"))');
+    const mode = typeof sale === 'string' ? sale : sale ? 'sale' : '';
+    await command('Page.navigate', { url: `${origin}/${mode ? `?${mode}` : ''}` });
+    await waitFor('Boolean(window.fixture && document.querySelector("#root")?.children.length)');
     await evaluate(`fixture.rows = ${JSON.stringify(rows)}`);
   };
   const field = 'document.querySelector("[role=combobox]")';
@@ -201,7 +202,54 @@ try {
     await waitFor('fixture.sales.length === 1');
     assert.equal(await evaluate('fixture.sales[0].customer_id'), null);
   });
-  console.log('8 browser regression checks passed.');
+  await check('customer history renders item summary, paid total and debt across all pages', async () => {
+    await reset([], 'history');
+    await waitFor('document.body.textContent.includes("HIST-2")');
+    assert.deepEqual(await evaluate('fixture.historyPages'), [1, 2]);
+    const cells = await evaluate('[...document.querySelectorAll("tbody tr")][0].textContent');
+    assert.ok(cells.includes('History Router (2)'));
+    assert.ok(cells.includes('1,075.00'));
+    assert.ok(cells.includes('500.00'));
+    assert.ok(cells.includes('575.00'));
+  });
+  await check('VAT is displayed and included in actual checkout payment and expected total', async () => {
+    await reset([], 'sale-vat');
+    await fill('Router', 'document.querySelector("#sale-product-search-input")');
+    await waitFor('Boolean(document.querySelector("#select-variant-1"))');
+    await click('document.querySelector("#select-variant-1")');
+    await waitFor('document.querySelector("#sale-amount-paid-input").value === "107.5"');
+    await click('document.querySelector("#confirm-complete-sale-btn")');
+    await waitFor('fixture.sales.length === 1');
+    assert.equal(Number(await evaluate('fixture.sales[0].amount_paid')), 107.5);
+    assert.equal(Number(await evaluate('fixture.sales[0].expected_total')), 107.5);
+  });
+  await check('receipt displays saved VAT rate, VAT amount and gross total', async () => {
+    await reset([], 'receipt');
+    await waitFor('document.body.textContent.includes("VAT 7.5%")');
+    const text = await evaluate('document.body.textContent');
+    assert.ok(text.includes('75.00'));
+    assert.ok(text.includes('1,075.00'));
+  });
+  await check('admin VAT percentage reaches settings update request', async () => {
+    await reset([], 'settings');
+    await waitFor('Boolean(document.querySelector("#settings-tab-sales"))');
+    await click('document.querySelector("#settings-tab-sales")');
+    await waitFor('document.querySelector("#settings-vat-rate")?.value === "7.5"');
+    await fill('12.5', 'document.querySelector("#settings-vat-rate")');
+    await click('document.querySelector("#save-settings-primary-btn")');
+    await waitFor('fixture.settingsWrites.length === 1');
+    assert.equal(await evaluate('fixture.settingsWrites[0].vat_rate'), 12.5);
+    assert.equal(await evaluate('fixture.settingsWrites[0].vat_enabled'), true);
+  });
+  await check('VAT report shows billed, collected, outstanding and daily analysis', async () => {
+    await reset([], 'vat-report');
+    await waitFor('document.body.textContent.includes("Net VAT collected in period")');
+    const text = await evaluate('document.body.textContent');
+    assert.ok(text.includes('75.00'));
+    assert.ok(text.includes('37.50'));
+    assert.ok(text.includes('2026-09-12'));
+  });
+  console.log('13 browser regression checks passed.');
   await send('Browser.close');
 } finally {
   socket?.close();

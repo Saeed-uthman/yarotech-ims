@@ -55,18 +55,6 @@ class Product(AuditableModel):
         COMPUTER_EQUIPMENT = 'Computer Equipment', 'Computer Equipment'
         OTHER_IT_EQUIPMENT = 'Other IT Equipment', 'Other IT Equipment'
         # Legacy values remain valid so existing records and imports continue to work.
-        TABLET = 'Tablet', 'Tablet'
-        CAPSULE = 'Capsule', 'Capsule'
-        SYRUP = 'Syrup', 'Syrup'
-        SUSPENSION = 'Suspension', 'Suspension'
-        INJECTION = 'Injection', 'Injection'
-        CREAM = 'Cream', 'Cream'
-        OINTMENT = 'Ointment', 'Ointment'
-        DROPS = 'Drops', 'Drops'
-        INHALER = 'Inhaler', 'Inhaler'
-        GEL = 'Gel', 'Gel'
-        INFUSION = 'Infusion', 'Infusion'
-        POWDER = 'Powder', 'Powder'
 
     class Status(models.TextChoices):
         ACTIVE = 'Active', 'Active'

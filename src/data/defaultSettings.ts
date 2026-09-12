@@ -12,6 +12,8 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   currency: 'NGN',
   currencySymbol: '₦',
   showDecimals: true,
+  vatEnabled: false,
+  vatRate: 0,
   allowWalkingSales: true,
   allowCreditSales: true,
   requireCustomerForCredit: true,

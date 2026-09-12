@@ -157,74 +157,47 @@ export function useCustomers(
 
 export function useCustomerProfile(customerId: string | null, role: UserRole = 'admin') {
   const [customer, setCustomer] = useState<Customer | null>(null);
-  const [sales, setSales] = useState<any[]>([]);
-  const [debtPayments, setDebtPayments] = useState<any[]>([]);
+  const [sales, setSales] = useState<import('../types').CustomerSale[]>([]);
+  const [debtPayments, setDebtPayments] = useState<import('../types').CustomerDebtPayment[]>([]);
   const [isCustomerLoading, setIsCustomerLoading] = useState(true);
   const [isSalesLoading, setIsSalesLoading] = useState(true);
   const [isDebtLoading, setIsDebtLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestId = useRef(0);
 
   const fetchProfile = useCallback(async () => {
-    if (!customerId) {
-      setCustomer(null);
-      setSales([]);
-      setDebtPayments([]);
-      setIsCustomerLoading(false);
-      setIsSalesLoading(false);
-      setIsDebtLoading(false);
-      return;
-    }
-
-    setIsCustomerLoading(true);
-    setIsSalesLoading(true);
-    setIsDebtLoading(true);
-    setError(null);
-
-    // 1. Fetch header customer info first
-    try {
-      const res = await customerService.getCustomerById(customerId);
-      setCustomer(res.data);
-      setIsCustomerLoading(false);
-    } catch (err: any) {
-      setError(err.message || 'Unable to load customer information.');
-      setIsCustomerLoading(false);
-    }
-
-    // 2. Fetch sales history progressively
-    try {
-      const salesRes = await customerService.getCustomerSales(customerId, 1, 20);
-      setSales(salesRes.data);
-    } catch {
-      // Keep empty if fails
-    } finally {
-      setIsSalesLoading(false);
-    }
-
-    // 3. Fetch debt payments progressively
-    try {
-      const debtRes = await customerService.getCustomerDebtPayments(customerId);
-      setDebtPayments(debtRes.data);
-    } catch {
-      // Keep empty if fails
-    } finally {
-      setIsDebtLoading(false);
-    }
-  }, [customerId]);
+    const current = ++requestId.current;
+    setCustomer(null); setSales([]); setDebtPayments([]); setError(null);
+    setIsCustomerLoading(Boolean(customerId));
+    setIsSalesLoading(Boolean(customerId));
+    setIsDebtLoading(Boolean(customerId));
+    if (!customerId) return;
+    const load = async <T,>(request: Promise<{ success: boolean; data?: T }>, assign: (data: T) => void,
+      finish: (value: boolean) => void, message: string) => {
+      try {
+        const response = await request;
+        if (current !== requestId.current) return;
+        if (!response.success || response.data === undefined) throw new Error(message);
+        assign(response.data);
+      } catch {
+        if (current === requestId.current) setError(message);
+      } finally {
+        if (current === requestId.current) finish(false);
+      }
+    };
+    await Promise.all([
+      load(customerService.getCustomerById(customerId), setCustomer, setIsCustomerLoading, 'Unable to load customer information.'),
+      load(customerService.getCustomerSales(customerId, 1, 100), setSales, setIsSalesLoading, 'Unable to load sales history. Please retry.'),
+      load(customerService.getCustomerDebtPayments(customerId), setDebtPayments, setIsDebtLoading, 'Unable to load debt payments. Please retry.'),
+    ]);
+  }, [customerId, role]);
 
   useEffect(() => {
-    fetchProfile();
+    void fetchProfile();
+    return () => { requestId.current += 1; };
   }, [fetchProfile]);
 
-  return {
-    customer,
-    sales,
-    debtPayments,
-    isCustomerLoading,
-    isSalesLoading,
-    isDebtLoading,
-    error,
-    refetch: fetchProfile,
-  };
+  return { customer, sales, debtPayments, isCustomerLoading, isSalesLoading, isDebtLoading, error, refetch: fetchProfile };
 }
 
 export function useCustomerKPIs() {

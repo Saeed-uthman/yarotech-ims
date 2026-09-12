@@ -327,6 +327,7 @@ export class SalesService {
   ): Promise<ApiResponse<Sale>> {
     try {
       const payload = {
+        ...(input.expectedTotal !== undefined ? { expected_total: moneyValue(input.expectedTotal, 'Expected total') } : {}),
         customer_id: input.customerId ? numericId(input.customerId, 'Customer') : null,
         items: input.items.map((item) => ({
           product_variant_id: numericId(item.productVariantId, 'Product variant'),

@@ -41,7 +41,7 @@ def _generate_return_number():
 
 
 @transaction.atomic
-def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'), amount_paid, payment_method, notes=''):
+def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'), amount_paid, payment_method, notes='', expected_total=None):
     system_settings = SystemSettings.load()
     variant_ids = [item['product_variant_id'] for item in items]
     variants = {
@@ -92,6 +92,8 @@ def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'),
     ], discount, system_settings.vat_rate if system_settings.vat_enabled else Decimal('0.00'))
     vat_amount = sum((line['vat_amount'] for line in priced_lines), Decimal('0.00'))
     total_amount = subtotal - discount + vat_amount
+    if expected_total is not None and money(expected_total) != total_amount:
+        raise ValidationError({'expected_total': 'The sale total changed. Refresh products and settings, then review the sale before retrying.'})
 
     amount_paid = Decimal(str(amount_paid))
     if amount_paid < 0:

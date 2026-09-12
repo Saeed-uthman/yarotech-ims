@@ -29,7 +29,9 @@ import { productService } from '../../services/productService';
 import { CustomerSearchField } from './CustomerSearchField';
 import { salesService } from '../../services/salesService';
 import { calculateVat } from '../../utils/vat';
-import { formatNaira } from '../../utils/formatters';
+import { formatNaira as formatCurrency } from '../../utils/formatters';
+
+const formatNaira = (amount: number) => formatCurrency(amount, true);
 
 function roundMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
@@ -361,6 +363,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
 
     // 4. Prepare payload
     const payload: CreateSaleInput = {
+      expectedTotal: grandTotal,
       customerId: customerType === 'registered' ? selectedCustomerId : null,
       items: cart.map((c) => ({
         productVariantId: c.variantId,

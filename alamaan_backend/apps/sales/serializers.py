@@ -21,6 +21,7 @@ class CreateSaleItemInputSerializer(serializers.Serializer):
 
 
 class CreateSaleInputSerializer(serializers.Serializer):
+    expected_total = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, min_value=0)
     customer_id = serializers.PrimaryKeyRelatedField(
         queryset=Customer.objects.all(),
         required=False,
@@ -58,6 +59,7 @@ class CreateSaleInputSerializer(serializers.Serializer):
             amount_paid=validated_data['amount_paid'],
             payment_method=validated_data['payment_method'],
             notes=validated_data.get('notes', ''),
+            expected_total=validated_data.get('expected_total'),
         )
         return sale
 
