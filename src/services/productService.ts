@@ -208,6 +208,21 @@ export class ProductService {
   }
 
   /**
+   * Find product by exact barcode using the dedicated backend endpoint.
+   */
+  public async getProductByBarcodeExact(
+    barcode: string,
+  ): Promise<ApiResponse<Product>> {
+    try {
+      const res = await api.get<any>('/products/barcode-lookup/', { barcode });
+      return { success: true, data: mapBackendProduct(res.data) };
+    } catch (err) {
+      if (err instanceof ApiError) throw err;
+      throw new Error('Product not found for this barcode.');
+    }
+  }
+
+  /**
    * Find product by Barcode (client-side search since backend doesn't have barcode endpoint)
    */
   public async getProductByBarcode(

@@ -1,19 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   X,
-  Plus,
   Trash2,
   Search,
   ShoppingCart,
-  DollarSign,
-  User,
   AlertCircle,
   CheckCircle2,
-  Clock,
   RotateCw,
-  Percent,
-  Receipt,
-  CreditCard,
+  Camera,
 } from 'lucide-react';
 import {
   Product,
@@ -30,6 +24,7 @@ import { CustomerSearchField } from './CustomerSearchField';
 import { salesService } from '../../services/salesService';
 import { calculateVat } from '../../utils/vat';
 import { formatNaira as formatCurrency } from '../../utils/formatters';
+import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 
 const formatNaira = (amount: number) => formatCurrency(amount, true);
 
@@ -90,6 +85,11 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   // Form states & submission
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Camera scanner
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [lastScannedLabel, setLastScannedLabel] = useState<string | null>(null);
 
   // Query Django after a short pause in typing. Fetch every result page so a
   // partial query such as "pa" is not limited to the first 100 products.
@@ -161,6 +161,9 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
       setAmountPaid('');
       setNotes('');
       setFormError(null);
+      setScannerOpen(false);
+      setScanError(null);
+      setLastScannedLabel(null);
     }
   }, [isOpen, settings.allowWalkingSales]);
 
@@ -183,6 +186,55 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   }, [grandTotal, isOpen]);
 
   if (!isOpen) return null;
+
+  // Barcode scan handler — adds directly to cart, camera stays open
+  const handleBarcodeDetected = async (barcode: string) => {
+    setScanError(null);
+    try {
+      const res = await productService.getProductByBarcodeExact(barcode);
+      const product = res.data!;
+      const activeVariants = (product.variants || []).filter(v => v.currentStock > 0);
+      if (activeVariants.length === 0) {
+        setScanError(`"${product.name}" is out of stock.`);
+        return;
+      }
+      const variant = activeVariants[0];
+      const basePrice = Number(variant.basePrice) || 0;
+      const defaultSellingPrice = Number(variant.defaultSellingPrice) || Number(variant.sellingPrice) || 0;
+      const minSellingPrice = Number(variant.minSellingPrice) || (basePrice > 0 ? Math.max(basePrice + 10, Math.round(basePrice * 1.15)) : defaultSellingPrice);
+      const maxSellingPrice = Number(variant.maxSellingPrice) || Math.max(defaultSellingPrice, Math.round(defaultSellingPrice * 1.25));
+      setCart(prev => {
+        const existing = prev.find(item => item.variantId === variant.id);
+        if (existing) {
+          return prev.map(item =>
+            item.variantId === variant.id
+              ? { ...item, quantity: Math.min(item.quantity + 1, variant.currentStock) }
+              : item
+          );
+        }
+        return [...prev, {
+          variantId: variant.id,
+          productId: product.id,
+          vatEnabled: Boolean(product.vatEnabled),
+          productName: product.name,
+          genericName: product.genericName,
+          companyName: variant.companyName,
+          sellingPrice: defaultSellingPrice,
+          actualSellingPrice: defaultSellingPrice,
+          defaultSellingPrice,
+          minSellingPrice,
+          maxSellingPrice,
+          basePrice,
+          availableStock: variant.currentStock,
+          quantity: 1,
+        }];
+      });
+      setLastScannedLabel(`${product.name} (${variant.companyName})`);
+      setFormError(null);
+    } catch {
+      setScanError(`No product found for barcode: ${barcode}`);
+    }
+  };
 
   // Flatten all variants from products
   const flatVariants = availableProducts.flatMap((p) =>
@@ -466,8 +518,16 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                 placeholder="Type any part of a product, model, brand, supplier, or barcode..."
                 autoComplete="off"
                 aria-autocomplete="list"
-                className="w-full pl-9.5 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                className="w-full pl-9.5 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
               />
+              <button
+                type="button"
+                onClick={() => setScannerOpen(true)}
+                title="Scan barcode with camera"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-blue-600 transition-colors"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
 
               {/* Autocomplete Dropdown List */}
               {productSearch.trim() && (
@@ -570,25 +630,14 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                             </span>
                           </td>
                           <td className="py-2.5 px-3 text-center">
-                            <div className="inline-flex items-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                              <button
-                                type="button"
-                                onClick={() => handleUpdateQuantity(item.variantId, item.quantity - 1)}
-                                className="font-bold text-slate-600 hover:text-slate-900 px-1"
-                              >
-                                -
-                              </button>
-                              <span className="font-bold text-slate-900 w-6 text-center">
-                                {item.quantity}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleUpdateQuantity(item.variantId, item.quantity + 1)}
-                                className="font-bold text-slate-600 hover:text-slate-900 px-1"
-                              >
-                                +
-                              </button>
-                            </div>
+                            <input
+                              type="number"
+                              min={1}
+                              max={item.availableStock}
+                              value={item.quantity}
+                              onChange={e => handleUpdateQuantity(item.variantId, parseInt(e.target.value, 10) || 1)}
+                              className="w-20 px-2 py-1 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-900 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
                           </td>
                           <td className="py-2.5 px-3 text-right">
                             <div className="inline-flex flex-col items-end">
@@ -913,6 +962,27 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
           </div>
         </form>
       </div>
+
+      {/* Barcode Scanner Modal */}
+      <BarcodeScannerModal
+        isOpen={scannerOpen}
+        onDetected={handleBarcodeDetected}
+        onClose={() => { setScannerOpen(false); setScanError(null); setLastScannedLabel(null); }}
+        title="Scan Products to Add to Cart"
+        hint="Camera stays open. Each scan adds the product instantly — adjust quantities in the cart below."
+        lastScannedLabel={lastScannedLabel}
+      />
+
+      {/* Scan error toast */}
+      {scanError && scannerOpen && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] bg-rose-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <AlertCircle className="w-4 h-4" />
+          {scanError}
+          <button type="button" onClick={() => setScanError(null)} className="ml-1 opacity-70 hover:opacity-100">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

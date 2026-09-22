@@ -18,3 +18,4 @@ export * from './usePermissions';
 export * from './useKeyboardShortcuts';
 export * from './useDocumentTheme';
 export * from './useInactivityLogout';
+export * from './useBarcodeScanner';

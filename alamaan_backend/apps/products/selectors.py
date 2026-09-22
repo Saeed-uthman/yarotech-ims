@@ -62,6 +62,18 @@ def list_products(*, search='', category=None, company=None, stock_status=None, 
     return queryset.distinct().order_by(ordering_field)
 
 
+def get_product_by_barcode(*, barcode):
+    """
+    Return the single Product whose barcode matches exactly, with all variants.
+    Raises Product.DoesNotExist when no match is found.
+    """
+    return (
+        Product.objects.select_related('category')
+        .prefetch_related('variants__company')
+        .get(barcode=barcode)
+    )
+
+
 def get_product_detail(*, product_id):
     return (
         Product.objects.select_related('category')

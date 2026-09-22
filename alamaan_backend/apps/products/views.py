@@ -11,7 +11,7 @@ from apps.common.pagination import paginated_response
 from apps.common.responses import success_response
 
 from .models import Category, Company, Product, ProductVariant
-from .selectors import get_catalog_kpis, list_categories, list_companies, list_products
+from .selectors import get_catalog_kpis, get_product_by_barcode, list_categories, list_companies, list_products
 from .serializers import (
     CategorySerializer,
     CompanySerializer,
@@ -180,6 +180,27 @@ class ProductVariantPriceAdjustmentView(APIView):
         )
         output = ProductVariantDetailSerializer(variant, context={'request': request})
         return Response(success_response(output.data, 'Price adjustment recorded successfully.'))
+
+
+class ProductBarcodeLookupView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: ProductDetailSerializer})
+    def get(self, request):
+        barcode = request.query_params.get('barcode', '').strip()
+        if not barcode:
+            return Response(
+                {'success': False, 'message': 'barcode query parameter is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            product = get_product_by_barcode(barcode=barcode)
+        except Product.DoesNotExist:
+            return Response(
+                {'success': False, 'message': 'No product found for this barcode.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(success_response(ProductDetailSerializer(product, context={'request': request}).data))
 
 
 class ProductKpiStatsView(APIView):

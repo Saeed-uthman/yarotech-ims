@@ -1,163 +1,124 @@
-import React, { useState } from 'react';
-import { AlertTriangle, Loader2, Pill, ScanBarcode, X } from 'lucide-react';
-import { Product, UserRole } from '../../types';
-import { productService } from '../../services/productService';
+import React, { useEffect } from 'react';
+import { X, Camera, ScanLine, AlertCircle, Loader2 } from 'lucide-react';
+import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 
 interface BarcodeScannerModalProps {
   isOpen: boolean;
-  currentRole: UserRole;
+  onDetected: (barcode: string) => void;
   onClose: () => void;
-  onSelectProduct: (product: Product) => void;
+  title?: string;
+  hint?: string;
+  lastScannedLabel?: string | null;
 }
 
 export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   isOpen,
-  currentRole,
+  onDetected,
   onClose,
-  onSelectProduct,
+  title = 'Scan Product Barcode',
+  hint = 'Point the camera at a product barcode. It will be detected automatically.',
+  lastScannedLabel = null,
 }) => {
-  const [barcodeInput, setBarcodeInput] = useState('');
-  const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
-  const [notFound, setNotFound] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { videoRef, isScanning, error, startScanning, stopScanning } = useBarcodeScanner(onDetected);
 
-  const resetLookup = () => {
-    setBarcodeInput('');
-    setScannedProduct(null);
-    setNotFound(false);
-    setIsLoading(false);
-  };
-
-  const handleClose = () => {
-    resetLookup();
-    onClose();
-  };
-
-  const handleScan = async (codeToSearch: string) => {
-    const trimmed = codeToSearch.trim();
-    if (!trimmed || isLoading) return;
-
-    setIsLoading(true);
-    setNotFound(false);
-    setScannedProduct(null);
-    try {
-      const response = await productService.getProductByBarcode(trimmed, currentRole);
-      if (response.success && response.data) {
-        setScannedProduct(response.data);
-      } else {
-        setNotFound(true);
-      }
-    } catch {
-      setNotFound(true);
-    } finally {
-      setIsLoading(false);
+  useEffect(() => {
+    if (isOpen) {
+      startScanning();
+    } else {
+      stopScanning();
     }
-  };
+    return () => stopScanning();
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-lg shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+    <div className="fixed inset-0 z-[60] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        {/* Header */}
+        <div className="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-              <ScanBarcode className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center">
+              <Camera className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base">Scan Product Barcode</h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">USB scanner or manual API lookup</p>
+              <h3 className="text-sm font-bold">{title}</h3>
+              <p className="text-[11px] text-slate-400">Camera stays open — scan multiple products</p>
             </div>
           </div>
-
           <button
             type="button"
-            onClick={handleClose}
-            className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-            aria-label="Close barcode lookup"
+            onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
-          <div className="w-full rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/30 p-4 flex items-center gap-3">
-            <ScanBarcode className="w-8 h-8 text-blue-600 dark:text-blue-400 shrink-0" />
-            <div>
-              <p className="text-xs font-bold text-blue-900 dark:text-blue-200">Scanner input ready</p>
-              <p className="text-[11px] text-blue-700 dark:text-blue-300 mt-0.5">
-                Focus the field, scan with a USB barcode device, or type the registered code and press Enter.
-              </p>
-            </div>
-          </div>
+        {/* Camera viewport */}
+        <div className="relative bg-black aspect-video overflow-hidden">
+          <video
+            ref={videoRef}
+            className="w-full h-full object-cover"
+            muted
+            playsInline
+          />
 
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void handleScan(barcodeInput);
-            }}
-            className="flex gap-2"
-          >
-            <input
-              type="text"
-              placeholder="Enter or scan barcode..."
-              value={barcodeInput}
-              onChange={(event) => {
-                setBarcodeInput(event.target.value);
-                setScannedProduct(null);
-                setNotFound(false);
-              }}
-              className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-md text-xs sm:text-sm font-mono text-slate-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
-              autoFocus
-              autoComplete="off"
-            />
-            <button
-              type="submit"
-              disabled={isLoading || !barcodeInput.trim()}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-md text-xs font-semibold shadow-xs inline-flex items-center gap-1.5"
-            >
-              {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              {isLoading ? 'Looking up' : 'Lookup'}
-            </button>
-          </form>
-
-          {scannedProduct && (
-            <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-800 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 overflow-hidden shrink-0 flex items-center justify-center">
-                  {scannedProduct.image ? (
-                    <img src={scannedProduct.image} alt={scannedProduct.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <Pill className="w-5 h-5 text-emerald-600" />
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <h4 className="text-xs font-bold text-emerald-950 dark:text-emerald-100 truncate">{scannedProduct.name}</h4>
-                  <p className="text-[11px] text-emerald-700 dark:text-emerald-300 truncate">
-                    {scannedProduct.genericName} &bull; {scannedProduct.variants?.length ?? 0} brands
-                  </p>
-                </div>
+          {/* Scan zone overlay */}
+          {isScanning && !error && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              {/* Dimmed corners */}
+              <div className="absolute inset-0 bg-black/40" />
+              {/* Clear scan window */}
+              <div className="relative w-56 h-32 z-10">
+                <div className="absolute inset-0 border-2 border-blue-400 rounded-lg" />
+                {/* Corner accents */}
+                <div className="absolute top-0 left-0 w-5 h-5 border-t-4 border-l-4 border-blue-400 rounded-tl-lg" />
+                <div className="absolute top-0 right-0 w-5 h-5 border-t-4 border-r-4 border-blue-400 rounded-tr-lg" />
+                <div className="absolute bottom-0 left-0 w-5 h-5 border-b-4 border-l-4 border-blue-400 rounded-bl-lg" />
+                <div className="absolute bottom-0 right-0 w-5 h-5 border-b-4 border-r-4 border-blue-400 rounded-br-lg" />
+                {/* Animated scan line */}
+                <div className="absolute inset-x-2 top-1/2 -translate-y-1/2 h-0.5 bg-blue-400/80 animate-pulse" />
               </div>
+            </div>
+          )}
 
+          {/* Loading state */}
+          {!isScanning && !error && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+              <span className="text-xs text-slate-300">Starting camera...</span>
+            </div>
+          )}
+
+          {/* Error state */}
+          {error && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
+              <AlertCircle className="w-10 h-10 text-rose-400" />
+              <p className="text-xs text-rose-300 font-medium">{error}</p>
               <button
                 type="button"
-                onClick={() => {
-                  onSelectProduct(scannedProduct);
-                  handleClose();
-                }}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold shadow-xs shrink-0"
+                onClick={startScanning}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors"
               >
-                View
+                Retry
               </button>
             </div>
           )}
+        </div>
 
-          {notFound && (
-            <div className="p-3 bg-rose-50 dark:bg-rose-950/30 rounded-lg border border-rose-200 dark:border-rose-800 flex items-center gap-2 text-xs text-rose-700 dark:text-rose-300 font-medium">
-              <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
-              <span>No product is registered with barcode: {barcodeInput.trim()}</span>
-            </div>
-          )}
+        {/* Last scanned toast inside modal */}
+        {lastScannedLabel && (
+          <div className="px-5 py-2.5 bg-emerald-900/90 border-t border-emerald-700 flex items-center gap-2">
+            <ScanLine className="w-4 h-4 text-emerald-400 shrink-0" />
+            <p className="text-[11px] text-emerald-300 font-semibold truncate">Added: {lastScannedLabel}</p>
+          </div>
+        )}
+
+        {/* Footer hint */}
+        <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-start gap-2">
+          <ScanLine className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-slate-500">{hint}</p>
         </div>
       </div>
     </div>

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   X,
-  Plus,
   Trash2,
   Search,
   PackageCheck,
@@ -12,10 +11,10 @@ import {
   Layers,
   Building2,
   FileText,
+  Camera,
 } from 'lucide-react';
 import {
   Product,
-  CompanyVariant,
   CreatePurchaseInput,
   CreatePurchaseItemInput,
   PurchasePaymentMethod,
@@ -26,6 +25,7 @@ import { productService } from '../../services/productService';
 import { purchaseService } from '../../services/purchaseService';
 import { formatNaira, formatNumber } from '../../utils/formatters';
 import { useAuth } from '../../hooks/useAuth';
+import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 
 function localToday(): string {
   const now = new Date();
@@ -81,6 +81,11 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Camera scanner
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [lastScannedLabel, setLastScannedLabel] = useState<string | null>(null);
+
   // Reset the purchase draft whenever the modal opens. Products are searched
   // on demand so results are not restricted to the first catalogue page.
   useEffect(() => {
@@ -95,6 +100,9 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
     setNote('');
     setSupplierName('');
     setFormError(null);
+    setScannerOpen(false);
+    setScanError(null);
+    setLastScannedLabel(null);
   }, [role, isOpen]);
 
   // Search Django after a short pause in typing and collect every matching
@@ -154,6 +162,47 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
   }, [isOpen, productSearch, role]);
 
   if (!isOpen) return null;
+
+  // Barcode scan handler — adds directly to order, camera stays open
+  const handleBarcodeDetected = async (barcode: string) => {
+    setScanError(null);
+    try {
+      const res = await productService.getProductByBarcodeExact(barcode);
+      const product = res.data!;
+      const variants = product.variants || [];
+      if (variants.length === 0) {
+        setScanError(`"${product.name}" has no variants configured.`);
+        return;
+      }
+      const variant = variants[0];
+      const existingIndex = items.findIndex(it => it.variantId === variant.id);
+      if (existingIndex >= 0) {
+        setItems(prev => {
+          const updated = [...prev];
+          updated[existingIndex] = { ...updated[existingIndex], quantity: updated[existingIndex].quantity + 1 };
+          return updated;
+        });
+      } else {
+        setItems(prev => [...prev, {
+          variantId: variant.id,
+          productId: product.id,
+          productName: product.name,
+          genericName: product.genericName,
+          companyName: variant.companyName,
+          dosage: product.dosage,
+          form: product.form,
+          currentStock: variant.currentStock,
+          currentBasePrice: Number(variant.basePrice) || 0,
+          quantity: 1,
+          unitPurchasePrice: Number(variant.basePrice) || 0,
+          batchNumber: '',
+        }]);
+      }
+      setLastScannedLabel(`${product.name} (${variant.companyName})`);
+    } catch {
+      setScanError(`No product found for barcode: ${barcode}`);
+    }
+  };
 
   // Flatten all variants from products
   const flatVariants = availableProducts.flatMap((p) =>
@@ -449,8 +498,16 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
                 placeholder="Type any part of a product, model, brand, supplier, or barcode..."
                 autoComplete="off"
                 aria-autocomplete="list"
-                className="w-full pl-9.5 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                className="w-full pl-9.5 pr-12 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
               />
+              <button
+                type="button"
+                onClick={() => setScannerOpen(true)}
+                title="Scan barcode with camera"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-indigo-600 transition-colors"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
             </div>
 
             {/* Live Search Results Dropdown */}
@@ -713,6 +770,27 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Barcode Scanner Modal */}
+      <BarcodeScannerModal
+        isOpen={scannerOpen}
+        onDetected={handleBarcodeDetected}
+        onClose={() => { setScannerOpen(false); setScanError(null); setLastScannedLabel(null); }}
+        title="Scan Products to Restock"
+        hint="Camera stays open. Each scan adds the product instantly — adjust quantities and prices in the order below."
+        lastScannedLabel={lastScannedLabel}
+      />
+
+      {/* Scan error toast */}
+      {scanError && scannerOpen && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] bg-rose-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <AlertCircle className="w-4 h-4" />
+          {scanError}
+          <button type="button" onClick={() => setScanError(null)} className="ml-1 opacity-70 hover:opacity-100">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 };
