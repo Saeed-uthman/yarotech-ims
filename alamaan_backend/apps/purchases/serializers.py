@@ -15,7 +15,6 @@ class CreatePurchaseItemInputSerializer(serializers.Serializer):
     quantity = serializers.IntegerField(min_value=1)
     unit_purchase_price = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0.01'))
     batch_number = serializers.CharField(max_length=100, required=False, allow_blank=True, default='')
-    expiry_date = serializers.DateField(required=False, allow_null=True, default=None)
 
     def validate_unit_purchase_price(self, value):
         if value <= 0:
@@ -46,7 +45,6 @@ class CreatePurchaseInputSerializer(serializers.Serializer):
                     'quantity': item['quantity'],
                     'unit_purchase_price': item['unit_purchase_price'],
                     'batch_number': item.get('batch_number', ''),
-                    'expiry_date': item.get('expiry_date'),
                 }
                 for item in items_data
             ],
@@ -63,7 +61,6 @@ class PurchaseItemOutputSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='variant.product.name', read_only=True)
     company_name = serializers.CharField(source='variant.company.name', read_only=True)
     batch_number = serializers.CharField(source='inventory_batch.batch_number', read_only=True)
-    expiry_date = serializers.DateField(source='inventory_batch.expiry_date', read_only=True)
 
     class Meta:
         model = StockPurchase.items.rel.related_model
@@ -76,7 +73,6 @@ class PurchaseItemOutputSerializer(serializers.ModelSerializer):
             'unit_purchase_price',
             'subtotal',
             'batch_number',
-            'expiry_date',
         ]
         read_only_fields = fields
 

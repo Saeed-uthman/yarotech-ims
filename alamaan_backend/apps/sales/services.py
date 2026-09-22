@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import F, Q, Sum
+from django.db.models import F, Sum
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
@@ -161,8 +161,7 @@ def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'),
                 status=InventoryBatch.Status.AVAILABLE,
                 remaining_quantity__gt=0,
             )
-            .filter(Q(expiry_date__isnull=True) | Q(expiry_date__gte=timezone.localdate()))
-            .order_by(F('expiry_date').asc(nulls_last=True), 'received_at', 'id')
+            .order_by('received_at', 'id')
         )
         if sum(batch.remaining_quantity for batch in sellable_batches) < quantity:
             raise ValidationError({

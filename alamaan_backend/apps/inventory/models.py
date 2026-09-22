@@ -56,7 +56,6 @@ class InventoryBatch(TimeStampedModel):
     )
     supplier_name = models.CharField(max_length=200, blank=True, default='')
     batch_number = models.CharField(max_length=100)
-    expiry_date = models.DateField(null=True, blank=True, db_index=True)
     received_quantity = models.PositiveIntegerField()
     remaining_quantity = models.PositiveIntegerField()
     unit_cost = models.DecimalField(max_digits=12, decimal_places=2)
@@ -80,11 +79,11 @@ class InventoryBatch(TimeStampedModel):
         ]
         indexes = [
             models.Index(
-                fields=['variant', 'status', 'expiry_date'],
-                name='inventory_i_variant_38e52d_idx',
+                fields=['variant', 'status'],
+                name='inventory_i_variant_status_idx',
             ),
         ]
-        ordering = ['expiry_date', 'received_at', 'id']
+        ordering = ['received_at', 'id']
 
     def __str__(self):
         return f'{self.variant} - {self.batch_number}'

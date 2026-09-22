@@ -688,7 +688,6 @@ export interface PurchaseItemEntity {
   unitPurchasePrice: number; // Purchase / Base cost per unit in NGN > 0
   subtotal: number; // quantity * unitPurchasePrice
   batchNumber?: string;
-  expiryDate?: string | null;
 }
 
 export interface StockPurchase {
@@ -749,7 +748,6 @@ export interface CreatePurchaseItemInput {
   quantity: number; // Must be integer > 0
   unitPurchasePrice: number; // Must be number > 0
   batchNumber?: string;
-  expiryDate?: string | null;
 }
 
 export interface CreatePurchaseInput {

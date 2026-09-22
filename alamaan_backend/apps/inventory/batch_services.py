@@ -25,7 +25,7 @@ def apply_manual_batch_delta(*, variant, delta, created_by):
         InventoryBatch.objects.select_for_update()
         .filter(variant=variant, remaining_quantity__gt=0)
         .exclude(status=InventoryBatch.Status.CANCELLED)
-        .order_by(F('expiry_date').asc(nulls_last=True), 'received_at', 'id')
+        .order_by('received_at', 'id')
     )
     if not batches and variant.current_stock > 0:
         batches = [InventoryBatch.objects.create(

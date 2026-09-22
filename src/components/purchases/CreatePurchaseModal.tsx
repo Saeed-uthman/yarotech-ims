@@ -53,7 +53,6 @@ interface PurchaseDraftItem {
   quantity: number;
   unitPurchasePrice: number;
   batchNumber: string;
-  expiryDate: string;
 }
 
 export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
@@ -199,7 +198,6 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
         quantity: 50,
         unitPurchasePrice: variant.basePrice || 500,
         batchNumber: '',
-        expiryDate: '',
       };
       setItems([...items, newItem]);
     }
@@ -222,7 +220,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
     setItems(updated);
   };
 
-  const handleUpdateBatch = (index: number, field: 'batchNumber' | 'expiryDate', value: string) => {
+  const handleUpdateBatch = (index: number, field: 'batchNumber', value: string) => {
     const updated = [...items];
     updated[index][field] = value;
     setItems(updated);
@@ -283,7 +281,6 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
           quantity: it.quantity,
           unitPurchasePrice: it.unitPurchasePrice,
           batchNumber: it.batchNumber.trim() || undefined,
-          expiryDate: it.expiryDate || null,
         })),
       };
 
@@ -572,13 +569,6 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
                             onChange={(event) => handleUpdateBatch(index, 'batchNumber', event.target.value)}
                             placeholder="Batch / lot number (optional)"
                             className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
-                          <input
-                            type="date"
-                            value={item.expiryDate}
-                            onChange={(event) => handleUpdateBatch(index, 'expiryDate', event.target.value)}
-                            aria-label={`Expiry date for ${item.productName}`}
-                            className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                         </div>
                       </div>

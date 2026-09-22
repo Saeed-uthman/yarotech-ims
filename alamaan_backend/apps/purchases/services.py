@@ -135,7 +135,6 @@ def create_stock_purchase(*, user, items, payment_method=None, amount_paid=None,
             'unit_purchase_price': unit_price,
             'subtotal': item_subtotal,
             'batch_number': item.get('batch_number', ''),
-            'expiry_date': item.get('expiry_date'),
         })
 
     purchase_number = _generate_purchase_number()
@@ -187,7 +186,6 @@ def create_stock_purchase(*, user, items, payment_method=None, amount_paid=None,
             purchase_item=purchase_item,
             supplier_name=resolved_supplier_name,
             batch_number=batch_number,
-            expiry_date=item_data.get('expiry_date'),
             received_quantity=quantity,
             remaining_quantity=quantity,
             unit_cost=unit_price,

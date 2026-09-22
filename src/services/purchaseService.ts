@@ -27,7 +27,6 @@ function mapBackendPurchaseItem(raw: any): PurchaseItemEntity {
     unitPurchasePrice: Number(i.unitPurchasePrice ?? i.unitBasePrice ?? 0),
     subtotal: Number(i.subtotal ?? (Number(i.quantity || 0) * Number(i.unitPurchasePrice ?? i.unitBasePrice ?? 0))),
     batchNumber: i.batchNumber || '',
-    expiryDate: i.expiryDate || null,
   };
 }
 
@@ -362,7 +361,6 @@ export class PurchaseService {
           quantity: it.quantity,
           unit_purchase_price: moneyValue(it.unitPurchasePrice, 'Unit purchase price'),
           batch_number: it.batchNumber?.trim() || '',
-          expiry_date: it.expiryDate || null,
         })),
         supplier_name: input.supplierName?.trim() || '',
         amount_paid: moneyValue(input.amountPaid, 'Amount paid'),
