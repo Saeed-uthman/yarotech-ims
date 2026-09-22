@@ -25,8 +25,8 @@ class InventoryMovementAdmin(admin.ModelAdmin):
 
 @admin.register(InventoryBatch)
 class InventoryBatchAdmin(admin.ModelAdmin):
-    list_display = ('batch_number', 'variant', 'expiry_date', 'remaining_quantity', 'status', 'supplier_name')
-    list_filter = ('status', 'expiry_date')
+    list_display = ('batch_number', 'variant', 'remaining_quantity', 'status', 'supplier_name')
+    list_filter = ('status',)
     search_fields = ('batch_number', 'variant__product__name', 'supplier_name')
     readonly_fields = [field.name for field in InventoryBatch._meta.fields]
 
