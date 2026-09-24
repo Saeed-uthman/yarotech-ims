@@ -88,8 +88,6 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
 
   // Camera scanner
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [scanError, setScanError] = useState<string | null>(null);
-  const [lastScannedLabel, setLastScannedLabel] = useState<string | null>(null);
 
   // Query Django after a short pause in typing. Fetch every result page so a
   // partial query such as "pa" is not limited to the first 100 products.
@@ -162,8 +160,6 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
       setNotes('');
       setFormError(null);
       setScannerOpen(false);
-      setScanError(null);
-      setLastScannedLabel(null);
     }
   }, [isOpen, settings.allowWalkingSales]);
 
@@ -186,55 +182,6 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   }, [grandTotal, isOpen]);
 
   if (!isOpen) return null;
-
-  // Barcode scan handler — adds directly to cart, camera stays open
-  const handleBarcodeDetected = async (barcode: string) => {
-    setScanError(null);
-    try {
-      const res = await productService.getProductByBarcodeExact(barcode);
-      const product = res.data!;
-      const activeVariants = (product.variants || []).filter(v => v.currentStock > 0);
-      if (activeVariants.length === 0) {
-        setScanError(`"${product.name}" is out of stock.`);
-        return;
-      }
-      const variant = activeVariants[0];
-      const basePrice = Number(variant.basePrice) || 0;
-      const defaultSellingPrice = Number(variant.defaultSellingPrice) || Number(variant.sellingPrice) || 0;
-      const minSellingPrice = Number(variant.minSellingPrice) || (basePrice > 0 ? Math.max(basePrice + 10, Math.round(basePrice * 1.15)) : defaultSellingPrice);
-      const maxSellingPrice = Number(variant.maxSellingPrice) || Math.max(defaultSellingPrice, Math.round(defaultSellingPrice * 1.25));
-      setCart(prev => {
-        const existing = prev.find(item => item.variantId === variant.id);
-        if (existing) {
-          return prev.map(item =>
-            item.variantId === variant.id
-              ? { ...item, quantity: Math.min(item.quantity + 1, variant.currentStock) }
-              : item
-          );
-        }
-        return [...prev, {
-          variantId: variant.id,
-          productId: product.id,
-          vatEnabled: Boolean(product.vatEnabled),
-          productName: product.name,
-          genericName: product.genericName,
-          companyName: variant.companyName,
-          sellingPrice: defaultSellingPrice,
-          actualSellingPrice: defaultSellingPrice,
-          defaultSellingPrice,
-          minSellingPrice,
-          maxSellingPrice,
-          basePrice,
-          availableStock: variant.currentStock,
-          quantity: 1,
-        }];
-      });
-      setLastScannedLabel(`${product.name} (${variant.companyName})`);
-      setFormError(null);
-    } catch {
-      setScanError(`No product found for barcode: ${barcode}`);
-    }
-  };
 
   // Flatten all variants from products
   const flatVariants = availableProducts.flatMap((p) =>
@@ -262,7 +209,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
     : 0;
 
   // Add item to cart
-  const handleAddToCart = (product: Product, variant: CompanyVariant) => {
+  const handleAddToCart = (product: Product, variant: CompanyVariant, quantity = 1) => {
     if (variant.currentStock <= 0) return;
 
     const basePrice = Number(variant.basePrice) || 0;
@@ -273,13 +220,13 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
     setCart((prev) => {
       const existing = prev.find((item) => item.variantId === variant.id);
       if (existing) {
-        if (existing.quantity >= variant.currentStock) {
+        if (existing.quantity + quantity > variant.currentStock) {
           setFormError(`Cannot add more than available stock (${variant.currentStock}).`);
           return prev;
         }
         return prev.map((item) =>
           item.variantId === variant.id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: item.quantity + quantity }
             : item
         );
       } else {
@@ -299,7 +246,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
             maxSellingPrice,
             basePrice,
             availableStock: variant.currentStock,
-            quantity: 1,
+            quantity,
           },
         ];
       }
@@ -963,26 +910,14 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
         </form>
       </div>
 
-      {/* Barcode Scanner Modal */}
       <BarcodeScannerModal
         isOpen={scannerOpen}
-        onDetected={handleBarcodeDetected}
-        onClose={() => { setScannerOpen(false); setScanError(null); setLastScannedLabel(null); }}
-        title="Scan Products to Add to Cart"
-        hint="Camera stays open. Each scan adds the product instantly — adjust quantities in the cart below."
-        lastScannedLabel={lastScannedLabel}
+        mode="sale"
+        onClose={() => setScannerOpen(false)}
+        quantities={Object.fromEntries(cart.map(item => [item.variantId, item.quantity]))}
+        onAdd={handleAddToCart}
       />
 
-      {/* Scan error toast */}
-      {scanError && scannerOpen && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] bg-rose-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <AlertCircle className="w-4 h-4" />
-          {scanError}
-          <button type="button" onClick={() => setScanError(null)} className="ml-1 opacity-70 hover:opacity-100">
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
     </div>
   );
 };

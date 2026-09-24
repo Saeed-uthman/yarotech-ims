@@ -1,78 +1,64 @@
 import { useRef, useState, useCallback, useEffect, RefObject } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
-import { NotFoundException } from '@zxing/library';
 
-interface UseBarcodeScanner {
-  videoRef: RefObject<HTMLVideoElement | null>;
-  isScanning: boolean;
-  error: string | null;
-  startScanning: () => Promise<void>;
-  stopScanning: () => void;
-}
-
-export function useBarcodeScanner(onDetected: (barcode: string) => void): UseBarcodeScanner {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+export function useBarcodeScanner(onDetected: (barcode: string) => void) {
+  const videoRef: RefObject<HTMLVideoElement | null> = useRef(null);
   const controlsRef = useRef<{ stop: () => void } | null>(null);
-  const lastScannedRef = useRef<string>('');
-  const cooldownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const generation = useRef(0);
+  const detectedRef = useRef(onDetected);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => { detectedRef.current = onDetected; }, [onDetected]);
 
   const stopScanning = useCallback(() => {
+    generation.current += 1;
     controlsRef.current?.stop();
     controlsRef.current = null;
-    if (cooldownRef.current) clearTimeout(cooldownRef.current);
-    lastScannedRef.current = '';
     setIsScanning(false);
   }, []);
 
   const startScanning = useCallback(async () => {
-    if (!videoRef.current) return;
+    stopScanning();
+    const video = videoRef.current;
+    if (!video) return;
+    const attempt = generation.current;
     setError(null);
-
     try {
-      readerRef.current = new BrowserMultiFormatReader();
-      setIsScanning(true);
-
-      const controls = await readerRef.current.decodeFromConstraints(
-        { video: { facingMode: 'environment' } },
-        videoRef.current,
-        (result, err) => {
-          if (result) {
-            const text = result.getText();
-            // Debounce: ignore same barcode within 1.5 s
-            if (text === lastScannedRef.current) return;
-            lastScannedRef.current = text;
-            onDetected(text);
-            cooldownRef.current = setTimeout(() => {
-              lastScannedRef.current = '';
-            }, 1500);
-          } else if (err && !(err instanceof NotFoundException)) {
-            // NotFoundException fires every frame when nothing is in view — ignore it
-          }
-        }
+      const reader = new BrowserMultiFormatReader();
+      const controls = await reader.decodeFromConstraints(
+        { video: { facingMode: 'environment' } }, video,
+        (result) => {
+          if (attempt !== generation.current || !result) return;
+          const barcode = result.getText().trim();
+          if (!barcode) return;
+          // One read per session: choose a quantity before scanning again.
+          stopScanning();
+          detectedRef.current(barcode);
+        },
       );
-
-      controlsRef.current = controls;
-    } catch (err: any) {
-      setIsScanning(false);
-      if (err?.name === 'NotAllowedError') {
-        setError('Camera access denied. Please allow camera permission in your browser and try again.');
-      } else if (err?.name === 'NotFoundError') {
-        setError('No camera found. Please connect a webcam and try again.');
-      } else {
-        setError('Could not start camera: ' + (err?.message || 'Unknown error'));
+      // Permission can resolve after closing or after the first decode.
+      if (attempt !== generation.current) {
+        controls.stop();
+        return;
       }
+      controlsRef.current = controls;
+      setIsScanning(true);
+    } catch (err: unknown) {
+      if (attempt !== generation.current) return;
+      setIsScanning(false);
+      const name = err instanceof Error ? err.name : '';
+      setError(name === 'NotAllowedError'
+        ? 'Camera access denied. Allow camera permission, then retry.'
+        : name === 'NotFoundError'
+          ? 'No camera found. Connect a camera or use product search.'
+          : 'Could not start the camera. Use HTTPS or localhost, check camera access, then retry.');
     }
-  }, [onDetected]);
+  }, [stopScanning]);
 
-  // Clean up on unmount
-  useEffect(() => {
-    return () => {
-      controlsRef.current?.stop();
-      if (cooldownRef.current) clearTimeout(cooldownRef.current);
-    };
+  useEffect(() => () => {
+    generation.current += 1;
+    controlsRef.current?.stop();
+    controlsRef.current = null;
   }, []);
 
   return { videoRef, isScanning, error, startScanning, stopScanning };

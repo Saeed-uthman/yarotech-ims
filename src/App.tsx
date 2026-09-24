@@ -827,7 +827,7 @@ function MainPharmacyApp() {
       {/* Barcode Scanner Modal */}
       <BarcodeScannerModal
         isOpen={isBarcodeScannerOpen}
-        currentRole={currentRole}
+        mode="lookup"
         onClose={() => setIsBarcodeScannerOpen(false)}
         onSelectProduct={(product) => {
           setSelectedProduct(product);

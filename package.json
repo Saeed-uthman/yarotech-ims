@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test:customer-search": "node scripts/test_customer_search.mjs"
+    "test:customer-search": "node scripts/test_customer_search.mjs",
+    "test:barcode": "node scripts/test_barcode_scanning.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
