@@ -25,6 +25,7 @@ import { salesService } from '../../services/salesService';
 import { calculateVat } from '../../utils/vat';
 import { formatNaira as formatCurrency } from '../../utils/formatters';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
+import { PhotoSearchModal } from '../common/PhotoSearchModal';
 
 const formatNaira = (amount: number) => formatCurrency(amount, true);
 
@@ -88,6 +89,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
 
   // Camera scanner
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
 
   // Query Django after a short pause in typing. Fetch every result page so a
   // partial query such as "pa" is not limited to the first 100 products.
@@ -160,6 +162,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
       setNotes('');
       setFormError(null);
       setScannerOpen(false);
+      setPhotoOpen(false);
     }
   }, [isOpen, settings.allowWalkingSales]);
 
@@ -545,6 +548,10 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
               )}
             </div>
 
+            <button type="button" onClick={() => setPhotoOpen(true)} className="text-sm font-semibold text-blue-700 flex items-center gap-2">
+              <Camera className="w-4 h-4" /> Find by photo
+            </button>
+
             {/* Cart Table */}
             {cart.length > 0 ? (
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
@@ -910,6 +917,8 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
         </form>
       </div>
 
+      <PhotoSearchModal isOpen={photoOpen} mode="sale" onClose={() => setPhotoOpen(false)}
+        quantities={Object.fromEntries(cart.map(item => [item.variantId, item.quantity]))} onAdd={handleAddToCart} />
       <BarcodeScannerModal
         isOpen={scannerOpen}
         mode="sale"

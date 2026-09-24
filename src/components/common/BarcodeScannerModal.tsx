@@ -12,6 +12,7 @@ interface BarcodeScannerModalProps {
   quantities?: Record<string, number>;
   onAdd?: (product: Product, variant: CompanyVariant, quantity: number) => void;
   onSelectProduct?: (product: Product) => void;
+  initialProduct?: Product;
 }
 
 // Each opening owns a fresh scan and lookup session.
@@ -19,10 +20,11 @@ export function BarcodeScannerModal({ isOpen, ...props }: BarcodeScannerModalPro
   return isOpen ? <BarcodeScannerSession {...props} /> : null;
 }
 
-function BarcodeScannerSession({ onClose, mode = 'lookup', quantities = {}, onAdd, onSelectProduct }: Omit<BarcodeScannerModalProps, 'isOpen'>) {
-  const [phase, setPhase] = useState<'scan' | 'loading' | 'result' | 'error'>('scan');
-  const [product, setProduct] = useState<Product | null>(null);
-  const [variantId, setVariantId] = useState('');
+function BarcodeScannerSession({ onClose, mode = 'lookup', quantities = {}, onAdd, onSelectProduct, initialProduct }: Omit<BarcodeScannerModalProps, 'isOpen'>) {
+  const [phase, setPhase] = useState<'scan' | 'loading' | 'result' | 'error'>(initialProduct ? 'result' : 'scan');
+  const [product, setProduct] = useState<Product | null>(initialProduct || null);
+  const initialVariants = initialProduct?.variants.filter(v => v.status === 'Available') || [];
+  const [variantId, setVariantId] = useState(initialVariants.length === 1 ? initialVariants[0].id : '');
   const [quantity, setQuantity] = useState('1');
   const [lookupError, setLookupError] = useState('');
   const active = useRef(true);
@@ -112,7 +114,7 @@ function BarcodeScannerSession({ onClose, mode = 'lookup', quantities = {}, onAd
         className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto">
         <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
           <h3 id="barcode-title" className="font-bold flex items-center gap-2"><Camera className="w-5 h-5" />
-            {mode === 'sale' ? 'Scan product for sale' : mode === 'purchase' ? 'Scan product to restock' : 'Find product by barcode'}
+            {initialProduct ? 'Choose variant and quantity' : mode === 'sale' ? 'Scan product for sale' : mode === 'purchase' ? 'Scan product to restock' : 'Find product by barcode'}
           </h3>
           <button type="button" onClick={onClose} aria-label="Close barcode scanner" className="p-2 rounded-lg hover:bg-white/10"><X className="w-5 h-5" /></button>
         </div>
@@ -148,7 +150,7 @@ function BarcodeScannerSession({ onClose, mode = 'lookup', quantities = {}, onAd
             </>}
           </>}
           <div className="flex gap-3">
-            <button type="button" onClick={retry} className="border border-slate-300 rounded-lg px-4 py-2">Scan another</button>
+            <button type="button" onClick={initialProduct ? onClose : retry} className="border border-slate-300 rounded-lg px-4 py-2">{initialProduct ? 'Cancel' : 'Scan another'}</button>
             <button type="button" data-scan-focus={mode === 'lookup' ? true : undefined} disabled={mode !== 'lookup' && !valid} onClick={confirm}
               className="bg-blue-600 text-white rounded-lg px-4 py-2 disabled:opacity-40">{mode === 'lookup' ? 'View product' : mode === 'sale' ? 'Add to sale' : 'Add to restock'}</button>
           </div>

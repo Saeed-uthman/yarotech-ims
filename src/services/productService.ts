@@ -11,7 +11,8 @@ import {
   ProductVariantInput,
   CompanyVariant,
 } from '../types';
-import { api, ApiError, mapPaginationMeta, toCamelCaseKeys, toSnakeCaseKeys } from './apiClient';
+import { api, ApiError, mapPaginationMeta, toCamelCaseKeys, toSnakeCaseKeys, resolveApiAssetUrl } from './apiClient';
+import { productWriteBody } from '../utils/productImageUpload';
 import { apiCache } from './apiCache';
 import { categoryService } from './categoryService';
 import { companyService } from './companyService';
@@ -34,7 +35,7 @@ export function mapBackendProduct(raw: any): Product {
     description: p.description || '',
     vatEnabled: Boolean(p.vatEnabled),
     subtitle: p.subtitle || '',
-    image: p.image || undefined,
+    image: resolveApiAssetUrl(p.image) || undefined,
     status: p.status === 'Active' ? 'Active' : 'Inactive',
     variants: (p.variants || []).map((variant: any) => ({
       ...mapBackendVariant(variant),
@@ -291,7 +292,7 @@ export class ProductService {
         variants,
       };
 
-      const res = await api.post<any>('/products/', payload);
+      const res = await api.post<any>('/products/', productWriteBody(payload, input.image));
       const product = mapBackendProduct(res.data);
       apiCache.invalidateByPrefix('products:');
       apiCache.invalidateByPrefix('kpi:');
@@ -333,7 +334,7 @@ export class ProductService {
       if (updates.subtitle !== undefined) payload.subtitle = updates.subtitle;
       if (updates.status !== undefined) payload.status = updates.status === 'Active' ? 'Active' : 'Inactive';
 
-      const res = await api.patch<any>(`/products/${id}/`, payload);
+      const res = await api.patch<any>(`/products/${id}/`, productWriteBody(payload, updates.image));
       let product = mapBackendProduct(res.data);
 
       // Product metadata and company variants have separate Django endpoints.

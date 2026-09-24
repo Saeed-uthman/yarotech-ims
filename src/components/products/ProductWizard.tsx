@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ArrowLeft, 
   UploadCloud, 
@@ -45,15 +45,6 @@ const DOSAGE_FORMS: ProductDosageForm[] = [
   'Other IT Equipment',
 ];
 
-const SAMPLE_MED_IMAGES = [
-  'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=600&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1550572017-ed200f5e6343?w=600&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1577401239170-897942555fb3?w=600&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1628771065518-0d82f1938462?w=600&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1585435557343-3b092031a831?w=600&auto=format&fit=crop&q=80',
-];
-
 export const ProductWizard: React.FC<ProductWizardProps> = ({
   initialProduct,
   categories,
@@ -75,6 +66,8 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
   const [description, setDescription] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [image, setImage] = useState('');
+  const imageReader = useRef<FileReader | null>(null);
+  useEffect(() => () => imageReader.current?.abort(), []);
   const [status, setStatus] = useState<'Active' | 'Inactive'>('Active');
 
   // Step 2: Company Variants State
@@ -173,9 +166,16 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
   };
 
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    imageReader.current?.abort();
     const file = e.target.files?.[0];
     if (file) {
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 4 * 1024 * 1024) {
+        setValidationErrors(['Choose a JPEG, PNG or WebP photo no larger than 4 MB.']);
+        e.target.value = '';
+        return;
+      }
       const reader = new FileReader();
+      imageReader.current = reader;
       reader.onload = (event) => {
         if (event.target?.result) {
           setImage(event.target.result as string);
@@ -323,7 +323,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
       barcode: barcode.trim() || `${Math.floor(1000000000000 + Math.random() * 9000000000000)}`,
       description: description.trim(),
       subtitle: subtitle.trim() || `${genericName} (${dosage})`,
-      image: image || SAMPLE_MED_IMAGES[0],
+      image,
       status,
       variants,
     });
@@ -484,7 +484,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
                       </label>
                       <button
                         type="button"
-                        onClick={() => setImage('')}
+                        onClick={() => { imageReader.current?.abort(); setImage(''); }}
                         className="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-md text-xs font-semibold hover:bg-rose-100"
                       >
                         Remove
@@ -500,7 +500,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
                       <span className="text-xs font-bold text-blue-600 hover:underline">
                         Click to upload image
                       </span>
-                      <p className="text-[11px] text-slate-400 mt-0.5">PNG, JPG, WEBP (Max 2MB)</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">PNG, JPG, WEBP (Max 4MB)</p>
                     </div>
                     <input
                       type="file"
@@ -511,24 +511,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
                   </label>
                 )}
 
-                {/* Sample Images Quick Picker */}
-                <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-center gap-2">
-                  <span className="text-[11px] text-slate-400 font-medium">Or choose sample:</span>
-                  <div className="flex gap-1.5">
-                    {SAMPLE_MED_IMAGES.map((imgUrl, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setImage(imgUrl)}
-                        className={`w-7 h-7 rounded overflow-hidden border-2 transition-all ${
-                          image === imgUrl ? 'border-blue-600 scale-105' : 'border-slate-200 opacity-70 hover:opacity-100'
-                        }`}
-                      >
-                        <img src={imgUrl} alt="sample" className="w-full h-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <p className="mt-3 text-xs text-slate-500">Use a real, clear photo of this product. Photo search uses this image; new photos become searchable after the server refreshes its photo index.</p>
               </div>
             </div>
 

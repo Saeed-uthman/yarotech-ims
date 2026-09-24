@@ -146,6 +146,7 @@ try {
     await fill('1.5', quantity);
     assert.ok(await evaluate(button('Add to sale') + '.disabled'));
     await fill('1', quantity); await click(button('Add to sale'));
+    await waitFor('!document.querySelector("#barcode-title") && document.querySelector("#sale-amount-paid-input").value === "500"');
     await click('document.querySelector("#confirm-complete-sale-btn")');
     await waitFor('fixture.sales.length === 1');
     assert.equal(await evaluate('fixture.sales[0].items.length'), 1);

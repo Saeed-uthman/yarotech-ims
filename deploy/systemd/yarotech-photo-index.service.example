@@ -1,0 +1,23 @@
+[Unit]
+Description=Refresh Yarotech catalogue photo index
+After=network.target
+
+[Service]
+Type=oneshot
+User=REPLACE_WITH_API_USER
+Group=REPLACE_WITH_API_GROUP
+WorkingDirectory=/var/www/yarotech-ims/alamaan_backend
+EnvironmentFile=/etc/yarotech-pos/photo-search.env
+Environment=OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
+ExecStart=/var/www/yarotech-ims/.venv-photo/bin/python manage.py build_visual_index
+TimeoutStartSec=30min
+CPUQuota=50%
+MemoryMax=1G
+TasksMax=64
+Nice=10
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/yarotech-ims/alamaan_backend/var/visual-search /var/www/yarotech-ims/alamaan_backend/logs

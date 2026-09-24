@@ -3,6 +3,7 @@ import json
 from rest_framework import serializers
 
 from .models import Category, Company, PriceAdjustmentHistory, Product, ProductVariant
+from .visual_images import sanitized_product_photo
 from .services import create_product, create_product_variant, update_product, update_variant_prices, validate_variant_prices
 
 
@@ -53,15 +54,22 @@ class ProductCreateUpdateSerializer(serializers.Serializer):
     barcode = serializers.CharField(max_length=64, required=False, allow_blank=True)
     description = serializers.CharField(required=False, allow_blank=True)
     subtitle = serializers.CharField(max_length=255, required=False, allow_blank=True)
-    image = serializers.ImageField(required=False, allow_null=True)
+    image = serializers.FileField(required=False, allow_null=True)
     status = serializers.ChoiceField(choices=Product.Status.choices, required=False)
     variants = ProductVariantInputSerializer(many=True, required=False)
+
+    def validate_image(self, value):
+        return sanitized_product_photo(value)
 
     def to_internal_value(self, data):
         mutable_data = data.copy()
         variants = mutable_data.get('variants')
         if isinstance(variants, str):
             try:
+                # Nested multipart JSON must become a plain mapping; DRF's
+                # HTML list parser otherwise ignores the decoded list.
+                if hasattr(mutable_data, 'dict'):
+                    mutable_data = mutable_data.dict()
                 mutable_data['variants'] = json.loads(variants)
             except json.JSONDecodeError as exc:
                 raise serializers.ValidationError({'variants': 'Variants must be valid JSON.'}) from exc

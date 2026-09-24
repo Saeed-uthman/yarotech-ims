@@ -1,0 +1,6 @@
+# Optional CPU-only runtime for the dedicated photo-search worker and indexer.
+# No hosted AI SDK or runtime model download is used.
+onnxruntime==1.30.0
+numpy==2.5.3
+flatbuffers==25.12.19
+protobuf==7.36.2

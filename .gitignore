@@ -22,3 +22,4 @@ alamaan_backend/media/*
 !alamaan_backend/media/.gitkeep
 
 .tmp/
+alamaan_backend/var/

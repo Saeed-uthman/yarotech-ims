@@ -37,6 +37,11 @@ camera permission in the browser. Retry after correcting a denied permission or
 unavailable camera. Camera frames are decoded in the browser; the product lookup
 sends the decoded barcode to the existing API.
 
+The frontend web server must send `Permissions-Policy: camera=(self)` rather than
+`camera=()`. The Nginx frontend example includes this setting. Check any CDN or
+reverse proxy for an additional policy that blocks the camera. Browser permission
+is still required. The separate API host can keep camera access disabled.
+
 Automated checks use simulated camera reads and API responses with the real React
 forms and API adapters. They do not prove recognition on a physical camera or
 exercise a live database.

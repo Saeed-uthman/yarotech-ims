@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh changed Yarotech catalogue photos every two minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=2min
+RandomizedDelaySec=15
+Unit=yarotech-photo-index.service
+
+[Install]
+WantedBy=timers.target

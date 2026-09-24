@@ -238,8 +238,17 @@ REST_FRAMEWORK = {
         'auth_login': env.str('AUTH_LOGIN_RATE', default='10/min'),
         'auth_register': env.str('AUTH_REGISTER_RATE', default='5/min'),
         'auth_refresh': env.str('AUTH_REFRESH_RATE', default='30/min'),
+        'product_photo_search': env.str('PRODUCT_PHOTO_SEARCH_RATE', default='20/min'),
     },
 }
+
+# Optional local-only visual search. Keep disabled on normal API workers when
+# running the dedicated single-worker photo-search service.
+VISUAL_SEARCH_ENABLED = env.bool('VISUAL_SEARCH_ENABLED', default=False)
+VISUAL_SEARCH_DIR = Path(env.str('VISUAL_SEARCH_DIR', default=str(BASE_DIR / 'var' / 'visual-search')))
+VISUAL_SEARCH_THREADS = env.int('VISUAL_SEARCH_THREADS', default=1)
+VISUAL_SEARCH_MAX_PRODUCTS = env.int('VISUAL_SEARCH_MAX_PRODUCTS', default=10000)
+VISUAL_SEARCH_MIN_SIMILARITY = env.float('VISUAL_SEARCH_MIN_SIMILARITY', default=0.65)
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(

@@ -27,6 +27,7 @@ import { purchaseService } from '../../services/purchaseService';
 import { formatNaira, formatNumber } from '../../utils/formatters';
 import { useAuth } from '../../hooks/useAuth';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
+import { PhotoSearchModal } from '../common/PhotoSearchModal';
 
 function localToday(): string {
   const now = new Date();
@@ -84,6 +85,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
 
   // Camera scanner
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
 
   // Reset the purchase draft whenever the modal opens. Products are searched
   // on demand so results are not restricted to the first catalogue page.
@@ -99,7 +101,8 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
     setNote('');
     setSupplierName('');
     setFormError(null);
-    setScannerOpen(false);
+      setScannerOpen(false);
+      setPhotoOpen(false);
   }, [role, isOpen]);
 
   // Search Django after a short pause in typing and collect every matching
@@ -464,6 +467,10 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
               </button>
             </div>
 
+            <button type="button" onClick={() => setPhotoOpen(true)} className="mt-2 text-sm font-semibold text-indigo-700 flex items-center gap-2">
+              <Camera className="w-4 h-4" /> Find by photo
+            </button>
+
             {/* Live Search Results Dropdown */}
             {productSearch.trim() && (
               <div
@@ -725,6 +732,8 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
         </div>
       </div>
 
+      <PhotoSearchModal isOpen={photoOpen} mode="purchase" onClose={() => setPhotoOpen(false)}
+        onAdd={handleAddVariant} />
       <BarcodeScannerModal
         isOpen={scannerOpen}
         mode="purchase"
