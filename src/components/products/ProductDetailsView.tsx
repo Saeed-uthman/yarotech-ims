@@ -960,9 +960,12 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
                     min="0"
                     required
                     value={editingVariant.currentStock}
+                    disabled
+                    title="Change stock through Inventory Adjustment or Purchases."
                     onChange={(e) => setEditingVariant({ ...editingVariant, currentStock: parseInt(e.target.value) || 0 })}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-slate-900 font-medium"
                   />
+                  <p className="text-xs text-slate-500 mt-1">Change stock through Inventory Adjustment or Purchases.</p>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Reorder Level *</label>

@@ -201,6 +201,7 @@ class ProductDetailSerializer(ProductListSerializer):
 
 
 class VariantUpdateSerializer(ProductVariantInputSerializer):
+    current_stock = serializers.IntegerField(required=False, min_value=0)
     company_id = serializers.PrimaryKeyRelatedField(queryset=Company.objects.filter(is_active=True), source='company', required=False)
     status = serializers.ChoiceField(choices=ProductVariant.Status.choices, required=False)
 

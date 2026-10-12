@@ -791,6 +791,8 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
                             type="number"
                             min="0"
                             value={v.currentStock}
+                            disabled={Boolean(v.variantId)}
+                            title={v.variantId ? 'Change stock through Inventory Adjustment or Purchases.' : 'Opening stock'}
                             onChange={(e) => updateVariantRow(index, 'currentStock', parseInt(e.target.value) || 0)}
                             className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-mono font-medium focus:ring-1 focus:ring-blue-500"
                           />

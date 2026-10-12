@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.db import transaction
 
 from .models import Category, Company, PriceAdjustmentHistory, Product, ProductVariant
 
@@ -19,6 +20,7 @@ class CompanyAdmin(admin.ModelAdmin):
 
 class ProductVariantInline(admin.TabularInline):
     model = ProductVariant
+    readonly_fields = ('current_stock',)
     extra = 0
     fields = (
         'company',
@@ -36,12 +38,29 @@ class ProductVariantInline(admin.TabularInline):
 class ProductAdmin(admin.ModelAdmin):
     list_display = ('name', 'generic_name', 'category', 'dosage', 'dosage_form', 'status', 'created_at')
     search_fields = ('name', 'generic_name', 'barcode')
+
+    @transaction.atomic
+    def save_formset(self, request, form, formset, change):
+        if formset.model is ProductVariant:
+            for variant_form in formset.forms:
+                instance = variant_form.instance
+                if instance.pk:
+                    locked = ProductVariant.objects.select_for_update().get(pk=instance.pk)
+                    instance.current_stock = locked.current_stock
+        super().save_formset(request, form, formset, change)
     list_filter = ('status', 'dosage_form', 'category')
     inlines = [ProductVariantInline]
 
 
 @admin.register(ProductVariant)
 class ProductVariantAdmin(admin.ModelAdmin):
+    readonly_fields = ('current_stock',)
+
+    @transaction.atomic
+    def save_model(self, request, obj, form, change):
+        if change:
+            obj.current_stock = ProductVariant.objects.select_for_update().get(pk=obj.pk).current_stock
+        super().save_model(request, obj, form, change)
     list_display = ('product', 'company', 'default_selling_price', 'current_stock', 'reorder_level', 'status')
     search_fields = ('product__name', 'product__generic_name', 'company__name')
     list_filter = ('status', 'company')

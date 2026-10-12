@@ -371,13 +371,13 @@ export class ProductService {
           }
 
           if (existingVariant) {
+            delete variantPayload.current_stock;
             const hasChanges = (
               existingVariant.companyId !== String(companyId)
               || Number(existingVariant.basePrice) !== Number(variant.basePrice)
               || Number(existingVariant.minSellingPrice) !== Number(variant.minSellingPrice)
               || Number(existingVariant.defaultSellingPrice) !== Number(variant.defaultSellingPrice)
               || Number(existingVariant.maxSellingPrice) !== Number(variant.maxSellingPrice)
-              || Number(existingVariant.currentStock) !== Number(variant.currentStock)
               || Number(existingVariant.reorderLevel) !== Number(variant.reorderLevel)
               || (variant.status !== undefined && existingVariant.status !== variant.status)
             );
@@ -513,7 +513,6 @@ export class ProductService {
       if (updates.minSellingPrice !== undefined) payload.min_selling_price = updates.minSellingPrice;
       if (updates.defaultSellingPrice !== undefined) payload.default_selling_price = updates.defaultSellingPrice;
       if (updates.maxSellingPrice !== undefined) payload.max_selling_price = updates.maxSellingPrice;
-      if (updates.currentStock !== undefined) payload.current_stock = updates.currentStock;
       if (updates.reorderLevel !== undefined) payload.reorder_level = updates.reorderLevel;
       if (updates.status !== undefined) {
         payload.status = updates.status === 'Available' ? 'Available' : 'Inactive';

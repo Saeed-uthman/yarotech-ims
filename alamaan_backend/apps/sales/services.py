@@ -165,7 +165,7 @@ def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'),
         )
         if sum(batch.remaining_quantity for batch in sellable_batches) < quantity:
             raise ValidationError({
-                'items': f'Insufficient non-expired batch stock for {variant.product.name} ({variant.company.name}).'
+                'items': f'Insufficient available batch stock for {variant.product.name} ({variant.company.name}). Ask an administrator to reconcile inventory if the displayed stock is higher.'
             })
 
         remaining_to_allocate = quantity

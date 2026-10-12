@@ -72,6 +72,17 @@ def create_product_variant(*, product, created_by, **variant_data):
         _raise_serializer_validation_error(error)
 
     variant.save()
+    if variant.current_stock:
+        from apps.inventory.batch_services import apply_manual_batch_delta
+        from apps.inventory.services import record_stock_movement
+        from apps.inventory.models import InventoryMovement
+        apply_manual_batch_delta(variant=variant, delta=variant.current_stock, created_by=created_by)
+        record_stock_movement(
+            variant=variant, movement_type=InventoryMovement.MovementType.STOCK_IN,
+            quantity=variant.current_stock, previous_stock=0, new_stock=variant.current_stock,
+            reason='Initial product stock', created_by=created_by,
+            reference_type=InventoryMovement.ReferenceType.INITIAL_SETUP,
+        )
     PriceAdjustmentHistory.objects.create(
         variant=variant,
         old_base_price=0,
@@ -91,6 +102,7 @@ def create_product_variant(*, product, created_by, **variant_data):
 
 @transaction.atomic
 def update_variant_prices(*, variant, updated_by, reason, **price_data):
+    variant = ProductVariant.objects.select_for_update().get(pk=variant.pk)
     old_values = {
         'base_price': variant.base_price,
         'min_selling_price': variant.min_selling_price,
@@ -140,6 +152,10 @@ def update_variant_prices(*, variant, updated_by, reason, **price_data):
 
 @transaction.atomic
 def update_product_variant(*, variant, updated_by, reason='Variant price update.', **variant_data):
+    variant = ProductVariant.objects.select_for_update().get(pk=variant.pk)
+    requested_stock = variant_data.pop('current_stock', variant.current_stock)
+    if requested_stock != variant.current_stock:
+        raise ValidationError({'current_stock': 'Use Inventory Adjustment or Purchases to change stock. Refresh the product if its stock has changed.'})
     price_fields = {
         'base_price',
         'min_selling_price',
@@ -149,7 +165,7 @@ def update_product_variant(*, variant, updated_by, reason='Variant price update.
     price_data = {field: variant_data.pop(field) for field in list(variant_data) if field in price_fields}
 
     if price_data:
-        update_variant_prices(variant=variant, updated_by=updated_by, reason=reason, **price_data)
+        variant = update_variant_prices(variant=variant, updated_by=updated_by, reason=reason, **price_data)
 
     for field, value in variant_data.items():
         setattr(variant, field, value)
