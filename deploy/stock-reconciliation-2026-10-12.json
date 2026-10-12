@@ -1,0 +1,12 @@
+{
+  "plan_id": "physical-count-20261012-v1",
+  "reason": "Owner confirmed physical counts and missing-batch unit purchase costs in support session on 2026-10-12.",
+  "items": [
+    {"variant_id": 3, "name": "TP LINK", "company": "HUEWUE", "stock": 20, "batch_stock": 0, "unit_cost": "35000.00"},
+    {"variant_id": 4, "name": "Huewei LAN access point AP361", "company": "Huewei", "stock": 85, "batch_stock": 100},
+    {"variant_id": 92, "name": "CAT6 OUTDOOR", "company": "Yarotech Group", "stock": 4, "batch_stock": 0, "unit_cost": "75000.00"},
+    {"variant_id": 176, "name": "Creemper", "company": "HUEWUE", "stock": 3, "batch_stock": 0, "unit_cost": "150.00"},
+    {"variant_id": 177, "name": "HIKVISION ETHERNET SWITCH", "company": "HIKVISION", "stock": 1, "batch_stock": 8},
+    {"variant_id": 180, "name": "Tiandy switch 4 ports", "company": "Tiandy", "stock": 38, "batch_stock": 18, "unit_cost": "40000.00"}
+  ]
+}
