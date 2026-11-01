@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.db import transaction
@@ -140,7 +141,10 @@ def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'),
     for item, tax in zip(items, priced_lines):
         variant = variants[item['product_variant_id']]
         actual_price = Decimal(str(item['actual_selling_price']))
-        quantity = item['quantity']
+        quantity = Decimal(str(item['quantity']))
+        serial_numbers = str(item.get('serial_numbers') or '').strip()
+        warranty_months = int(item.get('warranty_months') or 12)
+        warranty_expiry = (sale.created_at or timezone.now()).date() + timedelta(days=warranty_months * 30)
 
         item_subtotal = actual_price * quantity
         if not InventoryBatch.objects.filter(variant=variant).exists() and variant.current_stock > 0:
@@ -190,6 +194,9 @@ def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'),
             sale=sale,
             variant=variant,
             quantity=quantity,
+            serial_numbers=serial_numbers,
+            warranty_months=warranty_months,
+            warranty_expiry_date=warranty_expiry,
             actual_selling_price=actual_price,
             unit_selling_price=actual_price,
             historical_base_price=weighted_unit_cost,

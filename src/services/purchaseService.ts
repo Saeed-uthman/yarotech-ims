@@ -27,6 +27,7 @@ function mapBackendPurchaseItem(raw: any): PurchaseItemEntity {
     unitPurchasePrice: Number(i.unitPurchasePrice ?? i.unitBasePrice ?? 0),
     subtotal: Number(i.subtotal ?? (Number(i.quantity || 0) * Number(i.unitPurchasePrice ?? i.unitBasePrice ?? 0))),
     batchNumber: i.batchNumber || '',
+    serialNumbers: i.serialNumbers || '',
   };
 }
 
@@ -361,6 +362,7 @@ export class PurchaseService {
           quantity: it.quantity,
           unit_purchase_price: moneyValue(it.unitPurchasePrice, 'Unit purchase price'),
           batch_number: it.batchNumber?.trim() || '',
+          serial_numbers: it.serialNumbers?.trim() || '',
         })),
         supplier_name: input.supplierName?.trim() || '',
         amount_paid: moneyValue(input.amountPaid, 'Amount paid'),

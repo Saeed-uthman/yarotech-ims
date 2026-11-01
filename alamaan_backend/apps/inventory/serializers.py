@@ -15,7 +15,7 @@ class InventoryBatchSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'variant', 'product_name', 'company_name', 'supplier_name',
             'batch_number', 'received_quantity', 'remaining_quantity',
-            'unit_cost', 'status', 'received_at', 'created_at', 'updated_at',
+            'serial_numbers', 'unit_cost', 'status', 'received_at', 'created_at', 'updated_at',
         ]
         read_only_fields = fields
 
@@ -77,7 +77,7 @@ class InventoryItemSerializer(serializers.ModelSerializer):
 class StockAdjustmentInputSerializer(serializers.Serializer):
     variant_id = serializers.PrimaryKeyRelatedField(queryset=ProductVariant.objects.all(), source='variant')
     adjustment_type = serializers.ChoiceField(choices=['SET_EXACT', 'INCREMENT', 'DECREMENT'])
-    quantity = serializers.IntegerField()
+    quantity = serializers.DecimalField(max_digits=12, decimal_places=2)
     reason = serializers.CharField(max_length=255)
     notes = serializers.CharField(required=False, allow_blank=True)
 

@@ -5,13 +5,16 @@ from rest_framework import serializers
 from apps.customers.models import Customer
 from apps.products.models import ProductVariant
 
-from .models import Sale, SaleItem, SaleReturn, SaleReturnItem
+from .models import Sale, SaleItem, SaleReturn, SaleReturnItem, Quote, QuoteItem
+from .quote_services import create_quote, convert_quote_to_sale
 from .services import cancel_sale, process_pos_sale, process_sale_return
 
 
 class CreateSaleItemInputSerializer(serializers.Serializer):
     product_variant_id = serializers.PrimaryKeyRelatedField(queryset=ProductVariant.objects.all())
-    quantity = serializers.IntegerField(min_value=1)
+    quantity = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0.01'))
+    serial_numbers = serializers.CharField(required=False, allow_blank=True, default='')
+    warranty_months = serializers.IntegerField(required=False, min_value=0, default=12)
     actual_selling_price = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0)
 
     def validate_actual_selling_price(self, value):
@@ -52,6 +55,8 @@ class CreateSaleInputSerializer(serializers.Serializer):
                     'product_variant_id': item['product_variant_id'].pk,
                     'quantity': item['quantity'],
                     'actual_selling_price': item['actual_selling_price'],
+                    'serial_numbers': item.get('serial_numbers', ''),
+                    'warranty_months': item.get('warranty_months', 12),
                 }
                 for item in items_data
             ],
@@ -68,6 +73,9 @@ class SaleItemOutputSerializer(serializers.ModelSerializer):
     variant_id = serializers.IntegerField(source='variant.id', read_only=True)
     product_name = serializers.CharField(source='variant.product.name', read_only=True)
     company_name = serializers.CharField(source='variant.company.name', read_only=True)
+    unit_of_measure = serializers.CharField(source='variant.product.unit_of_measure', read_only=True, default='PCS')
+    technical_specs = serializers.CharField(source='variant.product.dosage', read_only=True, default='')
+    model_number = serializers.CharField(source='variant.product.generic_name', read_only=True, default='')
 
     class Meta:
         model = SaleItem
@@ -77,6 +85,12 @@ class SaleItemOutputSerializer(serializers.ModelSerializer):
             'product_name',
             'company_name',
             'quantity',
+            'serial_numbers',
+            'warranty_months',
+            'warranty_expiry_date',
+            'unit_of_measure',
+            'technical_specs',
+            'model_number',
             'actual_selling_price',
             'unit_selling_price',
             'historical_base_price',
@@ -220,7 +234,9 @@ class SaleCancelSerializer(serializers.Serializer):
 
 class SaleReturnItemInputSerializer(serializers.Serializer):
     sale_item_id = serializers.IntegerField(min_value=1)
-    quantity = serializers.IntegerField(min_value=1)
+    quantity = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0.01'))
+    serial_numbers = serializers.CharField(required=False, allow_blank=True, default='')
+    warranty_months = serializers.IntegerField(required=False, min_value=0, default=12)
 
 
 class CreateSaleReturnSerializer(serializers.Serializer):
@@ -279,3 +295,113 @@ class SaleReturnOutputSerializer(serializers.ModelSerializer):
             'items', 'created_at',
         ]
         read_only_fields = fields
+
+
+class QuoteItemSerializer(serializers.ModelSerializer):
+    variant_id = serializers.IntegerField(source='variant.id', read_only=True)
+    product_id = serializers.IntegerField(source='variant.product.id', read_only=True)
+
+    class Meta:
+        model = QuoteItem
+        fields = [
+            'id',
+            'variant_id',
+            'product_id',
+            'quantity',
+            'unit_price',
+            'discount',
+            'vat_rate',
+            'vat_amount',
+            'total_price',
+            'item_name_snapshot',
+            'company_name_snapshot',
+            'technical_specs_snapshot',
+            'unit_of_measure_snapshot',
+        ]
+
+
+class CreateQuoteItemInputSerializer(serializers.Serializer):
+    product_variant_id = serializers.PrimaryKeyRelatedField(queryset=ProductVariant.objects.all())
+    quantity = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0.01'))
+    unit_price = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0)
+    discount = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, default=Decimal('0.00'), min_value=0)
+
+
+class CreateQuoteInputSerializer(serializers.Serializer):
+    customer_id = serializers.PrimaryKeyRelatedField(
+        queryset=Customer.objects.all(),
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    items = CreateQuoteItemInputSerializer(many=True, min_length=1)
+    discount = serializers.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), min_value=0)
+    valid_until = serializers.DateField(required=False, allow_null=True)
+    notes = serializers.CharField(required=False, allow_blank=True, default='')
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items')
+        customer = validated_data.pop('customer_id', None)
+        customer_id = customer.pk if customer else None
+
+        return create_quote(
+            user=self.context['request'].user,
+            customer_id=customer_id,
+            items=[
+                {
+                    'product_variant_id': item['product_variant_id'].pk,
+                    'quantity': item['quantity'],
+                    'unit_price': item['unit_price'],
+                    'discount': item.get('discount', Decimal('0.00')),
+                }
+                for item in items_data
+            ],
+            discount=validated_data.get('discount', Decimal('0.00')),
+            valid_until=validated_data.get('valid_until'),
+            notes=validated_data.get('notes', ''),
+        )
+
+
+class QuoteListSerializer(serializers.ModelSerializer):
+    customer_name = serializers.CharField(source='customer.name', read_only=True, default='Walk-in')
+    created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
+    items_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Quote
+        fields = [
+            'id',
+            'quote_number',
+            'customer',
+            'customer_name',
+            'subtotal',
+            'vat_amount',
+            'discount',
+            'total_amount',
+            'valid_until',
+            'status',
+            'notes',
+            'converted_sale',
+            'created_by',
+            'created_by_name',
+            'items_count',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = fields
+
+    def get_items_count(self, obj) -> int:
+        return obj.items.count()
+
+
+class QuoteDetailSerializer(QuoteListSerializer):
+    items = QuoteItemSerializer(many=True, read_only=True)
+
+    class Meta(QuoteListSerializer.Meta):
+        fields = QuoteListSerializer.Meta.fields + ['items']
+
+
+class ConvertQuoteInputSerializer(serializers.Serializer):
+    amount_paid = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0)
+    payment_method = serializers.ChoiceField(choices=Sale.PaymentMethod.choices)
+    serial_numbers_map = serializers.DictField(child=serializers.CharField(allow_blank=True), required=False, default=dict)

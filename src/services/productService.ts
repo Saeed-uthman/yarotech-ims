@@ -31,6 +31,10 @@ export function mapBackendProduct(raw: any): Product {
     category: p.category?.name || '',
     dosage: p.dosage || '',
     form: p.dosageForm || '',
+    unitOfMeasure: p.unitOfMeasure || 'PCS',
+    technicalSpecs: p.technicalSpecs || p.dosage || '',
+    modelNumber: p.modelNumber || p.genericName || '',
+    equipmentType: p.equipmentType || p.dosageForm || '',
     barcode: p.barcode || '',
     description: p.description || '',
     vatEnabled: Boolean(p.vatEnabled),
@@ -285,6 +289,7 @@ export class ProductService {
         category_id: categoryId,
         dosage: input.dosage,
         dosage_form: input.form,
+        unit_of_measure: (input as any).unitOfMeasure || 'PCS',
         barcode: input.barcode || '',
         description: input.description || '',
         subtitle: input.subtitle || '',
@@ -329,6 +334,7 @@ export class ProductService {
       }
       if (updates.dosage !== undefined) payload.dosage = updates.dosage;
       if (updates.form !== undefined) payload.dosage_form = updates.form;
+      if ((updates as any).unitOfMeasure !== undefined) payload.unit_of_measure = (updates as any).unitOfMeasure;
       if (updates.barcode !== undefined) payload.barcode = updates.barcode;
       if (updates.description !== undefined) payload.description = updates.description;
       if (updates.subtitle !== undefined) payload.subtitle = updates.subtitle;

@@ -135,6 +135,7 @@ def create_stock_purchase(*, user, items, payment_method=None, amount_paid=None,
             'unit_purchase_price': unit_price,
             'subtotal': item_subtotal,
             'batch_number': item.get('batch_number', ''),
+            'serial_numbers': item.get('serial_numbers', ''),
         })
 
     purchase_number = _generate_purchase_number()
@@ -178,6 +179,7 @@ def create_stock_purchase(*, user, items, payment_method=None, amount_paid=None,
             quantity=quantity,
             unit_purchase_price=unit_price,
             subtotal=item_subtotal,
+            serial_numbers=item_data.get('serial_numbers', '').strip(),
         )
 
         batch_number = item_data.get('batch_number', '').strip() or f'{purchase_number}-{purchase_item.id}'
@@ -188,6 +190,7 @@ def create_stock_purchase(*, user, items, payment_method=None, amount_paid=None,
             batch_number=batch_number,
             received_quantity=quantity,
             remaining_quantity=quantity,
+            serial_numbers=item_data.get('serial_numbers', '').strip(),
             unit_cost=unit_price,
             received_at=purchase.purchase_date,
             created_by=user,

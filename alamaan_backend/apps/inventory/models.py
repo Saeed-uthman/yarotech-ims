@@ -20,9 +20,9 @@ class InventoryMovement(TimeStampedModel):
 
     variant = models.ForeignKey('products.ProductVariant', on_delete=models.PROTECT, related_name='inventory_movements')
     movement_type = models.CharField(max_length=20, choices=MovementType.choices, db_index=True)
-    quantity = models.IntegerField()
-    previous_stock = models.IntegerField()
-    new_stock = models.IntegerField()
+    quantity = models.DecimalField(max_digits=12, decimal_places=2)
+    previous_stock = models.DecimalField(max_digits=12, decimal_places=2)
+    new_stock = models.DecimalField(max_digits=12, decimal_places=2)
     reason = models.CharField(max_length=255)
     notes = models.TextField(blank=True, default='')
     reference_type = models.CharField(max_length=30, choices=ReferenceType.choices, db_index=True)
@@ -56,8 +56,9 @@ class InventoryBatch(TimeStampedModel):
     )
     supplier_name = models.CharField(max_length=200, blank=True, default='')
     batch_number = models.CharField(max_length=100)
-    received_quantity = models.PositiveIntegerField()
-    remaining_quantity = models.PositiveIntegerField()
+    received_quantity = models.DecimalField(max_digits=12, decimal_places=2)
+    remaining_quantity = models.DecimalField(max_digits=12, decimal_places=2)
+    serial_numbers = models.TextField(blank=True, default='')
     unit_cost = models.DecimalField(max_digits=12, decimal_places=2)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.AVAILABLE, db_index=True)
     received_at = models.DateTimeField()
@@ -92,7 +93,7 @@ class InventoryBatch(TimeStampedModel):
 class SaleBatchAllocation(TimeStampedModel):
     sale_item = models.ForeignKey('sales.SaleItem', on_delete=models.PROTECT, related_name='batch_allocations')
     batch = models.ForeignKey(InventoryBatch, on_delete=models.PROTECT, related_name='sale_allocations')
-    quantity = models.PositiveIntegerField()
+    quantity = models.DecimalField(max_digits=12, decimal_places=2)
     unit_cost = models.DecimalField(max_digits=12, decimal_places=2)
 
     class Meta:

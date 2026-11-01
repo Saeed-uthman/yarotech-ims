@@ -54,7 +54,30 @@ class Product(AuditableModel):
         ACCESSORY = 'Accessory', 'Accessory'
         COMPUTER_EQUIPMENT = 'Computer Equipment', 'Computer Equipment'
         OTHER_IT_EQUIPMENT = 'Other IT Equipment', 'Other IT Equipment'
-        # Legacy values remain valid so existing records and imports continue to work.
+        # Legacy values remain valid so existing records, imports, and tests continue to work.
+        TABLET = 'Tablet', 'Tablet'
+        CAPSULE = 'Capsule', 'Capsule'
+        SYRUP = 'Syrup', 'Syrup'
+        SUSPENSION = 'Suspension', 'Suspension'
+        INJECTION = 'Injection', 'Injection'
+        CREAM = 'Cream', 'Cream'
+        OINTMENT = 'Ointment', 'Ointment'
+        DROPS = 'Drops', 'Drops'
+        INHALER = 'Inhaler', 'Inhaler'
+        GEL = 'Gel', 'Gel'
+        INFUSION = 'Infusion', 'Infusion'
+        POWDER = 'Powder', 'Powder'
+
+    EquipmentType = DosageForm
+
+    class UnitOfMeasure(models.TextChoices):
+        PCS = 'PCS', 'Pieces (Pcs)'
+        METER = 'METER', 'Meters (m)'
+        ROLL = 'ROLL', 'Rolls (Roll)'
+        DRUM = 'DRUM', 'Drums / Coils (Drum)'
+        PACK = 'PACK', 'Packs (Pack)'
+        BOX = 'BOX', 'Boxes (Box)'
+        SET = 'SET', 'Sets (Set)'
 
     class Status(models.TextChoices):
         ACTIVE = 'Active', 'Active'
@@ -66,11 +89,36 @@ class Product(AuditableModel):
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='products')
     dosage = models.CharField(max_length=50)
     dosage_form = models.CharField(max_length=50, choices=DosageForm.choices)
+    unit_of_measure = models.CharField(max_length=20, choices=UnitOfMeasure.choices, default=UnitOfMeasure.PCS, db_index=True)
     barcode = models.CharField(max_length=64, blank=True, default='', db_index=True)
     description = models.TextField(blank=True, default='')
     subtitle = models.CharField(max_length=255, blank=True, default='')
     image = models.ImageField(upload_to=product_image_upload_path, null=True, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE, db_index=True)
+
+    @property
+    def technical_specs(self):
+        return self.dosage
+
+    @technical_specs.setter
+    def technical_specs(self, value):
+        self.dosage = value
+
+    @property
+    def model_number(self):
+        return self.generic_name
+
+    @model_number.setter
+    def model_number(self, value):
+        self.generic_name = value
+
+    @property
+    def equipment_type(self):
+        return self.dosage_form
+
+    @equipment_type.setter
+    def equipment_type(self, value):
+        self.dosage_form = value
 
     class Meta:
         indexes = [
@@ -95,8 +143,8 @@ class ProductVariant(AuditableModel):
     min_selling_price = models.DecimalField(max_digits=12, decimal_places=2)
     default_selling_price = models.DecimalField(max_digits=12, decimal_places=2)
     max_selling_price = models.DecimalField(max_digits=12, decimal_places=2)
-    current_stock = models.IntegerField(default=0)
-    reorder_level = models.IntegerField(default=10)
+    current_stock = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    reorder_level = models.DecimalField(max_digits=12, decimal_places=2, default=10.00)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.AVAILABLE, db_index=True)
 
     class Meta:

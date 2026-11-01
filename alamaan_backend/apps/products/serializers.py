@@ -1,3 +1,4 @@
+from decimal import Decimal
 import json
 
 from rest_framework import serializers
@@ -27,8 +28,8 @@ class ProductVariantInputSerializer(serializers.Serializer):
     min_selling_price = serializers.DecimalField(max_digits=12, decimal_places=2)
     default_selling_price = serializers.DecimalField(max_digits=12, decimal_places=2)
     max_selling_price = serializers.DecimalField(max_digits=12, decimal_places=2)
-    current_stock = serializers.IntegerField(default=0, min_value=0)
-    reorder_level = serializers.IntegerField(default=10, min_value=0)
+    current_stock = serializers.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'), min_value=Decimal('0.00'))
+    reorder_level = serializers.DecimalField(max_digits=12, decimal_places=2, default=Decimal('10.00'), min_value=Decimal('0.00'))
 
     def validate(self, attrs):
         data = {
@@ -51,6 +52,7 @@ class ProductCreateUpdateSerializer(serializers.Serializer):
     category_id = serializers.PrimaryKeyRelatedField(queryset=Category.objects.filter(is_active=True), source='category')
     dosage = serializers.CharField(max_length=50)
     dosage_form = serializers.ChoiceField(choices=Product.DosageForm.choices)
+    unit_of_measure = serializers.ChoiceField(choices=Product.UnitOfMeasure.choices, required=False, default=Product.UnitOfMeasure.PCS)
     barcode = serializers.CharField(max_length=64, required=False, allow_blank=True)
     description = serializers.CharField(required=False, allow_blank=True)
     subtitle = serializers.CharField(max_length=255, required=False, allow_blank=True)
@@ -63,6 +65,12 @@ class ProductCreateUpdateSerializer(serializers.Serializer):
 
     def to_internal_value(self, data):
         mutable_data = data.copy()
+        if 'technical_specs' in mutable_data and not mutable_data.get('dosage'):
+            mutable_data['dosage'] = mutable_data['technical_specs']
+        if 'model_number' in mutable_data and not mutable_data.get('generic_name'):
+            mutable_data['generic_name'] = mutable_data['model_number']
+        if 'equipment_type' in mutable_data and not mutable_data.get('dosage_form'):
+            mutable_data['dosage_form'] = mutable_data['equipment_type']
         variants = mutable_data.get('variants')
         if isinstance(variants, str):
             try:
@@ -132,6 +140,9 @@ class ProductVariantSerializer(serializers.ModelSerializer):
 class ProductListSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     variants = ProductVariantSerializer(many=True, read_only=True)
+    technical_specs = serializers.CharField(source='dosage', read_only=True)
+    model_number = serializers.CharField(source='generic_name', read_only=True)
+    equipment_type = serializers.CharField(source='dosage_form', read_only=True)
 
     class Meta:
         model = Product
@@ -142,6 +153,10 @@ class ProductListSerializer(serializers.ModelSerializer):
             'category',
             'dosage',
             'dosage_form',
+            'unit_of_measure',
+            'technical_specs',
+            'model_number',
+            'equipment_type',
             'barcode',
             'subtitle',
             'image',
@@ -201,7 +216,7 @@ class ProductDetailSerializer(ProductListSerializer):
 
 
 class VariantUpdateSerializer(ProductVariantInputSerializer):
-    current_stock = serializers.IntegerField(required=False, min_value=0)
+    current_stock = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, min_value=Decimal('0.00'))
     company_id = serializers.PrimaryKeyRelatedField(queryset=Company.objects.filter(is_active=True), source='company', required=False)
     status = serializers.ChoiceField(choices=ProductVariant.Status.choices, required=False)
 

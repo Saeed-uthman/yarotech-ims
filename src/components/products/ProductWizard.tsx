@@ -45,6 +45,8 @@ const DOSAGE_FORMS: ProductDosageForm[] = [
   'Other IT Equipment',
 ];
 
+const UOM_OPTIONS = ['PCS', 'METER', 'ROLL', 'DRUM', 'PACK', 'BOX', 'SET'];
+
 export const ProductWizard: React.FC<ProductWizardProps> = ({
   initialProduct,
   categories,
@@ -62,6 +64,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
   const [category, setCategory] = useState('');
   const [dosage, setDosage] = useState('');
   const [form, setForm] = useState<ProductDosageForm>('Switch');
+  const [unitOfMeasure, setUnitOfMeasure] = useState('PCS');
   const [barcode, setBarcode] = useState('');
   const [description, setDescription] = useState('');
   const [subtitle, setSubtitle] = useState('');
@@ -97,6 +100,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
       setCategory(initialProduct.category);
       setDosage(initialProduct.dosage);
       setForm(initialProduct.form);
+      setUnitOfMeasure((initialProduct as any).unitOfMeasure || 'PCS');
       setBarcode(initialProduct.barcode);
       setDescription(initialProduct.description || '');
       setSubtitle(initialProduct.subtitle || '');
@@ -320,6 +324,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
       category: category.trim(),
       dosage: dosage.trim(),
       form: form.trim(),
+      unitOfMeasure,
       barcode: barcode.trim() || `${Math.floor(1000000000000 + Math.random() * 9000000000000)}`,
       description: description.trim(),
       subtitle: subtitle.trim() || `${genericName} (${dosage})`,
@@ -596,6 +601,26 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
                   {DOSAGE_FORMS.map((f) => (
                     <option key={f} value={f}>
                       {f}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Unit of Measure */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Unit of Measure
+                </label>
+                <select
+                  value={unitOfMeasure}
+                  onChange={(e) => setUnitOfMeasure(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-sm font-medium focus:ring-1 focus:ring-blue-500"
+                >
+                  {UOM_OPTIONS.map((u) => (
+                    <option key={u} value={u}>
+                      {u}
                     </option>
                   ))}
                 </select>

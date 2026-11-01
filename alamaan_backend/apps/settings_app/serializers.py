@@ -10,6 +10,9 @@ class SystemSettingsOutputSerializer(serializers.ModelSerializer):
         model = SystemSettings
         fields = [
             'id',
+            'default_warranty_months',
+            'warranty_policy_text',
+            'quote_validity_days',
             'pharmacy_name',
             'phone',
             'email',
@@ -28,6 +31,9 @@ class SystemSettingsOutputSerializer(serializers.ModelSerializer):
             'low_stock_threshold',
             'allow_negative_stock',
             'require_admin_stock_adjustment',
+            'default_warranty_months',
+            'warranty_policy_text',
+            'quote_validity_days',
             'receipt_logo',
             'receipt_phone',
             'receipt_address',
@@ -56,6 +62,9 @@ class SystemSettingsUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = SystemSettings
         fields = [
+            'default_warranty_months',
+            'warranty_policy_text',
+            'quote_validity_days',
             'pharmacy_name',
             'phone',
             'email',
@@ -74,6 +83,9 @@ class SystemSettingsUpdateSerializer(serializers.ModelSerializer):
             'low_stock_threshold',
             'allow_negative_stock',
             'require_admin_stock_adjustment',
+            'default_warranty_months',
+            'warranty_policy_text',
+            'quote_validity_days',
             'receipt_logo',
             'receipt_phone',
             'receipt_address',

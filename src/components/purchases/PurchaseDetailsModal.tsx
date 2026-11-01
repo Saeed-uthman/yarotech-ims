@@ -260,6 +260,11 @@ export const PurchaseDetailsModal: React.FC<PurchaseDetailsModalProps> = ({
                           {item.companyName}
                         </span>
                       </div>
+                      {item.serialNumbers && (
+                        <div className="text-[10px] font-mono text-slate-500 mt-0.5">
+                          S/N: {item.serialNumbers}
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-center font-bold text-slate-800">
                       {formatNumber(item.quantity)} units

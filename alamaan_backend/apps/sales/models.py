@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from django.db.models import Q
 
@@ -77,7 +78,10 @@ class SaleItem(TimeStampedModel):
         on_delete=models.PROTECT,
         related_name='sale_items',
     )
-    quantity = models.IntegerField()
+    quantity = models.DecimalField(max_digits=12, decimal_places=2)
+    serial_numbers = models.TextField(blank=True, default='')
+    warranty_months = models.PositiveIntegerField(default=12)
+    warranty_expiry_date = models.DateField(null=True, blank=True)
     vat_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     line_discount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     actual_selling_price = models.DecimalField(max_digits=12, decimal_places=2)
@@ -119,7 +123,7 @@ class SaleReturn(AuditableModel):
 class SaleReturnItem(TimeStampedModel):
     return_record = models.ForeignKey(SaleReturn, on_delete=models.PROTECT, related_name='items')
     sale_item = models.ForeignKey(SaleItem, on_delete=models.PROTECT, related_name='return_items')
-    quantity = models.PositiveIntegerField()
+    quantity = models.DecimalField(max_digits=12, decimal_places=2)
     unit_refund_price = models.DecimalField(max_digits=12, decimal_places=2)
     vat_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     subtotal = models.DecimalField(max_digits=12, decimal_places=2)
@@ -133,7 +137,7 @@ class SaleReturnItem(TimeStampedModel):
 class SaleReturnBatchRestoration(TimeStampedModel):
     return_item = models.ForeignKey(SaleReturnItem, on_delete=models.PROTECT, related_name='batch_restorations')
     batch = models.ForeignKey('inventory.InventoryBatch', on_delete=models.PROTECT, related_name='return_restorations')
-    quantity = models.PositiveIntegerField()
+    quantity = models.DecimalField(max_digits=12, decimal_places=2)
 
     class Meta:
         constraints = [
@@ -150,3 +154,78 @@ class VatMovement(TimeStampedModel):
     class Meta:
         constraints = [models.UniqueConstraint(fields=['sale', 'source'], name='unique_sale_vat_source')]
         ordering = ['-created_at', '-pk']
+
+
+class Quote(AuditableModel):
+    class Status(models.TextChoices):
+        DRAFT = 'DRAFT', 'Draft'
+        SENT = 'SENT', 'Sent to Client'
+        ACCEPTED = 'ACCEPTED', 'Accepted'
+        CONVERTED = 'CONVERTED', 'Converted to Sale'
+        EXPIRED = 'EXPIRED', 'Expired'
+
+    id = models.BigAutoField(primary_key=True)
+    quote_number = models.CharField(max_length=32, unique=True, db_index=True)
+    customer = models.ForeignKey(
+        'customers.Customer',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='quotes',
+    )
+    vat_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    subtotal = models.DecimalField(max_digits=12, decimal_places=2)
+    discount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    valid_until = models.DateField()
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.DRAFT,
+        db_index=True,
+    )
+    notes = models.TextField(blank=True, default='')
+    converted_sale = models.OneToOneField(
+        'sales.Sale',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='source_quote',
+    )
+    created_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.PROTECT,
+        related_name='created_quotes',
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.quote_number
+
+
+class QuoteItem(TimeStampedModel):
+    id = models.BigAutoField(primary_key=True)
+    quote = models.ForeignKey(Quote, on_delete=models.CASCADE, related_name='items')
+    variant = models.ForeignKey(
+        'products.ProductVariant',
+        on_delete=models.PROTECT,
+        related_name='quote_items',
+    )
+    quantity = models.DecimalField(max_digits=12, decimal_places=2)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    discount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    vat_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'))
+    vat_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    total_price = models.DecimalField(max_digits=12, decimal_places=2)
+    item_name_snapshot = models.CharField(max_length=200)
+    company_name_snapshot = models.CharField(max_length=100)
+    technical_specs_snapshot = models.CharField(max_length=100, blank=True, default='')
+    unit_of_measure_snapshot = models.CharField(max_length=20, default='PCS')
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.item_name_snapshot} ({self.company_name_snapshot}) x{self.quantity}"

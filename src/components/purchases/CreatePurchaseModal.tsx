@@ -55,6 +55,7 @@ interface PurchaseDraftItem {
   quantity: number;
   unitPurchasePrice: number;
   batchNumber: string;
+  serialNumbers?: string;
 }
 
 export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
@@ -226,7 +227,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
     setItems(updated);
   };
 
-  const handleUpdateBatch = (index: number, field: 'batchNumber', value: string) => {
+  const handleUpdateBatch = (index: number, field: 'batchNumber' | 'serialNumbers', value: string) => {
     const updated = [...items];
     updated[index][field] = value;
     setItems(updated);
@@ -587,6 +588,13 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
                             onChange={(event) => handleUpdateBatch(index, 'batchNumber', event.target.value)}
                             placeholder="Batch / lot number (optional)"
                             className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                          <input
+                            type="text"
+                            value={item.serialNumbers || ''}
+                            onChange={(event) => handleUpdateBatch(index, 'serialNumbers', event.target.value)}
+                            placeholder="Serial / MAC numbers (optional)"
+                            className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                         </div>
                       </div>

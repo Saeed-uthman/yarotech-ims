@@ -42,6 +42,12 @@ class SystemSettings(TimeStampedModel):
     allow_negative_stock = models.BooleanField(default=False)
     require_admin_stock_adjustment = models.BooleanField(default=True)
 
+    default_warranty_months = models.PositiveIntegerField(default=12)
+    warranty_policy_text = models.TextField(
+        default="Standard 12-month manufacturer warranty covers factory defects. Physical and power surge damages are void."
+    )
+    quote_validity_days = models.PositiveIntegerField(default=14)
+
     receipt_logo = models.BooleanField(default=True)
     receipt_phone = models.BooleanField(default=True)
     receipt_address = models.BooleanField(default=True)

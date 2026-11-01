@@ -1,0 +1,180 @@
+diff --git a/alamaan_backend/apps/products/admin.py b/alamaan_backend/apps/products/admin.py
+index 18e1392..85a7ba1 100644
+--- a/alamaan_backend/apps/products/admin.py
++++ b/alamaan_backend/apps/products/admin.py
+@@ -1,4 +1,5 @@
+ from django.contrib import admin
++from django.db import transaction
+ 
+ from .models import Category, Company, PriceAdjustmentHistory, Product, ProductVariant
+ 
+@@ -19,6 +20,7 @@ class CompanyAdmin(admin.ModelAdmin):
+ 
+ class ProductVariantInline(admin.TabularInline):
+     model = ProductVariant
++    readonly_fields = ('current_stock',)
+     extra = 0
+     fields = (
+         'company',
+@@ -36,12 +38,29 @@ class ProductVariantInline(admin.TabularInline):
+ class ProductAdmin(admin.ModelAdmin):
+     list_display = ('name', 'generic_name', 'category', 'dosage', 'dosage_form', 'status', 'created_at')
+     search_fields = ('name', 'generic_name', 'barcode')
++
++    @transaction.atomic
++    def save_formset(self, request, form, formset, change):
++        if formset.model is ProductVariant:
++            for variant_form in formset.forms:
++                instance = variant_form.instance
++                if instance.pk:
++                    locked = ProductVariant.objects.select_for_update().get(pk=instance.pk)
++                    instance.current_stock = locked.current_stock
++        super().save_formset(request, form, formset, change)
+     list_filter = ('status', 'dosage_form', 'category')
+     inlines = [ProductVariantInline]
+ 
+ 
+ @admin.register(ProductVariant)
+ class ProductVariantAdmin(admin.ModelAdmin):
++    readonly_fields = ('current_stock',)
++
++    @transaction.atomic
++    def save_model(self, request, obj, form, change):
++        if change:
++            obj.current_stock = ProductVariant.objects.select_for_update().get(pk=obj.pk).current_stock
++        super().save_model(request, obj, form, change)
+     list_display = ('product', 'company', 'default_selling_price', 'current_stock', 'reorder_level', 'status')
+     search_fields = ('product__name', 'product__generic_name', 'company__name')
+     list_filter = ('status', 'company')
+diff --git a/alamaan_backend/apps/products/serializers.py b/alamaan_backend/apps/products/serializers.py
+index b342af6..8887e4c 100644
+--- a/alamaan_backend/apps/products/serializers.py
++++ b/alamaan_backend/apps/products/serializers.py
+@@ -201,6 +201,7 @@ class ProductDetailSerializer(ProductListSerializer):
+ 
+ 
+ class VariantUpdateSerializer(ProductVariantInputSerializer):
++    current_stock = serializers.IntegerField(required=False, min_value=0)
+     company_id = serializers.PrimaryKeyRelatedField(queryset=Company.objects.filter(is_active=True), source='company', required=False)
+     status = serializers.ChoiceField(choices=ProductVariant.Status.choices, required=False)
+ 
+diff --git a/alamaan_backend/apps/products/services.py b/alamaan_backend/apps/products/services.py
+index 89a7b7f..22d7497 100644
+--- a/alamaan_backend/apps/products/services.py
++++ b/alamaan_backend/apps/products/services.py
+@@ -72,6 +72,17 @@ def create_product_variant(*, product, created_by, **variant_data):
+         _raise_serializer_validation_error(error)
+ 
+     variant.save()
++    if variant.current_stock:
++        from apps.inventory.batch_services import apply_manual_batch_delta
++        from apps.inventory.services import record_stock_movement
++        from apps.inventory.models import InventoryMovement
++        apply_manual_batch_delta(variant=variant, delta=variant.current_stock, created_by=created_by)
++        record_stock_movement(
++            variant=variant, movement_type=InventoryMovement.MovementType.STOCK_IN,
++            quantity=variant.current_stock, previous_stock=0, new_stock=variant.current_stock,
++            reason='Initial product stock', created_by=created_by,
++            reference_type=InventoryMovement.ReferenceType.INITIAL_SETUP,
++        )
+     PriceAdjustmentHistory.objects.create(
+         variant=variant,
+         old_base_price=0,
+@@ -91,6 +102,7 @@ def create_product_variant(*, product, created_by, **variant_data):
+ 
+ @transaction.atomic
+ def update_variant_prices(*, variant, updated_by, reason, **price_data):
++    variant = ProductVariant.objects.select_for_update().get(pk=variant.pk)
+     old_values = {
+         'base_price': variant.base_price,
+         'min_selling_price': variant.min_selling_price,
+@@ -140,6 +152,10 @@ def update_variant_prices(*, variant, updated_by, reason, **price_data):
+ 
+ @transaction.atomic
+ def update_product_variant(*, variant, updated_by, reason='Variant price update.', **variant_data):
++    variant = ProductVariant.objects.select_for_update().get(pk=variant.pk)
++    requested_stock = variant_data.pop('current_stock', variant.current_stock)
++    if requested_stock != variant.current_stock:
++        raise ValidationError({'current_stock': 'Use Inventory Adjustment or Purchases to change stock. Refresh the product if its stock has changed.'})
+     price_fields = {
+         'base_price',
+         'min_selling_price',
+@@ -149,7 +165,7 @@ def update_product_variant(*, variant, updated_by, reason='Variant price update.
+     price_data = {field: variant_data.pop(field) for field in list(variant_data) if field in price_fields}
+ 
+     if price_data:
+-        update_variant_prices(variant=variant, updated_by=updated_by, reason=reason, **price_data)
++        variant = update_variant_prices(variant=variant, updated_by=updated_by, reason=reason, **price_data)
+ 
+     for field, value in variant_data.items():
+         setattr(variant, field, value)
+diff --git a/alamaan_backend/apps/sales/services.py b/alamaan_backend/apps/sales/services.py
+index cb27d94..9d9d984 100644
+--- a/alamaan_backend/apps/sales/services.py
++++ b/alamaan_backend/apps/sales/services.py
+@@ -165,7 +165,7 @@ def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'),
+         )
+         if sum(batch.remaining_quantity for batch in sellable_batches) < quantity:
+             raise ValidationError({
+-                'items': f'Insufficient non-expired batch stock for {variant.product.name} ({variant.company.name}).'
++                'items': f'Insufficient available batch stock for {variant.product.name} ({variant.company.name}). Ask an administrator to reconcile inventory if the displayed stock is higher.'
+             })
+ 
+         remaining_to_allocate = quantity
+diff --git a/src/components/products/ProductDetailsView.tsx b/src/components/products/ProductDetailsView.tsx
+index 420f3bc..08bb0cd 100644
+--- a/src/components/products/ProductDetailsView.tsx
++++ b/src/components/products/ProductDetailsView.tsx
+@@ -960,9 +960,12 @@ export const ProductDetailsView: React.FC<ProductDetailsViewProps> = ({
+                     min="0"
+                     required
+                     value={editingVariant.currentStock}
++                    disabled
++                    title="Change stock through Inventory Adjustment or Purchases."
+                     onChange={(e) => setEditingVariant({ ...editingVariant, currentStock: parseInt(e.target.value) || 0 })}
+                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-slate-900 font-medium"
+                   />
++                  <p className="text-xs text-slate-500 mt-1">Change stock through Inventory Adjustment or Purchases.</p>
+                 </div>
+                 <div>
+                   <label className="block text-xs font-bold text-slate-700 mb-1">Reorder Level *</label>
+diff --git a/src/components/products/ProductWizard.tsx b/src/components/products/ProductWizard.tsx
+index b0455e7..c0cff0f 100644
+--- a/src/components/products/ProductWizard.tsx
++++ b/src/components/products/ProductWizard.tsx
+@@ -791,6 +791,8 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
+                             type="number"
+                             min="0"
+                             value={v.currentStock}
++                            disabled={Boolean(v.variantId)}
++                            title={v.variantId ? 'Change stock through Inventory Adjustment or Purchases.' : 'Opening stock'}
+                             onChange={(e) => updateVariantRow(index, 'currentStock', parseInt(e.target.value) || 0)}
+                             className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs font-mono font-medium focus:ring-1 focus:ring-blue-500"
+                           />
+diff --git a/src/services/productService.ts b/src/services/productService.ts
+index 2e9e572..824d7d1 100644
+--- a/src/services/productService.ts
++++ b/src/services/productService.ts
+@@ -371,13 +371,13 @@ export class ProductService {
+           }
+ 
+           if (existingVariant) {
++            delete variantPayload.current_stock;
+             const hasChanges = (
+               existingVariant.companyId !== String(companyId)
+               || Number(existingVariant.basePrice) !== Number(variant.basePrice)
+               || Number(existingVariant.minSellingPrice) !== Number(variant.minSellingPrice)
+               || Number(existingVariant.defaultSellingPrice) !== Number(variant.defaultSellingPrice)
+               || Number(existingVariant.maxSellingPrice) !== Number(variant.maxSellingPrice)
+-              || Number(existingVariant.currentStock) !== Number(variant.currentStock)
+               || Number(existingVariant.reorderLevel) !== Number(variant.reorderLevel)
+               || (variant.status !== undefined && existingVariant.status !== variant.status)
+             );
+@@ -513,7 +513,6 @@ export class ProductService {
+       if (updates.minSellingPrice !== undefined) payload.min_selling_price = updates.minSellingPrice;
+       if (updates.defaultSellingPrice !== undefined) payload.default_selling_price = updates.defaultSellingPrice;
+       if (updates.maxSellingPrice !== undefined) payload.max_selling_price = updates.maxSellingPrice;
+-      if (updates.currentStock !== undefined) payload.current_stock = updates.currentStock;
+       if (updates.reorderLevel !== undefined) payload.reorder_level = updates.reorderLevel;
+       if (updates.status !== undefined) {
+         payload.status = updates.status === 'Available' ? 'Available' : 'Inactive';

@@ -13,3 +13,6 @@ export * from './settingsService';
 export * from './dashboardService';
 export * from './authService';
 export * from './priceHistoryService';
+
+export * from './quoteService';
+export * from './warrantyService';

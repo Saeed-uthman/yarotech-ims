@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   RotateCw,
   Camera,
+  FileText,
 } from 'lucide-react';
 import {
   Product,
@@ -22,6 +23,7 @@ import {
 import { productService } from '../../services/productService';
 import { CustomerSearchField } from './CustomerSearchField';
 import { salesService } from '../../services/salesService';
+import { quoteService } from '../../services/quoteService';
 import { calculateVat } from '../../utils/vat';
 import { formatNaira as formatCurrency } from '../../utils/formatters';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
@@ -56,6 +58,11 @@ interface CartItem {
   basePrice: number;
   availableStock: number;
   quantity: number;
+  // New fields for YaroTech POS
+  serialNumbers?: string[];   // optional list of serial/MAC addresses
+  warrantyMonths?: number;    // optional warranty period in months (defaults to system setting)
+  unitOfMeasure?: string;     // e.g., PCS, METER, ROLL, etc.
+  technicalSpecs?: string;    // additional technical specifications
 }
 
 export const NewSaleModal: React.FC<NewSaleModalProps> = ({
@@ -86,6 +93,9 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   // Form states & submission
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Quote saving
+  const [isSavingQuote, setIsSavingQuote] = useState(false);
 
   // Camera scanner
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -250,6 +260,10 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
             basePrice,
             availableStock: variant.currentStock,
             quantity,
+            serialNumbers: [],
+            warrantyMonths: settings.defaultWarrantyMonths || 12,
+            unitOfMeasure: (product as any).unitOfMeasure || 'PCS',
+            technicalSpecs: (product as any).technicalSpecs || '',
           },
         ];
       }
@@ -295,6 +309,50 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   // Remove item from cart
   const handleRemoveItem = (variantId: string) => {
     setCart((prev) => prev.filter((item) => item.variantId !== variantId));
+  };
+
+
+  // Handle Save as Quote
+  const handleSaveAsQuote = async () => {
+    if (cart.length === 0) {
+      setFormError('Please add at least one product to create a quotation.');
+      return;
+    }
+
+    setIsSavingQuote(true);
+    setFormError(null);
+
+    try {
+      const quoteInput = {
+        customer_id: customerType === 'registered' && selectedCustomerId ? selectedCustomerId : null,
+        items: cart.map((c) => ({
+          product_variant_id: c.variantId,
+          quantity: c.quantity,
+          unit_price: c.actualSellingPrice,
+          discount: 0,
+        })),
+        discount: numericDiscount,
+        valid_until: undefined as string | undefined,
+        notes: notes.trim() || '',
+      };
+
+      // Set valid_until based on system settings
+      const validityDays = (settings as any).quoteValidityDays || 14;
+      const validDate = new Date();
+      validDate.setDate(validDate.getDate() + validityDays);
+      quoteInput.valid_until = validDate.toISOString().split('T')[0];
+
+      const response = await quoteService.createQuote(quoteInput);
+      if (response.success) {
+        onSuccess(response.data as any);
+      } else {
+        setFormError(response.message || 'Failed to create quotation.');
+      }
+    } catch (err: any) {
+      setFormError(err.message || 'An error occurred while saving the quotation.');
+    } finally {
+      setIsSavingQuote(false);
+    }
   };
 
   // Handle Complete Sale Submission
@@ -372,6 +430,8 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
         quantity: c.quantity,
         actualSellingPrice: c.actualSellingPrice,
         unitPrice: c.actualSellingPrice,
+        serial_numbers: (c.serialNumbers || []).join(', '),
+        warranty_months: c.warrantyMonths || settings.defaultWarrantyMonths || 12,
       })),
       discount: numericDiscount,
       amountPaid: numericAmountPaid,
@@ -573,7 +633,8 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                         item.actualSellingPrice > item.maxSellingPrice;
 
                       return (
-                        <tr key={item.variantId} className="hover:bg-slate-50/50">
+                        <React.Fragment key={item.variantId}>
+                        <tr className="hover:bg-slate-50/50">
                           <td className="py-2.5 px-3">
                             <div className="font-bold text-slate-900">{item.productName}</div>
                             <div className="text-[10px] text-slate-400">{item.genericName}</div>
@@ -586,7 +647,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                           <td className="py-2.5 px-3 text-center">
                             <input
                               type="number"
-                              min={1}
+                              min={0} step="0.01"
                               max={item.availableStock}
                               value={item.quantity}
                               onChange={e => handleUpdateQuantity(item.variantId, parseInt(e.target.value, 10) || 1)}
@@ -628,7 +689,10 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                             </div>
                           </td>
                           <td className="py-2.5 px-3 text-right font-bold text-slate-900">
-                            {formatNaira(item.actualSellingPrice * item.quantity)}
+                            <div>{formatNaira(item.actualSellingPrice * item.quantity)}</div>
+                            {item.unitOfMeasure && item.unitOfMeasure !== 'PCS' && (
+                              <div className="text-[10px] text-slate-400 font-normal">{item.unitOfMeasure}</div>
+                            )}
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             <button
@@ -641,6 +705,26 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                             </button>
                           </td>
                         </tr>
+                        <tr className="bg-slate-50/50">
+                          <td colSpan={6} className="px-3 py-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-semibold text-slate-500 whitespace-nowrap">Serial / MAC:</span>
+                              <input
+                                type="text"
+                                placeholder="Enter serial numbers separated by commas"
+                                value={(item.serialNumbers || []).join(', ')}
+                                onChange={(e) => {
+                                  const serials = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                                  setCart(prev => prev.map(ci =>
+                                    ci.variantId === item.variantId ? { ...ci, serialNumbers: serials } : ci
+                                  ));
+                                }}
+                                className="flex-1 px-2 py-1 bg-white border border-slate-200 rounded text-[11px] font-mono text-slate-700 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                        </React.Fragment>
                       );
                     })}
                   </tbody>
@@ -893,6 +977,25 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
               className="px-4 py-2.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-semibold transition-colors disabled:opacity-50"
             >
               Cancel
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSaveAsQuote}
+              disabled={isSavingQuote || isSubmitting || cart.length === 0}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSavingQuote ? (
+                <>
+                  <RotateCw className="w-4 h-4 animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4" />
+                  <span>Save as Quote</span>
+                </>
+              )}
             </button>
 
             <button

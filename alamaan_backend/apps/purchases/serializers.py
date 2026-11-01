@@ -12,9 +12,10 @@ from .services import cancel_purchase, create_stock_purchase, process_purchase_r
 
 class CreatePurchaseItemInputSerializer(serializers.Serializer):
     product_variant_id = serializers.PrimaryKeyRelatedField(queryset=ProductVariant.objects.all())
-    quantity = serializers.IntegerField(min_value=1)
+    quantity = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0.01'))
     unit_purchase_price = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0.01'))
     batch_number = serializers.CharField(max_length=100, required=False, allow_blank=True, default='')
+    serial_numbers = serializers.CharField(required=False, allow_blank=True, default='')
 
     def validate_unit_purchase_price(self, value):
         if value <= 0:
@@ -45,6 +46,7 @@ class CreatePurchaseInputSerializer(serializers.Serializer):
                     'quantity': item['quantity'],
                     'unit_purchase_price': item['unit_purchase_price'],
                     'batch_number': item.get('batch_number', ''),
+                    'serial_numbers': item.get('serial_numbers', ''),
                 }
                 for item in items_data
             ],
@@ -73,6 +75,7 @@ class PurchaseItemOutputSerializer(serializers.ModelSerializer):
             'unit_purchase_price',
             'subtotal',
             'batch_number',
+            'serial_numbers',
         ]
         read_only_fields = fields
 
@@ -85,7 +88,7 @@ class PurchaseItemSummarySerializer(serializers.ModelSerializer):
         model = PurchaseItem
         fields = [
             'id', 'product_name', 'company_name', 'quantity',
-            'unit_purchase_price', 'subtotal',
+            'unit_purchase_price', 'subtotal', 'serial_numbers',
         ]
         read_only_fields = fields
 
@@ -210,7 +213,7 @@ class SupplierPaymentOutputSerializer(serializers.ModelSerializer):
 
 class PurchaseReturnItemInputSerializer(serializers.Serializer):
     purchase_item_id = serializers.IntegerField(min_value=1)
-    quantity = serializers.IntegerField(min_value=1)
+    quantity = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0.01'))
 
 
 class CreatePurchaseReturnSerializer(serializers.Serializer):

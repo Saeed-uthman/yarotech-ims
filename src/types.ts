@@ -122,6 +122,10 @@ export interface ProductEntity {
   categoryId: string; // Foreign key to CategoryEntity
   dosage: string;
   form: ProductDosageForm | string;
+  unitOfMeasure?: string;
+  technicalSpecs?: string;
+  modelNumber?: string;
+  equipmentType?: string;
   barcode: string;
   description: string;
   subtitle?: string;
@@ -504,6 +508,12 @@ export interface SaleItem {
   dosage?: string;
   form?: string;
   quantity: number;
+  serialNumbers?: string;
+  warrantyMonths?: number;
+  warrantyExpiryDate?: string;
+  unitOfMeasure?: string;
+  technicalSpecs?: string;
+  modelNumber?: string;
   actualSellingPrice?: number; // Actual negotiated/selected selling price at time of sale
   sellingPrice: number; // Snapshot of actual selling price (alias for backward compatibility)
   unitPrice?: number; // Alias for backward compatibility
@@ -688,6 +698,7 @@ export interface PurchaseItemEntity {
   unitPurchasePrice: number; // Purchase / Base cost per unit in NGN > 0
   subtotal: number; // quantity * unitPurchasePrice
   batchNumber?: string;
+  serialNumbers?: string;
 }
 
 export interface StockPurchase {
@@ -748,6 +759,7 @@ export interface CreatePurchaseItemInput {
   quantity: number; // Must be integer > 0
   unitPurchasePrice: number; // Must be number > 0
   batchNumber?: string;
+  serialNumbers?: string;
 }
 
 export interface CreatePurchaseInput {
@@ -1240,6 +1252,9 @@ export interface SystemSettings {
   receiptDatetime: boolean;
   receiptNumber: boolean;
   receiptFooter: string;
+  defaultWarrantyMonths?: number;
+  warrantyPolicyText?: string;
+  quoteValidityDays?: number;
 
   // 6. Notification Settings
   lowStockNotifications: boolean;
@@ -1384,3 +1399,80 @@ export interface DashboardData {
 }
 
 
+
+// ==========================================
+// Quotations & Proforma Invoices (YaroTech)
+// ==========================================
+
+export type QuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'CONVERTED' | 'EXPIRED';
+
+export interface QuoteItemEntity {
+  id?: string;
+  variantId: string;
+  productId?: string;
+  quantity: number;
+  unitPrice: number;
+  discount?: number;
+  vatRate?: number;
+  vatAmount?: number;
+  totalPrice: number;
+  itemNameSnapshot: string;
+  companyNameSnapshot: string;
+  technicalSpecsSnapshot?: string;
+  unitOfMeasureSnapshot?: string;
+}
+
+export interface QuoteEntity {
+  id: string;
+  quoteNumber: string;
+  customerId?: string | null;
+  customerName?: string;
+  subtotal: number;
+  vatAmount: number;
+  discount: number;
+  totalAmount: number;
+  validUntil: string;
+  status: QuoteStatus;
+  notes?: string;
+  convertedSale?: number | null;
+  createdBy?: string;
+  createdByName?: string;
+  itemsCount?: number;
+  items?: QuoteItemEntity[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateQuoteItemInput {
+  product_variant_id: string;
+  quantity: number;
+  unit_price: number;
+  discount?: number;
+}
+
+export interface CreateQuoteInput {
+  customer_id?: string | null;
+  items: CreateQuoteItemInput[];
+  discount?: number;
+  valid_until?: string | null;
+  notes?: string;
+}
+
+export interface WarrantyVerificationRecord {
+  sale_item_id: number;
+  invoice_number: string;
+  sale_date: string;
+  customer_name: string;
+  customer_phone: string;
+  product_name: string;
+  brand_name: string;
+  model_number: string;
+  technical_specs: string;
+  unit_of_measure: string;
+  quantity: string;
+  serial_numbers: string;
+  warranty_months: number;
+  warranty_expiry_date: string | null;
+  is_warranty_valid: boolean;
+  days_remaining: number;
+}

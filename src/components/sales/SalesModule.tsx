@@ -32,6 +32,10 @@ import { SaleDetailsModal } from './SaleDetailsModal';
 import { SaleReceiptModal } from './SaleReceiptModal';
 import { NewSaleModal } from './NewSaleModal';
 import { SaleReturnModal } from './SaleReturnModal';
+import { QuotesTab } from './QuotesTab';
+import { WarrantyVerificationModal } from './WarrantyVerificationModal';
+import { ShieldCheck, FileText } from 'lucide-react';
+
 
 interface SalesModuleProps {
   role: UserRole;
@@ -62,6 +66,10 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
   const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
   const [selectedSaleForReturn, setSelectedSaleForReturn] = useState<Sale | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  // Navigation & Sub-modules
+  const [activeTab, setActiveTab] = useState<'sales' | 'quotes'>('sales');
+  const [isWarrantyOpen, setIsWarrantyOpen] = useState(false);
+
 
   // Data fetching hooks
   const {
@@ -131,6 +139,17 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
     setSelectedSaleIdForReceipt(sale.id);
   };
 
+  const handleQuoteConverted = (convertedSale: any) => {
+    setActiveTab('sales');
+    handleRefreshAll();
+    const invoiceNum = convertedSale?.invoice_number || convertedSale?.invoiceNumber || 'Sale';
+    setSuccessToast(`Quotation successfully converted to ${invoiceNum}!`);
+    setTimeout(() => setSuccessToast(null), 5000);
+    if (convertedSale?.id) {
+      setSelectedSaleIdForReceipt(String(convertedSale.id));
+    }
+  };
+
   const handleSaleCreated = (newSale: Sale) => {
     setIsNewSaleOpen(false);
     handleRefreshAll();
@@ -167,6 +186,15 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
         {/* Header Action Buttons */}
         <div className="flex items-center gap-2.5">
           <button
+            type="button"
+            onClick={() => setIsWarrantyOpen(true)}
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs sm:text-sm font-bold shadow-2xs transition-all"
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <span>Verify Warranty</span>
+          </button>
+
+          <button
             id="header-record-sale-btn"
             type="button"
             onClick={() => setIsNewSaleOpen(true)}
@@ -176,6 +204,35 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
             <span>Record New Sale</span>
           </button>
         </div>
+      </div>
+
+      {/* Sub-navigation Tabs: Sales History vs Quotations */}
+      <div className="flex items-center gap-2 border-b border-slate-200">
+        <button
+          type="button"
+          onClick={() => setActiveTab('sales')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all ${
+            activeTab === 'sales'
+              ? 'border-blue-600 text-blue-700'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+          }`}
+        >
+          <Receipt className="w-4 h-4" />
+          <span>Sales History</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('quotes')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 transition-all ${
+            activeTab === 'quotes'
+              ? 'border-blue-600 text-blue-700'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Quotations & Proformas</span>
+        </button>
       </div>
 
       {/* Success Notification Banner */}
@@ -206,63 +263,74 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
         </div>
       )}
 
-      {/* KPI Cards Strip */}
-      <SalesSummaryCards
-        summary={summary}
-        filters={filters}
-        role={role}
-        isLoading={isLoadingSummary}
-      />
+      {activeTab === 'sales' ? (
+        <>
+          {/* KPI Cards Strip */}
+          <SalesSummaryCards
+            summary={summary}
+            filters={filters}
+            role={role}
+            isLoading={isLoadingSummary}
+          />
 
-      {/* Timeline Chart */}
-      <SalesChart
-        data={chartData}
-        dateRange={filters.dateRange}
-        role={role}
-        isLoading={isLoadingChart}
-      />
+          {/* Timeline Chart */}
+          <SalesChart
+            data={chartData}
+            dateRange={filters.dateRange}
+            role={role}
+            isLoading={isLoadingChart}
+          />
 
-      {/* Filter Controls Panel */}
-      <SalesFilters
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        onResetFilters={handleResetFilters}
-        onRefresh={handleRefreshAll}
-        onOpenNewSale={() => setIsNewSaleOpen(true)}
-        role={role}
-        isSearching={isSearching}
-        isLoading={isLoadingSales}
-      />
+          {/* Filter Controls Panel */}
+          <SalesFilters
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onResetFilters={handleResetFilters}
+            onRefresh={handleRefreshAll}
+            onOpenNewSale={() => setIsNewSaleOpen(true)}
+            role={role}
+            isSearching={isSearching}
+            isLoading={isLoadingSales}
+          />
 
-      {/* Desktop Sales Table View */}
-      <SalesTable
-        sales={sales}
-        isLoading={isLoadingSales}
-        role={role}
-        currentPage={currentPage}
-        totalPages={totalPages}
-        totalRecords={total}
-        perPage={filters.limit || 10}
-        onPageChange={(page) => handleFilterChange({ page })}
-        onPerPageChange={(limit) => handleFilterChange({ limit, page: 1 })}
-        onViewSale={handleViewSale}
-        onPrintReceipt={handlePrintReceipt}
-        onNavigateToCustomer={onNavigateToCustomer}
-      />
+          {/* Desktop Sales Table View */}
+          <SalesTable
+            sales={sales}
+            isLoading={isLoadingSales}
+            role={role}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalRecords={total}
+            perPage={filters.limit || 10}
+            onPageChange={(page) => handleFilterChange({ page })}
+            onPerPageChange={(limit) => handleFilterChange({ limit, page: 1 })}
+            onViewSale={handleViewSale}
+            onPrintReceipt={handlePrintReceipt}
+            onNavigateToCustomer={onNavigateToCustomer}
+          />
 
-      {/* Mobile Sales Card List View */}
-      <SalesCardList
-        sales={sales}
-        isLoading={isLoadingSales}
-        role={role}
-        currentPage={currentPage}
-        totalPages={totalPages}
-        totalRecords={total}
-        onPageChange={(page) => handleFilterChange({ page })}
-        onViewSale={handleViewSale}
-        onPrintReceipt={handlePrintReceipt}
-        onNavigateToCustomer={onNavigateToCustomer}
-      />
+          {/* Mobile Sales Card List View */}
+          <SalesCardList
+            sales={sales}
+            isLoading={isLoadingSales}
+            role={role}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalRecords={total}
+            onPageChange={(page) => handleFilterChange({ page })}
+            onViewSale={handleViewSale}
+            onPrintReceipt={handlePrintReceipt}
+            onNavigateToCustomer={onNavigateToCustomer}
+          />
+        </>
+      ) : (
+        <QuotesTab
+          role={role}
+          settings={settings}
+          onCreateQuote={() => setIsNewSaleOpen(true)}
+          onConvertedToSale={handleQuoteConverted}
+        />
+      )}
 
       {/* Sale Details Modal */}
       <SaleDetailsModal
@@ -297,6 +365,12 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
         error={receiptError}
         onRetry={refetchReceipt}
         onClose={() => setSelectedSaleIdForReceipt(null)}
+      />
+
+      {/* Warranty Verification Modal */}
+      <WarrantyVerificationModal
+        isOpen={isWarrantyOpen}
+        onClose={() => setIsWarrantyOpen(false)}
       />
 
       {/* New Sale POS Checkout Modal */}

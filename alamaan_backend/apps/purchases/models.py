@@ -66,9 +66,10 @@ class PurchaseItem(TimeStampedModel):
         on_delete=models.PROTECT,
         related_name='purchase_items',
     )
-    quantity = models.IntegerField()
+    quantity = models.DecimalField(max_digits=12, decimal_places=2)
     unit_purchase_price = models.DecimalField(max_digits=12, decimal_places=2)
     subtotal = models.DecimalField(max_digits=12, decimal_places=2)
+    serial_numbers = models.TextField(blank=True, default='')
 
     class Meta:
         ordering = ['id']
@@ -124,6 +125,7 @@ class PurchaseReturnItem(TimeStampedModel):
     quantity = models.PositiveIntegerField()
     unit_refund_price = models.DecimalField(max_digits=12, decimal_places=2)
     subtotal = models.DecimalField(max_digits=12, decimal_places=2)
+    serial_numbers = models.TextField(blank=True, default='')
 
     class Meta:
         ordering = ['id']
