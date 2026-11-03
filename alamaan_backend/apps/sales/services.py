@@ -59,6 +59,17 @@ def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'),
         variant = variants.get(variant_id)
         if variant is None:
             raise ValidationError({'items': f'Product variant {variant_id} not found.'})
+        if variant.product.is_service:
+            continue
+        if variant.product.is_bundle:
+            for comp in variant.product.components.select_related('component_variant__product', 'component_variant__company').all():
+                needed = comp.quantity * requested_quantity
+                if comp.component_variant.current_stock < needed:
+                    raise ValidationError({
+                        'items': f'Insufficient stock for bundle component {comp.component_variant.product.name} ({comp.component_variant.company.name}). '
+                                 f'Available: {comp.component_variant.current_stock}, needed: {needed}.'
+                    })
+            continue
         if variant.current_stock < requested_quantity:
             raise ValidationError({
                 'items': f'Insufficient stock for {variant.product.name} ({variant.company.name}). '
@@ -147,6 +158,77 @@ def process_pos_sale(*, user, customer_id=None, items, discount=Decimal('0.00'),
         warranty_expiry = (sale.created_at or timezone.now()).date() + timedelta(days=warranty_months * 30)
 
         item_subtotal = actual_price * quantity
+
+        # Case A: Service / Installation line (no stock deduction or batch allocation)
+        if variant.product.is_service:
+            weighted_unit_cost = variant.base_price
+            item_profit = (actual_price - variant.base_price) * quantity
+            SaleItem.objects.create(
+                sale=sale,
+                variant=variant,
+                quantity=quantity,
+                serial_numbers=serial_numbers,
+                warranty_months=warranty_months,
+                warranty_expiry_date=warranty_expiry,
+                actual_selling_price=actual_price,
+                unit_selling_price=actual_price,
+                historical_base_price=weighted_unit_cost,
+                unit_base_price=weighted_unit_cost,
+                min_selling_price=variant.min_selling_price,
+                default_selling_price=variant.default_selling_price,
+                max_selling_price=variant.max_selling_price,
+                subtotal=item_subtotal,
+                **tax,
+                profit=item_profit,
+            )
+            continue
+
+        # Case B: Bundle / Package Kit (deduct stock for each component variant)
+        if variant.product.is_bundle:
+            bundle_cost = Decimal('0.00')
+            for comp in variant.product.components.select_related('component_variant').all():
+                comp_var = comp.component_variant
+                comp_needed = comp.quantity * quantity
+                prev_stk = comp_var.current_stock
+                new_stk = prev_stk - comp_needed
+                comp_var.current_stock = new_stk
+                comp_var.updated_by = user
+                comp_var.save(update_fields=['current_stock', 'updated_by', 'updated_at'])
+
+                record_stock_movement(
+                    variant=comp_var,
+                    movement_type=InventoryMovement.MovementType.STOCK_OUT,
+                    quantity=-comp_needed,
+                    previous_stock=prev_stk,
+                    new_stock=new_stk,
+                    reason=f'Bundle Sale {invoice_number} ({variant.product.name})',
+                    created_by=user,
+                    reference_type=InventoryMovement.ReferenceType.SALE,
+                    reference_id=str(sale.id),
+                )
+                bundle_cost += comp_var.base_price * comp.quantity
+
+            weighted_unit_cost = bundle_cost
+            item_profit = (actual_price - bundle_cost) * quantity
+            SaleItem.objects.create(
+                sale=sale,
+                variant=variant,
+                quantity=quantity,
+                serial_numbers=serial_numbers,
+                warranty_months=warranty_months,
+                warranty_expiry_date=warranty_expiry,
+                actual_selling_price=actual_price,
+                unit_selling_price=actual_price,
+                historical_base_price=weighted_unit_cost,
+                unit_base_price=weighted_unit_cost,
+                min_selling_price=variant.min_selling_price,
+                default_selling_price=variant.default_selling_price,
+                max_selling_price=variant.max_selling_price,
+                subtotal=item_subtotal,
+                **tax,
+                profit=item_profit,
+            )
+            continue
         if not InventoryBatch.objects.filter(variant=variant).exists() and variant.current_stock > 0:
             InventoryBatch.objects.create(
                 variant=variant,

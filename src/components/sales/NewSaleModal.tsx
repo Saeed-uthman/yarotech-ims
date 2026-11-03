@@ -63,6 +63,8 @@ interface CartItem {
   warrantyMonths?: number;    // optional warranty period in months (defaults to system setting)
   unitOfMeasure?: string;     // e.g., PCS, METER, ROLL, etc.
   technicalSpecs?: string;    // additional technical specifications
+  isService?: boolean;
+  isBundle?: boolean;
 }
 
 export const NewSaleModal: React.FC<NewSaleModalProps> = ({
@@ -223,7 +225,8 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
 
   // Add item to cart
   const handleAddToCart = (product: Product, variant: CompanyVariant, quantity = 1) => {
-    if (variant.currentStock <= 0) return;
+    const isService = Boolean((product as any).isService || product.form === 'Service / Installation');
+    if (!isService && variant.currentStock <= 0) return;
 
     const basePrice = Number(variant.basePrice) || 0;
     const defaultSellingPrice = Number(variant.defaultSellingPrice) || Number(variant.sellingPrice) || 0;
@@ -233,7 +236,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
     setCart((prev) => {
       const existing = prev.find((item) => item.variantId === variant.id);
       if (existing) {
-        if (existing.quantity + quantity > variant.currentStock) {
+        if (!isService && existing.quantity + quantity > variant.currentStock) {
           setFormError(`Cannot add more than available stock (${variant.currentStock}).`);
           return prev;
         }
@@ -264,6 +267,8 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
             warrantyMonths: settings.defaultWarrantyMonths || 12,
             unitOfMeasure: (product as any).unitOfMeasure || 'PCS',
             technicalSpecs: (product as any).technicalSpecs || '',
+            isService,
+            isBundle: Boolean((product as any).isBundle || product.form === 'Package / Kit'),
           },
         ];
       }
@@ -588,10 +593,14 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                             </div>
                             <div
                               className={`text-[10px] font-semibold ${
-                                isOutOfStock ? 'text-rose-600' : 'text-emerald-700'
+                                (product as any).isService || product.form === 'Service / Installation'
+                                  ? 'text-purple-700 font-bold'
+                                  : isOutOfStock ? 'text-rose-600' : 'text-emerald-700'
                               }`}
                             >
-                              {isOutOfStock
+                              {(product as any).isService || product.form === 'Service / Installation'
+                                ? 'Service / Non-stock'
+                                : isOutOfStock
                                 ? 'Out of Stock'
                                 : `In Stock: ${variant.currentStock} units`}
                             </div>
@@ -636,7 +645,19 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                         <React.Fragment key={item.variantId}>
                         <tr className="hover:bg-slate-50/50">
                           <td className="py-2.5 px-3">
-                            <div className="font-bold text-slate-900">{item.productName}</div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-slate-900">{item.productName}</span>
+                              {item.isService && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-100 text-purple-700 border border-purple-200">
+                                  SERVICE
+                                </span>
+                              )}
+                              {item.isBundle && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
+                                  KIT
+                                </span>
+                              )}
+                            </div>
                             <div className="text-[10px] text-slate-400">{item.genericName}</div>
                           </td>
                           <td className="py-2.5 px-3">

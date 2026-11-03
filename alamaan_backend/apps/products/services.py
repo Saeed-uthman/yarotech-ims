@@ -2,7 +2,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
-from .models import Category, Company, PriceAdjustmentHistory, Product, ProductVariant
+from .models import Category, Company, PriceAdjustmentHistory, Product, ProductVariant, BundleComponent
 
 
 def _raise_serializer_validation_error(error):
@@ -42,12 +42,20 @@ def create_company(*, name, code='', country='Nigeria'):
 
 
 @transaction.atomic
-def create_product(*, created_by, variants=None, **product_data):
+def create_product(*, created_by, variants=None, components=None, **product_data):
     variants = variants or []
+    components = components or []
     product = Product.objects.create(created_by=created_by, updated_by=created_by, **product_data)
 
     for variant_data in variants:
         create_product_variant(product=product, created_by=created_by, **variant_data)
+
+    for comp in components:
+        BundleComponent.objects.create(
+            bundle=product,
+            component_variant=comp['component_variant'],
+            quantity=comp.get('quantity', Decimal('1.00')),
+        )
 
     return product
 

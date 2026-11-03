@@ -54,6 +54,8 @@ class Product(AuditableModel):
         ACCESSORY = 'Accessory', 'Accessory'
         COMPUTER_EQUIPMENT = 'Computer Equipment', 'Computer Equipment'
         OTHER_IT_EQUIPMENT = 'Other IT Equipment', 'Other IT Equipment'
+        SERVICE = 'Service / Installation', 'Service / Installation'
+        BUNDLE = 'Package / Kit', 'Package / Kit'
         # Legacy values remain valid so existing records, imports, and tests continue to work.
         TABLET = 'Tablet', 'Tablet'
         CAPSULE = 'Capsule', 'Capsule'
@@ -95,6 +97,8 @@ class Product(AuditableModel):
     subtitle = models.CharField(max_length=255, blank=True, default='')
     image = models.ImageField(upload_to=product_image_upload_path, null=True, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE, db_index=True)
+    is_service = models.BooleanField(default=False, db_index=True)
+    is_bundle = models.BooleanField(default=False, db_index=True)
 
     @property
     def technical_specs(self):
@@ -207,3 +211,19 @@ class PriceAdjustmentHistory(TimeStampedModel):
 
     def __str__(self):
         return f'{self.variant} {self.change_type} at {self.effective_date:%Y-%m-%d %H:%M}'
+
+
+class BundleComponent(TimeStampedModel):
+    bundle = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='components')
+    component_variant = models.ForeignKey('products.ProductVariant', on_delete=models.PROTECT, related_name='bundled_in')
+    quantity = models.DecimalField(max_digits=12, decimal_places=2, default=1.00)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['bundle', 'component_variant'], name='unique_bundle_component'),
+            models.CheckConstraint(condition=Q(quantity__gt=0), name='bundle_component_quantity_positive'),
+        ]
+        ordering = ['id']
+
+    def __str__(self):
+        return f'{self.bundle.name} -> {self.component_variant} x{self.quantity}'

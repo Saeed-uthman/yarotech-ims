@@ -89,7 +89,9 @@ export type ProductDosageForm =
   | 'Cable'
   | 'Accessory'
   | 'Computer Equipment'
-  | 'Other IT Equipment';
+  | 'Other IT Equipment'
+  | 'Service / Installation'
+  | 'Package / Kit';
 
 // ==========================================
 // 1. Normalized Core Entities (Database Model)
@@ -114,6 +116,16 @@ export interface CompanyEntity {
   updatedAt: string;
 }
 
+export interface BundleComponentEntity {
+  id?: string;
+  componentVariant: string | number;
+  componentName?: string;
+  companyName?: string;
+  quantity: number;
+  unitOfMeasure?: string;
+  currentStock?: number;
+}
+
 export interface ProductEntity {
   vatEnabled?: boolean;
   id: string;
@@ -131,6 +143,9 @@ export interface ProductEntity {
   subtitle?: string;
   image?: string;
   status: ProductStatus;
+  isService?: boolean;
+  isBundle?: boolean;
+  components?: BundleComponentEntity[];
   createdAt: string;
   updatedAt: string;
 }
@@ -200,6 +215,9 @@ export interface ProductCreateInput {
   subtitle?: string;
   image?: string;
   status?: ProductStatus;
+  isService?: boolean;
+  isBundle?: boolean;
+  components?: Array<{ component_variant_id: string | number; quantity: number }>;
   variants: ProductVariantInput[];
 }
 

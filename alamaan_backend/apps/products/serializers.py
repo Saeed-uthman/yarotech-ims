@@ -3,7 +3,7 @@ import json
 
 from rest_framework import serializers
 
-from .models import Category, Company, PriceAdjustmentHistory, Product, ProductVariant
+from .models import Category, Company, PriceAdjustmentHistory, Product, ProductVariant, BundleComponent
 from .visual_images import sanitized_product_photo
 from .services import create_product, create_product_variant, update_product, update_variant_prices, validate_variant_prices
 
@@ -45,6 +45,31 @@ class ProductVariantInputSerializer(serializers.Serializer):
         return attrs
 
 
+class BundleComponentSerializer(serializers.ModelSerializer):
+    component_name = serializers.CharField(source='component_variant.product.name', read_only=True)
+    company_name = serializers.CharField(source='component_variant.company.name', read_only=True)
+    unit_of_measure = serializers.CharField(source='component_variant.product.unit_of_measure', read_only=True)
+    current_stock = serializers.DecimalField(source='component_variant.current_stock', max_digits=12, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = BundleComponent
+        fields = [
+            'id',
+            'component_variant',
+            'component_name',
+            'company_name',
+            'quantity',
+            'unit_of_measure',
+            'current_stock',
+        ]
+        read_only_fields = ['id', 'component_name', 'company_name', 'unit_of_measure', 'current_stock']
+
+
+class BundleComponentInputSerializer(serializers.Serializer):
+    component_variant_id = serializers.PrimaryKeyRelatedField(queryset=ProductVariant.objects.all(), source='component_variant')
+    quantity = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0.01'), default=Decimal('1.00'))
+
+
 class ProductCreateUpdateSerializer(serializers.Serializer):
     vat_enabled = serializers.BooleanField(required=False)
     name = serializers.CharField(max_length=200)
@@ -53,6 +78,9 @@ class ProductCreateUpdateSerializer(serializers.Serializer):
     dosage = serializers.CharField(max_length=50)
     dosage_form = serializers.ChoiceField(choices=Product.DosageForm.choices)
     unit_of_measure = serializers.ChoiceField(choices=Product.UnitOfMeasure.choices, required=False, default=Product.UnitOfMeasure.PCS)
+    is_service = serializers.BooleanField(required=False, default=False)
+    is_bundle = serializers.BooleanField(required=False, default=False)
+    components = BundleComponentInputSerializer(many=True, required=False)
     barcode = serializers.CharField(max_length=64, required=False, allow_blank=True)
     description = serializers.CharField(required=False, allow_blank=True)
     subtitle = serializers.CharField(max_length=255, required=False, allow_blank=True)
@@ -71,6 +99,12 @@ class ProductCreateUpdateSerializer(serializers.Serializer):
             mutable_data['generic_name'] = mutable_data['model_number']
         if 'equipment_type' in mutable_data and not mutable_data.get('dosage_form'):
             mutable_data['dosage_form'] = mutable_data['equipment_type']
+        components = mutable_data.get('components')
+        if isinstance(components, str):
+            try:
+                mutable_data['components'] = json.loads(components)
+            except json.JSONDecodeError as exc:
+                raise serializers.ValidationError({'components': 'Components must be valid JSON.'}) from exc
         variants = mutable_data.get('variants')
         if isinstance(variants, str):
             try:
@@ -85,14 +119,17 @@ class ProductCreateUpdateSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         variants = validated_data.pop('variants', [])
+        components = validated_data.pop('components', [])
         return create_product(
             created_by=self.context['request'].user,
             variants=variants,
+            components=components,
             **validated_data,
         )
 
     def update(self, instance, validated_data):
         validated_data.pop('variants', None)
+        validated_data.pop('components', None)
         return update_product(
             product=instance,
             updated_by=self.context['request'].user,
@@ -143,6 +180,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     technical_specs = serializers.CharField(source='dosage', read_only=True)
     model_number = serializers.CharField(source='generic_name', read_only=True)
     equipment_type = serializers.CharField(source='dosage_form', read_only=True)
+    components = BundleComponentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Product
@@ -162,6 +200,9 @@ class ProductListSerializer(serializers.ModelSerializer):
             'image',
             'status',
             'vat_enabled',
+            'is_service',
+            'is_bundle',
+            'components',
             'variants',
             'created_at',
             'updated_at',

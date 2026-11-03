@@ -43,6 +43,8 @@ const DOSAGE_FORMS: ProductDosageForm[] = [
   'Accessory',
   'Computer Equipment',
   'Other IT Equipment',
+  'Service / Installation',
+  'Package / Kit',
 ];
 
 const UOM_OPTIONS = ['PCS', 'METER', 'ROLL', 'DRUM', 'PACK', 'BOX', 'SET'];
@@ -325,6 +327,8 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
       dosage: dosage.trim(),
       form: form.trim(),
       unitOfMeasure,
+      isService: form === 'Service / Installation',
+      isBundle: form === 'Package / Kit',
       barcode: barcode.trim() || `${Math.floor(1000000000000 + Math.random() * 9000000000000)}`,
       description: description.trim(),
       subtitle: subtitle.trim() || `${genericName} (${dosage})`,
