@@ -1,4 +1,4 @@
-# Al-Amaan Pharmacy IMS
+# YAROTECH-NETWORK LIMITED IMS
 
 A full-stack pharmacy inventory, point-of-sale, customer debt, and financial accountability system for community pharmacy operations.
 
