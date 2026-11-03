@@ -89,17 +89,16 @@ class PurchaseApiTests(APITestCase):
 
     def test_purchase_records_supplier_batch_and_expiry(self):
         self.client.force_authenticate(self.admin)
-        expiry = date.today() + timedelta(days=365)
         payload = self._purchase_payload(supplier_name='Trusted Medical Supplies')
         payload['items'][0]['batch_number'] = 'AMOX-2027-A'
-        payload['items'][0]['expiry_date'] = expiry.isoformat()
+        payload['items'][0]['serial_numbers'] = 'SN-1001, SN-1002'
 
         response = self.client.post(reverse('purchases-list'), payload, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         batch = InventoryBatch.objects.get(batch_number='AMOX-2027-A')
         self.assertEqual(batch.supplier_name, 'Trusted Medical Supplies')
-        self.assertEqual(batch.expiry_date, expiry)
+        self.assertEqual(batch.serial_numbers, 'SN-1001, SN-1002')
         self.assertEqual(response.data['data']['supplier_name'], 'Trusted Medical Supplies')
 
     def test_purchase_idempotency_key_prevents_duplicate_restock(self):

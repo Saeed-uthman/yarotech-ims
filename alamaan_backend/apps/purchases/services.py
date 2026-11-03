@@ -11,6 +11,7 @@ from apps.common.sequences import next_document_number
 from apps.inventory.models import InventoryBatch, InventoryMovement
 from apps.inventory.services import record_stock_movement
 from apps.products.models import ProductVariant
+from apps.products.services import update_variant_prices
 
 from .models import PurchaseItem, PurchaseReturn, PurchaseReturnItem, StockPurchase, SupplierPayment
 
@@ -136,6 +137,10 @@ def create_stock_purchase(*, user, items, payment_method=None, amount_paid=None,
             'subtotal': item_subtotal,
             'batch_number': item.get('batch_number', ''),
             'serial_numbers': item.get('serial_numbers', ''),
+            'new_selling_price': item.get('new_selling_price'),
+            'new_min_selling_price': item.get('new_min_selling_price'),
+            'new_max_selling_price': item.get('new_max_selling_price'),
+            'update_catalog_prices': item.get('update_catalog_prices', True),
         })
 
     purchase_number = _generate_purchase_number()
@@ -213,6 +218,41 @@ def create_stock_purchase(*, user, items, payment_method=None, amount_paid=None,
             reference_type=InventoryMovement.ReferenceType.STOCK_PURCHASE,
             reference_id=str(purchase.id),
         )
+
+        update_catalog = item_data.get('update_catalog_prices', True)
+        new_selling_price = item_data.get('new_selling_price')
+        if update_catalog and new_selling_price is not None:
+            new_selling = Decimal(str(new_selling_price))
+            if new_selling <= unit_price:
+                raise ValidationError({'items': 'Selling price must be greater than unit purchase price.'})
+
+            new_min = item_data.get('new_min_selling_price')
+            new_max = item_data.get('new_max_selling_price')
+            if new_min is not None:
+                new_min = Decimal(str(new_min))
+            if new_max is not None:
+                new_max = Decimal(str(new_max))
+
+            if new_min is None or new_min <= unit_price:
+                computed_min = round(new_selling * Decimal('0.95'), 2)
+                if computed_min <= unit_price:
+                    computed_min = unit_price + Decimal('1.00') if unit_price + Decimal('1.00') <= new_selling else new_selling
+                new_min = min(computed_min, new_selling)
+                if unit_price > 0 and new_min <= unit_price:
+                    new_min = new_selling
+
+            if new_max is None or new_max < new_selling:
+                new_max = max(new_selling, round(new_selling * Decimal('1.15'), 2))
+
+            update_variant_prices(
+                variant=variant,
+                updated_by=user,
+                reason=f'Purchase intake {purchase_number}',
+                base_price=unit_price,
+                min_selling_price=new_min,
+                default_selling_price=new_selling,
+                max_selling_price=new_max,
+            )
 
     if amount_paid > 0:
         AccountabilityTransaction.objects.create(

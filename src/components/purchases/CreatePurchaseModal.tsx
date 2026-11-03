@@ -12,6 +12,10 @@ import {
   Building2,
   FileText,
   Camera,
+  ChevronDown,
+  ChevronUp,
+  TrendingUp,
+  Tag,
 } from 'lucide-react';
 import {
   Product,
@@ -56,6 +60,11 @@ interface PurchaseDraftItem {
   unitPurchasePrice: number;
   batchNumber: string;
   serialNumbers?: string;
+  newSellingPrice: number;
+  newMinSellingPrice?: number;
+  newMaxSellingPrice?: number;
+  showPriceRange?: boolean;
+  updateCatalogPrices?: boolean;
 }
 
 export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
@@ -192,6 +201,10 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
         return previous.map(item => item.variantId === variant.id
           ? { ...item, quantity: item.quantity + quantity } : item);
       }
+      const initialSellingPrice = variant.defaultSellingPrice || (variant as any).sellingPrice || (variant.basePrice ? Math.round(variant.basePrice * 1.25) : 0);
+      const initialMinPrice = variant.minSellingPrice || (variant.basePrice ? Math.round(variant.basePrice * 1.05) : 0);
+      const initialMaxPrice = variant.maxSellingPrice || (variant.basePrice ? Math.round(variant.basePrice * 1.4) : 0);
+
       return [...previous, {
         variantId: variant.id,
         productId: product.id,
@@ -205,10 +218,46 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
         quantity,
         unitPurchasePrice: variant.basePrice || 0,
         batchNumber: '',
+        newSellingPrice: initialSellingPrice,
+        newMinSellingPrice: initialMinPrice,
+        newMaxSellingPrice: initialMaxPrice,
+        showPriceRange: false,
+        updateCatalogPrices: true,
       }];
     });
     setProductSearch('');
     setFormError(null);
+  };
+
+  const handleUpdateSellingPrice = (index: number, val: number) => {
+    const updated = [...items];
+    const price = Math.max(0, val || 0);
+    updated[index].newSellingPrice = price;
+    setItems(updated);
+  };
+
+  const handleUpdateMinPrice = (index: number, val: number) => {
+    const updated = [...items];
+    updated[index].newMinSellingPrice = Math.max(0, val || 0);
+    setItems(updated);
+  };
+
+  const handleUpdateMaxPrice = (index: number, val: number) => {
+    const updated = [...items];
+    updated[index].newMaxSellingPrice = Math.max(0, val || 0);
+    setItems(updated);
+  };
+
+  const handleTogglePriceRange = (index: number) => {
+    const updated = [...items];
+    updated[index].showPriceRange = !updated[index].showPriceRange;
+    setItems(updated);
+  };
+
+  const handleToggleCatalogUpdate = (index: number) => {
+    const updated = [...items];
+    updated[index].updateCatalogPrices = !(updated[index].updateCatalogPrices ?? true);
+    setItems(updated);
   };
 
   // Update item quantity
@@ -267,6 +316,26 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
         setFormError(`Item #${i + 1} (${it.productName}) has an invalid purchase price.`);
         return;
       }
+      if (it.updateCatalogPrices && it.newSellingPrice !== undefined && it.newSellingPrice > 0) {
+        if (it.newSellingPrice <= it.unitPurchasePrice) {
+          setFormError(`Item #${i + 1} (${it.productName}): Selling price must be greater than unit purchase cost.`);
+          return;
+        }
+        if (it.newMinSellingPrice !== undefined && it.newMinSellingPrice > 0) {
+          if (it.newMinSellingPrice <= it.unitPurchasePrice) {
+            setFormError(`Item #${i + 1} (${it.productName}): Minimum selling price must be greater than unit cost.`);
+            return;
+          }
+          if (it.newMinSellingPrice > it.newSellingPrice) {
+            setFormError(`Item #${i + 1} (${it.productName}): Minimum selling price cannot exceed default selling price.`);
+            return;
+          }
+        }
+        if (it.newMaxSellingPrice !== undefined && it.newMaxSellingPrice > 0 && it.newMaxSellingPrice < it.newSellingPrice) {
+          setFormError(`Item #${i + 1} (${it.productName}): Maximum selling price cannot be less than default selling price.`);
+          return;
+        }
+      }
     }
     if (!Number.isFinite(effectiveAmountPaid) || effectiveAmountPaid < 0 || effectiveAmountPaid > grandTotal) {
       setFormError('Amount paid must be between zero and the purchase total.');
@@ -288,6 +357,11 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({
           quantity: it.quantity,
           unitPurchasePrice: it.unitPurchasePrice,
           batchNumber: it.batchNumber.trim() || undefined,
+          serialNumbers: it.serialNumbers?.trim() || undefined,
+          newSellingPrice: it.newSellingPrice || undefined,
+          newMinSellingPrice: it.newMinSellingPrice || undefined,
+          newMaxSellingPrice: it.newMaxSellingPrice || undefined,
+          updateCatalogPrices: it.updateCatalogPrices ?? true,
         })),
       };
 

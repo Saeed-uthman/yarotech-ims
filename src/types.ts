@@ -778,6 +778,10 @@ export interface CreatePurchaseItemInput {
   unitPurchasePrice: number; // Must be number > 0
   batchNumber?: string;
   serialNumbers?: string;
+  newSellingPrice?: number;
+  newMinSellingPrice?: number;
+  newMaxSellingPrice?: number;
+  updateCatalogPrices?: boolean;
 }
 
 export interface CreatePurchaseInput {

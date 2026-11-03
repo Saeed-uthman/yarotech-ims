@@ -16,11 +16,34 @@ class CreatePurchaseItemInputSerializer(serializers.Serializer):
     unit_purchase_price = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0.01'))
     batch_number = serializers.CharField(max_length=100, required=False, allow_blank=True, default='')
     serial_numbers = serializers.CharField(required=False, allow_blank=True, default='')
+    # Optional simultaneous catalog price update fields
+    new_selling_price = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=Decimal('0.00'),
+        required=False, allow_null=True, default=None,
+    )
+    new_min_selling_price = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=Decimal('0.00'),
+        required=False, allow_null=True, default=None,
+    )
+    new_max_selling_price = serializers.DecimalField(
+        max_digits=12, decimal_places=2, min_value=Decimal('0.00'),
+        required=False, allow_null=True, default=None,
+    )
+    update_catalog_prices = serializers.BooleanField(required=False, default=True)
 
     def validate_unit_purchase_price(self, value):
         if value <= 0:
             raise serializers.ValidationError('Unit purchase price must be greater than zero.')
         return value
+
+    def validate(self, attrs):
+        selling = attrs.get('new_selling_price')
+        cost = attrs.get('unit_purchase_price')
+        if selling is not None and cost is not None and selling <= cost:
+            raise serializers.ValidationError(
+                {'new_selling_price': 'Selling price must be greater than the unit purchase (cost) price.'}
+            )
+        return attrs
 
 
 class CreatePurchaseInputSerializer(serializers.Serializer):
@@ -47,6 +70,10 @@ class CreatePurchaseInputSerializer(serializers.Serializer):
                     'unit_purchase_price': item['unit_purchase_price'],
                     'batch_number': item.get('batch_number', ''),
                     'serial_numbers': item.get('serial_numbers', ''),
+                    'new_selling_price': item.get('new_selling_price'),
+                    'new_min_selling_price': item.get('new_min_selling_price'),
+                    'new_max_selling_price': item.get('new_max_selling_price'),
+                    'update_catalog_prices': item.get('update_catalog_prices', True),
                 }
                 for item in items_data
             ],
@@ -133,10 +160,12 @@ class StockPurchaseListSerializer(serializers.ModelSerializer):
         items = obj.items.select_related('variant__product', 'variant__company')[:3]
         return PurchaseItemSummarySerializer(items, many=True).data
 
-    def get_total_units(self, obj) -> int:
+    def get_total_units(self, obj) -> float:
         if hasattr(obj, 'list_total_units'):
-            return obj.list_total_units or 0
-        return obj.items.aggregate(total=Sum('quantity'))['total'] or 0
+            total = obj.list_total_units or 0
+        else:
+            total = obj.items.aggregate(total=Sum('quantity'))['total'] or 0
+        return float(total) if total is not None else 0.0
 
 
 class StockPurchaseDetailSerializer(serializers.ModelSerializer):
@@ -167,8 +196,9 @@ class StockPurchaseDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_total_units(self, obj) -> int:
-        return sum(item.quantity for item in obj.items.all())
+    def get_total_units(self, obj) -> float:
+        total = sum((item.quantity for item in obj.items.all()), Decimal('0.00'))
+        return float(total)
 
 
 class StockPurchaseCancelSerializer(serializers.Serializer):
