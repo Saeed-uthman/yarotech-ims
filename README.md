@@ -356,11 +356,54 @@ Before release, run Django's deployment checks and the complete acceptance gate 
 - Run `python manage.py reconcile_business_funds` after restoration, before release, and whenever dashboard and physical cash totals appear inconsistent. The command is read-only and fails on missing, duplicate, orphaned, or mismatched owner-fund ledger entries.
 - Protect backups as sensitive business and customer data, and test restoration regularly.
 
+## Hardware Barcode & Carton Serial Number Scanner Guide
+
+YaroTech POS natively supports **USB, 2.4GHz Wireless, and Bluetooth 2D Hardware Barcode Scanners** (in HID Keyboard Emulation mode) as well as built-in device cameras for **Product Catalog Registration**, **Stock Purchase (Restock)**, and **New Sale Checkout**.
+
+### 1. Recommended Scanner Hardware (IT & Solar Equipment)
+Choose a **2D Wireless Handheld Imager Scanner (2.4GHz USB Dongle + Bluetooth + USB Wired)** rather than a 1D laser-only scanner so it can read both standard 1D EAN/UPC product barcodes and 2D QR / DataMatrix / dense Serial & MAC address stickers on networking and solar cartons:
+- **NETUM NT-1228BL / C750** (2D Wireless + Bluetooth + USB)
+- **Tera Pro 2D Wireless Barcode Scanner (Model D5100 / HW0002)**
+- **Zebra DS2208 (Wired USB) or DS2278 (Wireless 2D)** — Enterprise heavy-duty grade
+- **Honeywell Voyager 1470g / 1472g (2D)** — Enterprise grade
+
+### 2. How to Connect & Verify Your Hardware Scanner
+1. **Connect to the POS Device:**
+   - **2.4GHz Wireless / USB Cable:** Plug the 2.4GHz USB dongle (or USB cable) into any USB port on your Windows PC/Laptop and pull the trigger to power on. The OS automatically detects it as an **HID Keyboard Device** (no driver installation needed).
+   - **Bluetooth:** Scan the *"Bluetooth HID Mode"* barcode in the scanner manual and pair it in your computer or tablet's Bluetooth settings.
+2. **10-Second Notepad Connection Test:**
+   - Open **Notepad** (or any blank text editor), click inside the document, and scan any barcode.
+   - Verify that the barcode text is typed immediately **and the cursor jumps to the next line** (confirming the scanner sends an `Enter` / Carriage Return terminator).
+   - *Note:* If the cursor stays on the same line after scanning, scan the **"Add CR / Enter Suffix"** configuration barcode from your scanner's paper manual.
+
+### 3. Using the Scanner Inside YaroTech POS
+
+#### A. Registering a New Product's Barcode
+- Open **Products → Add New Product** (or click **"Create New Product with Barcode..."** when an unknown barcode is scanned during Restock).
+- Click inside the **Barcode** field in Step 1 of the Product Wizard and pull the scanner trigger on the product's manufacturer barcode. The code populates immediately without prematurely submitting the form.
+
+#### B. Scanning Products & Carton Serial Stickers During Restock (`Record Stock Purchase`)
+1. Open **Stock Purchase → Record Stock Purchase** and confirm the green **"Hardware Scanner Ready"** badge is visible.
+2. **Product Barcode Scan:**
+   - Pull the trigger on a product's barcode anywhere inside the modal (no need to click the search input first).
+   - The POS plays a confirmation beep and adds **1 unit** to the restock order (or increments the existing row by `+1` on repeat scans).
+   - If the product has multiple active manufacturer variants, a quick variant selector popup opens automatically.
+   - If the barcode is not in the catalog yet (`404`), an error tone plays and a one-click **"Create New Product with Barcode `[CODE]`"** button appears in the alert banner.
+3. **Carton Serial / MAC Sticker Multi-Scan:**
+   - For devices with individual serial numbers printed on the carton (Access Points, Switches, Routers, Inverters, Batteries), click inside the **"Scan carton Serial/MAC sticker here..."** input on that line item.
+   - Pull the trigger on each serial sticker on the carton one after another.
+   - Each scan plays a confirmation beep, appends the serial number to the comma-separated serial list (preventing duplicates), and **automatically increases the line item's Quantity** to match the number of scanned serial stickers.
+
+#### C. Scanning Products or Serial Stickers During a Sale (`Record New Sale`)
+1. Open **Sales → Record New Sale** and confirm the green **"Scanner Ready"** badge is active.
+2. **Two Ways to Scan at Checkout:**
+   - **Scan the Product Barcode:** Pull the trigger on the product barcode to add `+1` unit to the sale cart (respecting available stock limits).
+   - **Scan the Device's Serial Number Sticker Directly:** If serial numbers were recorded during Restock, scanning the **Serial Number sticker** on the unit being handed to the customer automatically looks up the exact product and manufacturer variant from the active `InventoryBatch`, adds `+1` unit to the cart, and attaches that serial number to the customer's sale item for receipt printing and warranty verification.
+   - **Direct Cart Serial Field Scan:** You can also click the **"Scan serial sticker here..."** box on any cart row to scan additional serial numbers directly into that item without submitting the checkout form.
+
+---
+
 ## Final release gate
-NETUM NT-1228BL / C750 (2D Wireless + Bluetooth + USB)
-Tera Pro 2D Wireless Barcode Scanner (Model D5100 / HW0002)
-Zebra DS2208 (Wired USB) or DS2278 (Wireless 2D) — Enterprise heavy-duty grade
-Honeywell Voyager 1470g / 1472g (2D) — Enterprise grade
 
 Double-click `Run Release Readiness Check.cmd` to run the system check, migration-drift check, OpenAPI validation, hardened production security check, business-funds reconciliation, full Django suite, frontend type checking and production build, and verification of the newest backup. The runner does not migrate or modify business data.
 
