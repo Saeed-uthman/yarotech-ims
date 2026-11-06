@@ -25,6 +25,7 @@ import { formatNaira, formatNumber } from '../../utils/formatters';
 
 interface ProductWizardProps {
   initialProduct?: Product | null;
+  initialBarcode?: string;
   categories: ProductCategory[];
   companies: Company[];
   onSave: (productData: ProductCreateInput) => void;
@@ -51,6 +52,7 @@ const UOM_OPTIONS = ['PCS', 'METER', 'ROLL', 'DRUM', 'PACK', 'BOX', 'SET'];
 
 export const ProductWizard: React.FC<ProductWizardProps> = ({
   initialProduct,
+  initialBarcode,
   categories,
   companies,
   onSave,
@@ -149,7 +151,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
     } else {
       // Default initial values
       setCategory(categories[0]?.name || 'Analgesics');
-      setBarcode(`${Math.floor(1000000000000 + Math.random() * 9000000000000)}`);
+      setBarcode(initialBarcode?.trim() || `${Math.floor(1000000000000 + Math.random() * 9000000000000)}`);
       const defaultCompany = companies.find((company) => company.status === 'Active');
       setVariants([{
         companyId: defaultCompany?.id,
@@ -164,7 +166,7 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
         status: 'Available',
       }]);
     }
-  }, [initialProduct, categories, companies]);
+  }, [initialProduct, initialBarcode, categories, companies]);
 
   const handleGenerateBarcode = () => {
     const generated = `${Math.floor(1000000000000 + Math.random() * 9000000000000)}`;
@@ -651,6 +653,12 @@ export const ProductWizard: React.FC<ProductWizardProps> = ({
                   placeholder="e.g. 8901234567890"
                   value={barcode}
                   onChange={(e) => setBarcode(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }
+                  }}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-sm font-mono focus:ring-1 focus:ring-blue-500"
                 />
               </div>

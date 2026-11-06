@@ -66,6 +66,7 @@ function MainPharmacyApp() {
   const [viewMode, setViewMode] = useState<'list' | 'details' | 'wizard'>('list');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+  const [initialWizardBarcode, setInitialWizardBarcode] = useState<string | undefined>(undefined);
 
   // Filters & Search State
   const [filters, setFilters] = useState<ProductFilterParams>({
@@ -184,12 +185,13 @@ function MainPharmacyApp() {
   }, [products, selectedProduct]);
 
   // Handlers for Views & Wizard
-  const handleOpenAddProduct = useCallback(() => {
+  const handleOpenAddProduct = useCallback((prefillBarcode?: string) => {
     if (currentRole !== 'admin') {
       addToast('info', 'Admin Access Required', 'Creating new products in the catalog requires Administrator role.');
       return;
     }
     setProductToEdit(null);
+    setInitialWizardBarcode(typeof prefillBarcode === 'string' ? prefillBarcode : undefined);
     setViewMode('wizard');
     setActiveNav('products');
   }, [currentRole, addToast]);
@@ -564,6 +566,7 @@ function MainPharmacyApp() {
                     setActiveNav('inventory');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
+                  onCreateProductWithBarcode={(code) => handleOpenAddProduct(code)}
                 />
               ) : (
                 <AccessDeniedCard
@@ -651,6 +654,7 @@ function MainPharmacyApp() {
             ) : viewMode === 'wizard' ? (
               <ProductWizard
                 initialProduct={productToEdit}
+                initialBarcode={initialWizardBarcode}
                 categories={categories}
                 companies={companies}
                 onSave={handleSaveProductWizard}

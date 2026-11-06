@@ -224,14 +224,21 @@ export class ProductService {
   }
 
   /**
-   * Find product by exact barcode using the dedicated backend endpoint.
+   * Find product by exact barcode or serial number using the dedicated backend endpoint.
    */
   public async getProductByBarcodeExact(
     barcode: string,
-  ): Promise<ApiResponse<Product>> {
+  ): Promise<ApiResponse<Product & { matchedVariantId?: string; matchedSerial?: string }>> {
     try {
       const res = await api.get<any>('/products/barcode-lookup/', { barcode });
-      return { success: true, data: mapBackendProduct(res.data) };
+      const product = mapBackendProduct(res.data);
+      if (res.data?.matched_variant_id) {
+        (product as any).matchedVariantId = String(res.data.matched_variant_id);
+      }
+      if (res.data?.matched_serial) {
+        (product as any).matchedSerial = String(res.data.matched_serial);
+      }
+      return { success: true, data: product as any };
     } catch (err) {
       if (err instanceof ApiError) throw err;
       throw new Error('Product not found for this barcode.');

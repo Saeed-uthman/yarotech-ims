@@ -74,6 +74,52 @@ def get_product_by_barcode(*, barcode):
     )
 
 
+def lookup_product_by_barcode_or_serial(*, code):
+    """
+    Look up a product either by its exact product barcode or by a matching serial number
+    in an active InventoryBatch record.
+    Returns a tuple: (product, matched_variant_id, matched_serial)
+    Raises Product.DoesNotExist when no match is found.
+    """
+    cleaned_code = code.strip()
+    if not cleaned_code:
+        raise Product.DoesNotExist('No barcode or serial code provided.')
+
+    # 1. First attempt exact match on Product.barcode
+    product = (
+        Product.objects.select_related('category')
+        .prefetch_related('variants__company')
+        .filter(barcode__iexact=cleaned_code)
+        .first()
+    )
+    if product:
+        return product, None, None
+
+    # 2. Search active InventoryBatch records by serial number
+    from apps.inventory.models import InventoryBatch
+    candidates = (
+        InventoryBatch.objects.select_related('variant__product__category', 'variant__company')
+        .filter(serial_numbers__icontains=cleaned_code)
+        .exclude(status=InventoryBatch.Status.CANCELLED)
+    )
+
+    clean_lower = cleaned_code.lower()
+    for batch in candidates:
+        # Check tokens separated by comma, semicolon, newline, or whitespace
+        import re
+        tokens = [t.strip().lower() for t in re.split(r'[,;\n\r\s]+', batch.serial_numbers) if t.strip()]
+        if clean_lower in tokens:
+            variant = batch.variant
+            prod = (
+                Product.objects.select_related('category')
+                .prefetch_related('variants__company')
+                .get(pk=variant.product_id)
+            )
+            return prod, variant.id, cleaned_code
+
+    raise Product.DoesNotExist(f'No product found for barcode or serial number "{code}".')
+
+
 def get_product_detail(*, product_id):
     return (
         Product.objects.select_related('category')

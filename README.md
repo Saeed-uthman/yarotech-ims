@@ -357,6 +357,10 @@ Before release, run Django's deployment checks and the complete acceptance gate 
 - Protect backups as sensitive business and customer data, and test restoration regularly.
 
 ## Final release gate
+NETUM NT-1228BL / C750 (2D Wireless + Bluetooth + USB)
+Tera Pro 2D Wireless Barcode Scanner (Model D5100 / HW0002)
+Zebra DS2208 (Wired USB) or DS2278 (Wireless 2D) — Enterprise heavy-duty grade
+Honeywell Voyager 1470g / 1472g (2D) — Enterprise grade
 
 Double-click `Run Release Readiness Check.cmd` to run the system check, migration-drift check, OpenAPI validation, hardened production security check, business-funds reconciliation, full Django suite, frontend type checking and production build, and verification of the newest backup. The runner does not migrate or modify business data.
 

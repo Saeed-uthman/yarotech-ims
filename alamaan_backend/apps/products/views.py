@@ -11,7 +11,14 @@ from apps.common.pagination import paginated_response
 from apps.common.responses import success_response
 
 from .models import Category, Company, Product, ProductVariant
-from .selectors import get_catalog_kpis, get_product_by_barcode, list_categories, list_companies, list_products
+from .selectors import (
+    get_catalog_kpis,
+    get_product_by_barcode,
+    lookup_product_by_barcode_or_serial,
+    list_categories,
+    list_companies,
+    list_products,
+)
 from .serializers import (
     CategorySerializer,
     CompanySerializer,
@@ -194,13 +201,18 @@ class ProductBarcodeLookupView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            product = get_product_by_barcode(barcode=barcode)
+            product, matched_variant_id, matched_serial = lookup_product_by_barcode_or_serial(code=barcode)
         except Product.DoesNotExist:
             return Response(
                 {'success': False, 'message': 'No product found for this barcode.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        return Response(success_response(ProductDetailSerializer(product, context={'request': request}).data))
+        data = ProductDetailSerializer(product, context={'request': request}).data
+        if matched_variant_id:
+            data['matched_variant_id'] = matched_variant_id
+        if matched_serial:
+            data['matched_serial'] = matched_serial
+        return Response(success_response(data))
 
 
 class ProductKpiStatsView(APIView):

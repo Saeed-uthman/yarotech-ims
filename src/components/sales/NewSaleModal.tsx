@@ -9,6 +9,7 @@ import {
   RotateCw,
   Camera,
   FileText,
+  ScanBarcode,
 } from 'lucide-react';
 import {
   Product,
@@ -28,6 +29,9 @@ import { calculateVat } from '../../utils/vat';
 import { formatNaira as formatCurrency } from '../../utils/formatters';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 import { PhotoSearchModal } from '../common/PhotoSearchModal';
+import { useHardwareBarcodeScanner } from '../../hooks/useHardwareBarcodeScanner';
+import { scannerAudio } from '../../utils/scannerAudio';
+import { ApiError } from '../../services/apiClient';
 
 const formatNaira = (amount: number) => formatCurrency(amount, true);
 
@@ -99,9 +103,12 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
   // Quote saving
   const [isSavingQuote, setIsSavingQuote] = useState(false);
 
-  // Camera scanner
+  // Camera & hardware scanner states
   const [scannerOpen, setScannerOpen] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
+  const [scannerInitialProduct, setScannerInitialProduct] = useState<Product | undefined>(undefined);
+  const [scanSuccessMessage, setScanSuccessMessage] = useState<string | null>(null);
+  const [serialScanBuffers, setSerialScanBuffers] = useState<Record<string, string>>({});
 
   // Query Django after a short pause in typing. Fetch every result page so a
   // partial query such as "pa" is not limited to the first 100 products.
@@ -175,6 +182,9 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
       setFormError(null);
       setScannerOpen(false);
       setPhotoOpen(false);
+      setScannerInitialProduct(undefined);
+      setScanSuccessMessage(null);
+      setSerialScanBuffers({});
     }
   }, [isOpen, settings.allowWalkingSales]);
 
@@ -195,6 +205,99 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
       setAmountPaid(String(grandTotal));
     }
   }, [grandTotal, isOpen]);
+
+  // Handle hardware barcode or saved InventoryBatch serial scan during Sale checkout
+  const handleHardwareBarcodeScan = async (rawCode: string) => {
+    const code = rawCode.trim();
+    if (!code || !isOpen) return;
+
+    setFormError(null);
+
+    try {
+      const response = await productService.getProductByBarcodeExact(code);
+      if (!response.success || !response.data) {
+        throw new Error('Product lookup failed.');
+      }
+      const found = response.data;
+      if (found.status !== 'Active') {
+        scannerAudio.playError();
+        setFormError(`${found.name} is inactive and cannot be sold.`);
+        return;
+      }
+
+      const activeVariants = (found.variants || []).filter((v) => v.status === 'Available');
+      if (activeVariants.length === 0) {
+        scannerAudio.playError();
+        setFormError(`${found.name} has no active variants available for sale.`);
+        return;
+      }
+
+      // 1. Check if matched via a specific InventoryBatch serial sticker
+      if (found.matchedVariantId) {
+        const matchedVariant = activeVariants.find((v) => String(v.id) === String(found.matchedVariantId));
+        if (!matchedVariant) {
+          scannerAudio.playError();
+          setFormError(`The variant for serial "${code}" is not active.`);
+          return;
+        }
+        const isService = Boolean((found as any).isService || found.form === 'Service / Installation');
+        const inCartQty = cart.find((c) => c.variantId === matchedVariant.id)?.quantity || 0;
+        const alreadyHasSerial = cart.some((c) =>
+          (c.serialNumbers || []).some((s) => s.toLowerCase() === (found.matchedSerial || code).toLowerCase())
+        );
+        if (alreadyHasSerial) {
+          scannerAudio.playError();
+          setFormError(`Serial "${found.matchedSerial || code}" is already in the cart.`);
+          return;
+        }
+        if (!isService && inCartQty + 1 > matchedVariant.currentStock) {
+          scannerAudio.playError();
+          setFormError(`${found.name} (${matchedVariant.companyName}) has no remaining stock available (${matchedVariant.currentStock} in stock).`);
+          return;
+        }
+        scannerAudio.playSuccess();
+        handleAddToCart(found, matchedVariant, 1, found.matchedSerial || code);
+        setScanSuccessMessage(`Scanned Serial "${found.matchedSerial || code}" → ${found.name} (${matchedVariant.companyName})`);
+        setTimeout(() => setScanSuccessMessage(null), 3000);
+        return;
+      }
+
+      // 2. Standard product barcode with 1 active variant
+      if (activeVariants.length === 1) {
+        const singleVariant = activeVariants[0];
+        const isService = Boolean((found as any).isService || found.form === 'Service / Installation');
+        const inCartQty = cart.find((c) => c.variantId === singleVariant.id)?.quantity || 0;
+        if (!isService && inCartQty + 1 > singleVariant.currentStock) {
+          scannerAudio.playError();
+          setFormError(`${found.name} (${singleVariant.companyName}) is out of stock or stock limit reached (${singleVariant.currentStock}).`);
+          return;
+        }
+        scannerAudio.playSuccess();
+        handleAddToCart(found, singleVariant, 1);
+        setScanSuccessMessage(`Scanned: ${found.name} (${singleVariant.companyName}) +1`);
+        setTimeout(() => setScanSuccessMessage(null), 2500);
+        return;
+      }
+
+      // 3. Multiple active variants: open quick variant picker popup
+      scannerAudio.playSuccess();
+      setScannerInitialProduct(found);
+      setScannerOpen(true);
+      setProductSearch('');
+    } catch (err) {
+      scannerAudio.playError();
+      if (err instanceof ApiError && err.status === 404) {
+        setFormError(`No product or batch serial matches "${code}". Save this barcode in the catalogue first, or use search.`);
+      } else {
+        setFormError(`Product lookup failed for "${code}". Check your connection and retry.`);
+      }
+    }
+  };
+
+  const { isScannerReady } = useHardwareBarcodeScanner({
+    enabled: isOpen && !scannerOpen && !photoOpen,
+    onScan: handleHardwareBarcodeScan,
+  });
 
   if (!isOpen) return null;
 
@@ -223,11 +326,16 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
     ? roundMoney(Math.max(0, grandTotal - numericAmountPaid))
     : 0;
 
-  // Add item to cart
-  const handleAddToCart = (product: Product, variant: CompanyVariant, quantity = 1) => {
+  // Add item to cart (optionally attaching a scanned serial number)
+  const handleAddToCart = (product: Product, variant: CompanyVariant, quantity = 1, attachedSerial?: string) => {
     const isService = Boolean((product as any).isService || product.form === 'Service / Installation');
-    if (!isService && variant.currentStock <= 0) return;
+    if (!isService && variant.currentStock <= 0) {
+      scannerAudio.playError();
+      setFormError(`${product.name} (${variant.companyName}) is out of stock.`);
+      return;
+    }
 
+    const cleanSerial = attachedSerial?.trim();
     const basePrice = Number(variant.basePrice) || 0;
     const defaultSellingPrice = Number(variant.defaultSellingPrice) || Number(variant.sellingPrice) || 0;
     const minSellingPrice = Number(variant.minSellingPrice) || (basePrice > 0 ? Math.max(basePrice + 10, Math.round(basePrice * 1.15)) : defaultSellingPrice);
@@ -236,13 +344,22 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
     setCart((prev) => {
       const existing = prev.find((item) => item.variantId === variant.id);
       if (existing) {
+        if (cleanSerial && (existing.serialNumbers || []).some((s) => s.toLowerCase() === cleanSerial.toLowerCase())) {
+          scannerAudio.playError();
+          setFormError(`Serial / MAC "${cleanSerial}" is already added to ${product.name} in this sale.`);
+          return prev;
+        }
         if (!isService && existing.quantity + quantity > variant.currentStock) {
+          scannerAudio.playError();
           setFormError(`Cannot add more than available stock (${variant.currentStock}).`);
           return prev;
         }
+        const nextSerials = cleanSerial
+          ? [...(existing.serialNumbers || []), cleanSerial]
+          : existing.serialNumbers || [];
         return prev.map((item) =>
           item.variantId === variant.id
-            ? { ...item, quantity: item.quantity + quantity }
+            ? { ...item, quantity: item.quantity + quantity, serialNumbers: nextSerials }
             : item
         );
       } else {
@@ -263,7 +380,7 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
             basePrice,
             availableStock: variant.currentStock,
             quantity,
-            serialNumbers: [],
+            serialNumbers: cleanSerial ? [cleanSerial] : [],
             warrantyMonths: settings.defaultWarrantyMonths || 12,
             unitOfMeasure: (product as any).unitOfMeasure || 'PCS',
             technicalSpecs: (product as any).technicalSpecs || '',
@@ -275,6 +392,30 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
     });
     setProductSearch('');
     setFormError(null);
+  };
+
+  // Append a scanned serial sticker directly into an existing cart row
+  const handleAppendCartSerial = (variantId: string, rawSerial: string) => {
+    const cleanSerial = rawSerial.trim();
+    if (!cleanSerial) return;
+
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.variantId !== variantId) return item;
+        const existingList = item.serialNumbers || [];
+        if (existingList.some((s) => s.toLowerCase() === cleanSerial.toLowerCase())) {
+          scannerAudio.playError();
+          setFormError(`Serial / MAC "${cleanSerial}" is already attached to ${item.productName}.`);
+          return item;
+        }
+        const nextList = [...existingList, cleanSerial];
+        scannerAudio.playSuccess();
+        setFormError(null);
+        setScanSuccessMessage(`Serial "${cleanSerial}" attached to ${item.productName}`);
+        setTimeout(() => setScanSuccessMessage(null), 2500);
+        return { ...item, serialNumbers: nextList };
+      })
+    );
   };
 
   // Update item quantity
@@ -509,12 +650,28 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
             </div>
           )}
 
+          {scanSuccessMessage && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold flex items-center gap-2 animate-in fade-in duration-150">
+              <ScanBarcode className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{scanSuccessMessage}</span>
+            </div>
+          )}
+
           {/* Section 1: Add Products & Cart */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                1. Select Products to Sell
-              </h3>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2.5">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  1. Select Products to Sell
+                </h3>
+                {isScannerReady && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <ScanBarcode className="w-3.5 h-3.5" />
+                    <span>Scanner Ready</span>
+                  </span>
+                )}
+              </div>
               <span className="text-xs text-slate-500 font-medium">
                 {cart.length} item(s) in checkout
               </span>
@@ -530,14 +687,33 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                 type="text"
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Type any part of a product, model, brand, supplier, or barcode..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && productSearch.trim()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const q = productSearch.trim();
+                    const exactMatch = filteredVariants.find(
+                      ({ product }) => product.barcode.toLowerCase() === q.toLowerCase()
+                    );
+                    if (exactMatch && filteredVariants.length === 1) {
+                      scannerAudio.playSuccess();
+                      handleAddToCart(exactMatch.product, exactMatch.variant, 1);
+                    } else {
+                      void handleHardwareBarcodeScan(q);
+                    }
+                  }
+                }}
+                placeholder="Scan product barcode or carton serial number, or type product name..."
                 autoComplete="off"
                 aria-autocomplete="list"
                 className="w-full pl-9.5 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
               />
               <button
                 type="button"
-                onClick={() => setScannerOpen(true)}
+                onClick={() => {
+                  setScannerInitialProduct(undefined);
+                  setScannerOpen(true);
+                }}
                 title="Scan barcode with camera"
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-blue-600 transition-colors"
               >
@@ -728,17 +904,56 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
                         </tr>
                         <tr className="bg-slate-50/50">
                           <td colSpan={6} className="px-3 py-1.5">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-semibold text-slate-500 whitespace-nowrap">Serial / MAC:</span>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                              <span className="text-[10px] font-semibold text-slate-500 whitespace-nowrap">
+                                Serial / MAC ({(item.serialNumbers || []).length}):
+                              </span>
+                              <div className="relative flex items-center sm:w-56">
+                                <input
+                                  type="text"
+                                  data-serial-scanner-input="true"
+                                  placeholder="Scan serial sticker here..."
+                                  value={serialScanBuffers[item.variantId] || ''}
+                                  onChange={(e) =>
+                                    setSerialScanBuffers((prev) => ({
+                                      ...prev,
+                                      [item.variantId]: e.target.value,
+                                    }))
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      const scanned = (serialScanBuffers[item.variantId] || '').trim();
+                                      if (scanned) {
+                                        handleAppendCartSerial(item.variantId, scanned);
+                                        setSerialScanBuffers((prev) => ({
+                                          ...prev,
+                                          [item.variantId]: '',
+                                        }));
+                                      }
+                                    }
+                                  }}
+                                  className="w-full pl-2 pr-6 py-1 bg-blue-50/40 border border-blue-200 rounded text-[11px] font-mono text-slate-800 placeholder:text-blue-400 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                                />
+                                <ScanBarcode className="w-3 h-3 text-blue-500 absolute right-2 pointer-events-none" />
+                              </div>
                               <input
                                 type="text"
-                                placeholder="Enter serial numbers separated by commas"
+                                data-serial-scanner-input="true"
+                                placeholder="Or type/edit serial numbers separated by commas"
                                 value={(item.serialNumbers || []).join(', ')}
                                 onChange={(e) => {
                                   const serials = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
                                   setCart(prev => prev.map(ci =>
                                     ci.variantId === item.variantId ? { ...ci, serialNumbers: serials } : ci
                                   ));
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                  }
                                 }}
                                 className="flex-1 px-2 py-1 bg-white border border-slate-200 rounded text-[11px] font-mono text-slate-700 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                               />
@@ -1046,7 +1261,11 @@ export const NewSaleModal: React.FC<NewSaleModalProps> = ({
       <BarcodeScannerModal
         isOpen={scannerOpen}
         mode="sale"
-        onClose={() => setScannerOpen(false)}
+        initialProduct={scannerInitialProduct}
+        onClose={() => {
+          setScannerOpen(false);
+          setScannerInitialProduct(undefined);
+        }}
         quantities={Object.fromEntries(cart.map(item => [item.variantId, item.quantity]))}
         onAdd={handleAddToCart}
       />

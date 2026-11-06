@@ -32,11 +32,13 @@ import { PurchaseReturnModal } from './PurchaseReturnModal';
 interface PurchasesModuleProps {
   role: UserRole;
   onNavigateToInventory?: () => void;
+  onCreateProductWithBarcode?: (barcode: string) => void;
 }
 
 export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
   role,
   onNavigateToInventory,
+  onCreateProductWithBarcode,
 }) => {
   // Filter state
   const [filters, setFilters] = useState<PurchaseFilterParams>({
@@ -250,6 +252,7 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
         onClose={() => setIsCreateModalOpen(false)}
         onSuccess={handlePurchaseCreated}
         role={role}
+        onCreateProductWithBarcode={onCreateProductWithBarcode}
       />
 
       {/* Purchase Details Modal */}

@@ -139,3 +139,55 @@ class ProductsApiTests(APITestCase):
         self.assertEqual(PriceAdjustmentHistory.objects.count(), 1)
         variant.refresh_from_db()
         self.assertEqual(str(variant.default_selling_price), '130.00')
+
+    def test_barcode_lookup_matches_product_barcode_and_batch_serial(self):
+        from django.utils import timezone
+        from apps.inventory.models import InventoryBatch
+
+        product = Product.objects.create(
+            name='Ubiquiti UniFi 6 Lite AP',
+            generic_name='U6-Lite',
+            category=self.category,
+            dosage='1500Mbps',
+            dosage_form=Product.DosageForm.ACCESS_POINT,
+            barcode='810010073128',
+        )
+        variant = ProductVariant.objects.create(
+            product=product,
+            company=self.company,
+            base_price='80000.00',
+            min_selling_price='95000.00',
+            default_selling_price='110000.00',
+            max_selling_price='125000.00',
+            current_stock=5,
+        )
+        InventoryBatch.objects.create(
+            variant=variant,
+            batch_number='BATCH-AP-01',
+            received_quantity=5,
+            remaining_quantity=5,
+            serial_numbers='U6L-SN-1001, U6L-SN-1002, U6L-SN-1003',
+            unit_cost='80000.00',
+            received_at=timezone.now(),
+            created_by=self.admin,
+        )
+
+        self.client.force_authenticate(self.cashier)
+
+        # 1. Exact product barcode lookup
+        res_barcode = self.client.get(reverse('products-barcode-lookup'), {'barcode': '810010073128'})
+        self.assertEqual(res_barcode.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_barcode.data['data']['id'], product.id)
+        self.assertNotIn('matched_serial', res_barcode.data['data'])
+
+        # 2. Exact batch serial number lookup
+        res_serial = self.client.get(reverse('products-barcode-lookup'), {'barcode': 'U6L-SN-1002'})
+        self.assertEqual(res_serial.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_serial.data['data']['id'], product.id)
+        self.assertEqual(res_serial.data['data']['matched_variant_id'], variant.id)
+        self.assertEqual(res_serial.data['data']['matched_serial'], 'U6L-SN-1002')
+
+        # 3. Partial serial substring should not match
+        res_partial = self.client.get(reverse('products-barcode-lookup'), {'barcode': 'U6L-SN-10'})
+        self.assertEqual(res_partial.status_code, status.HTTP_404_NOT_FOUND)
+
