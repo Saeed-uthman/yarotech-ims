@@ -76,8 +76,8 @@ Historical sale and purchase lines retain their captured descriptions and prices
 ### 1. Get the source
 
 ```powershell
-git clone https://github.com/Saeed-uthman/pharmacy-ims.git
-cd pharmacy-ims
+git clone https://github.com/Saeed-uthman/yarotech-ims.git
+cd yarotech-ims
 ```
 
 If the project is already on the computer, open PowerShell in its root folder instead.
